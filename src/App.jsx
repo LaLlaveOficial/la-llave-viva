@@ -1,22 +1,28 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const AMAZON_KINDLE_URL = "#";
-const AMAZON_PAPERBACK_URL = "#";
+const AMAZON_PHYSICAL_URL = "#";
 const CONTACT_EMAIL = "contacto@lallaveoficial.com";
 
 const CITY_BG = "/assets/la-llave-ciudad-central-hero.png";
 const KEY_IMG = "/assets/la-llave-066-key.png";
 const HAZARD_STRIPE = "/assets/la-llave-hazard-stripe.png";
+const MAP_IMG = "/assets/la-llave-mapa-universo.png";
+const BOOK_MOCKUP = "/assets/la-llave-mockup-portada-original.png";
 
-const phrases = ["DOCE HORAS.", "UNA LLAVE.", "UNA CIUDAD QUE MIENTE."];
+const SOCIAL_LINKS = {
+  instagram: "#",
+  tiktok: "#",
+  youtube: "#",
+};
 
 const keyCells = [
   {
     id: "066",
     title: "066",
     icon: "◆",
-    position: "left-[48%] top-[16%]",
+    position: "left-[50%] top-[18%]",
     text: "No es un número. Es una entrada. Una advertencia. Una condena.",
   },
   {
@@ -30,14 +36,14 @@ const keyCells = [
     id: "ciudad",
     title: "Ciudad Central",
     icon: "⌾",
-    position: "left-[49%] top-[55%]",
+    position: "left-[50%] top-[56%]",
     text: "La capital administrativa de América Unida. Progreso, vigilancia y silencio.",
   },
   {
     id: "personajes",
     title: "Los involucrados",
     icon: "▣",
-    position: "left-[50%] top-[74%]",
+    position: "left-[50%] top-[75%]",
     text: "Issei, Karen y Paula no entran en una investigación. Entran en una maquinaria diseñada para devorarlos.",
   },
 ];
@@ -49,22 +55,30 @@ const dossierBlocks = [
   ["Tiempo restante", "12 horas"],
 ];
 
-const worldBlocks = [
-  {
-    title: "América Unida",
-    text: "Un bloque continental bajo una capital que administra el orden y define la verdad oficial.",
-  },
+const regions = [
   {
     title: "Ciudad Central",
-    text: "La sede del poder. Luces, cámaras, propaganda y una puerta que nadie debía abrir.",
+    code: "CC-00",
+    tag: "Centro de mando",
+    text: "Chile / América Unida. Núcleo administrativo, vigilancia permanente y control de información.",
   },
   {
     title: "Ciudad Oeste",
-    text: "El otro eje del tablero. Un nombre que aparece cuando la mentira empieza a mostrar sus costuras.",
+    code: "CO-04",
+    tag: "Zona industrial",
+    text: "Alemania / Euroáfrica. Sector de tensión política, rutas cerradas y comunicaciones filtradas.",
+  },
+  {
+    title: "Ciudad Este",
+    code: "CE-09",
+    tag: "Sector tecnológico",
+    text: "China / Asia Pacífico. Red de monitoreo, laboratorios de datos y control satelital.",
   },
   {
     title: "Regiones Polares",
-    text: "Territorios bajo vigilancia militar internacional. El margen del mapa también tiene dueño.",
+    code: "RP-N/S",
+    tag: "Zona militar",
+    text: "Norte y Sur. Territorios restringidos, soberanía fragmentada y protocolos de vigilancia extrema.",
   },
 ];
 
@@ -86,99 +100,28 @@ const characters = [
   },
 ];
 
-function useStormAudio() {
-  const ctxRef = useRef(null);
-  const rainGainRef = useRef(null);
-  const intervalRef = useRef(null);
-
-  const stop = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = null;
-    if (rainGainRef.current) {
-      try {
-        rainGainRef.current.gain.linearRampToValueAtTime(0, ctxRef.current.currentTime + 0.4);
-      } catch {}
-    }
-  };
-
-  const start = async () => {
-    if (ctxRef.current) return;
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-
-    const ctx = new AudioContext();
-    ctxRef.current = ctx;
-
-    const bufferSize = ctx.sampleRate * 2;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i += 1) data[i] = Math.random() * 2 - 1;
-
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    noise.loop = true;
-
-    const rainFilter = ctx.createBiquadFilter();
-    rainFilter.type = "bandpass";
-    rainFilter.frequency.value = 920;
-    rainFilter.Q.value = 0.7;
-
-    const rainGain = ctx.createGain();
-    rainGain.gain.value = 0.045;
-    rainGainRef.current = rainGain;
-
-    noise.connect(rainFilter).connect(rainGain).connect(ctx.destination);
-    noise.start();
-
-    const thunder = () => {
-      if (!ctxRef.current) return;
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(55, now);
-      osc.frequency.exponentialRampToValueAtTime(24, now + 1.1);
-      filter.type = "lowpass";
-      filter.frequency.value = 140;
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.06);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.45);
-      osc.connect(filter).connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 1.5);
-    };
-
-    intervalRef.current = setInterval(() => {
-      if (Math.random() > 0.46) thunder();
-    }, 6500);
-  };
-
-  return { start, stop };
-}
-
 function RainLayer() {
   const drops = useMemo(
     () =>
-      Array.from({ length: 110 }, (_, i) => ({
+      Array.from({ length: 92 }, (_, i) => ({
         id: i,
-        left: `${(i * 29) % 100}%`,
-        delay: (i % 23) * 0.13,
-        duration: 0.72 + (i % 9) * 0.09,
-        height: 34 + (i % 7) * 18,
-        opacity: 0.13 + (i % 5) * 0.04,
+        left: `${(i * 37) % 100}%`,
+        delay: (i % 19) * 0.16,
+        duration: 0.72 + (i % 8) * 0.13,
+        height: 34 + (i % 7) * 17,
+        opacity: 0.1 + (i % 5) * 0.045,
       })),
     []
   );
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-20 overflow-hidden opacity-80">
+    <div className="pointer-events-none fixed inset-0 z-10 overflow-hidden opacity-90">
       {drops.map((drop) => (
         <motion.span
           key={drop.id}
-          className="absolute top-[-18%] w-px bg-gradient-to-b from-transparent via-yellow-100/40 to-transparent"
+          className="absolute top-[-15%] w-px bg-gradient-to-b from-transparent via-yellow-100/45 to-transparent"
           style={{ left: drop.left, height: drop.height, opacity: drop.opacity }}
-          animate={{ y: [0, 1200], x: [0, -40] }}
+          animate={{ y: [0, 1200], x: [0, -38] }}
           transition={{ duration: drop.duration, delay: drop.delay, repeat: Infinity, ease: "linear" }}
         />
       ))}
@@ -188,7 +131,7 @@ function RainLayer() {
 
 function NoiseLayer() {
   return (
-    <div className="pointer-events-none fixed inset-0 z-30 opacity-[0.05] mix-blend-screen">
+    <div className="pointer-events-none fixed inset-0 z-20 opacity-[0.05] mix-blend-screen">
       <div
         className="h-full w-full"
         style={{
@@ -201,77 +144,52 @@ function NoiseLayer() {
   );
 }
 
+function HazardBorders() {
+  return (
+    <div className="pointer-events-none fixed inset-y-0 left-0 right-0 z-30 hidden overflow-hidden md:block">
+      <motion.img
+        src={HAZARD_STRIPE}
+        alt=""
+        className="absolute left-0 top-0 h-full w-20 object-cover opacity-60 mix-blend-screen lg:w-28"
+        animate={{ x: [0, 5, -3, 0], rotate: [0, 0.24, -0.18, 0], filter: ["brightness(.75)", "brightness(1.04)", "brightness(.75)"] }}
+        transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.img
+        src={HAZARD_STRIPE}
+        alt=""
+        className="absolute right-0 top-0 h-full w-20 scale-x-[-1] object-cover opacity-60 mix-blend-screen lg:w-28"
+        animate={{ x: [0, -5, 3, 0], rotate: [0, -0.24, 0.18, 0], filter: ["brightness(.75)", "brightness(1.04)", "brightness(.75)"] }}
+        transition={{ duration: 6.2, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </div>
+  );
+}
+
 function CityBackdrop() {
   return (
     <div className="absolute inset-0 overflow-hidden">
       <motion.div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${CITY_BG})` }}
-        animate={{
-          scale: [1.02, 1.055, 1.02],
-          filter: ["brightness(.62) contrast(1.14)", "brightness(.86) contrast(1.22)", "brightness(.62) contrast(1.14)"],
-        }}
+        animate={{ scale: [1.02, 1.055, 1.02], filter: ["brightness(.6)", "brightness(.92)", "brightness(.6)"] }}
         transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
       />
-
       <motion.div
-        className="absolute inset-0 bg-white"
-        animate={{ opacity: [0, 0, 0.24, 0, 0.08, 0] }}
-        transition={{ duration: 6.5, repeat: Infinity, repeatDelay: 4.2, ease: "easeInOut" }}
+        className="absolute inset-0 bg-white/0"
+        animate={{ opacity: [0, 0, 0.22, 0, 0.08, 0] }}
+        transition={{ duration: 6.5, repeat: Infinity, repeatDelay: 3.8, ease: "easeInOut" }}
       />
-
-      <motion.img
-        src={HAZARD_STRIPE}
-        alt=""
-        className="pointer-events-none absolute left-0 top-0 h-full w-24 object-cover opacity-55 mix-blend-screen sm:w-32 lg:w-40"
-        animate={{ x: [0, 5, -2, 0], rotate: [0, 0.45, -0.25, 0] }}
-        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.img
-        src={HAZARD_STRIPE}
-        alt=""
-        className="pointer-events-none absolute right-0 top-0 h-full w-24 scale-x-[-1] object-cover opacity-55 mix-blend-screen sm:w-32 lg:w-40"
-        animate={{ x: [0, -5, 2, 0], rotate: [0, -0.45, 0.25, 0] }}
-        transition={{ duration: 5.8, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <div className="absolute inset-y-0 left-0 w-[34%] bg-[radial-gradient(ellipse_at_left,rgba(0,0,0,0.98)_0%,rgba(0,0,0,0.78)_42%,transparent_72%)]" />
-      <div className="absolute inset-y-0 right-0 w-[34%] bg-[radial-gradient(ellipse_at_right,rgba(0,0,0,0.98)_0%,rgba(0,0,0,0.78)_42%,transparent_72%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[56%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.75)_38%,rgba(0,0,0,0.98))]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent_0%,rgba(0,0,0,0.05)_30%,rgba(0,0,0,0.78)_86%)]" />
-    </div>
-  );
-}
-
-function IntroPhrase() {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => setIndex((current) => (current + 1) % phrases.length), 2400);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <div className="h-16 sm:h-20">
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={phrases[index]}
-          className="text-sm font-black uppercase tracking-[0.5em] text-yellow-300/80 sm:text-base"
-          initial={{ opacity: 0, y: 12, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -12, filter: "blur(8px)" }}
-          transition={{ duration: 0.75 }}
-        >
-          {phrases[index]}
-        </motion.p>
-      </AnimatePresence>
+      <div className="absolute inset-y-0 left-0 w-[38%] bg-[radial-gradient(ellipse_at_left,rgba(0,0,0,0.97)_0%,rgba(0,0,0,0.78)_42%,transparent_76%)]" />
+      <div className="absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(ellipse_at_right,rgba(0,0,0,0.97)_0%,rgba(0,0,0,0.78)_42%,transparent_76%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-[58%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.72)_38%,rgba(0,0,0,0.98))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent_0%,rgba(0,0,0,0.08)_30%,rgba(0,0,0,0.76)_86%)]" />
     </div>
   );
 }
 
 function LivingKey({ active, setActive }) {
   return (
-    <div className="relative mx-auto h-[560px] w-full max-w-[620px] sm:h-[680px]">
+    <div className="relative mx-auto h-[520px] w-full max-w-[620px] sm:h-[680px]">
       <motion.div
         className="absolute inset-0 flex items-center justify-center"
         initial={{ opacity: 0, y: 34, scale: 0.92 }}
@@ -281,23 +199,10 @@ function LivingKey({ active, setActive }) {
         <motion.img
           src={KEY_IMG}
           alt="Llave 066"
-          className="h-[92%] max-h-[670px] object-contain drop-shadow-[0_0_42px_rgba(212,166,61,0.48)]"
-          animate={{ filter: ["contrast(1.08) brightness(.86)", "contrast(1.18) brightness(1.08)", "contrast(1.08) brightness(.86)"] }}
+          className="h-[88%] max-h-[660px] object-contain drop-shadow-[0_0_42px_rgba(212,166,61,0.48)]"
+          animate={{ filter: ["contrast(1.08) brightness(.88)", "contrast(1.18) brightness(1.06)", "contrast(1.08) brightness(.88)"] }}
           transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
         />
-      </motion.div>
-
-      <motion.div
-        className="pointer-events-none absolute left-1/2 top-[14%] z-30 -translate-x-1/2 rounded-full bg-yellow-200/20 px-8 py-2 text-4xl font-black tracking-[0.18em] text-yellow-100 blur-[0.2px] drop-shadow-[0_0_18px_rgba(255,220,120,0.9)]"
-        initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-        animate={{
-          opacity: [0, 1, 0.78],
-          clipPath: ["inset(0 100% 0 0)", "inset(0 0% 0 0)", "inset(0 0% 0 0)"],
-          textShadow: ["0 0 0px #fff", "0 0 18px #facc15", "0 0 8px #facc15"],
-        }}
-        transition={{ duration: 2.8, delay: 1.1, ease: "easeInOut" }}
-      >
-        066
       </motion.div>
 
       {keyCells.map((cell) => (
@@ -305,7 +210,7 @@ function LivingKey({ active, setActive }) {
           key={cell.id}
           onClick={() => setActive(cell)}
           onMouseEnter={() => setActive(cell)}
-          className={`key-hotspot absolute ${cell.position} z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-yellow-300/35 bg-black/70 px-3 py-2 text-xs uppercase tracking-[0.22em] text-yellow-100 backdrop-blur-md transition hover:border-yellow-200 hover:bg-yellow-950/30`}
+          className={`absolute ${cell.position} z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-yellow-300/35 bg-black/70 px-3 py-2 text-xs uppercase tracking-[0.22em] text-yellow-100 shadow-[0_0_24px_rgba(250,190,60,0.16)] backdrop-blur-md transition hover:border-yellow-200 hover:bg-yellow-950/30`}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -357,73 +262,113 @@ function CTAButtons() {
         Leer en Kindle
       </a>
       <a
-        href={AMAZON_PAPERBACK_URL}
+        href={AMAZON_PHYSICAL_URL}
         className="inline-flex w-full items-center justify-center gap-3 rounded-full border border-stone-500/50 bg-stone-950/65 px-7 py-4 text-sm font-black uppercase tracking-[0.2em] text-stone-100 backdrop-blur transition hover:border-yellow-300/60 hover:text-yellow-200 sm:w-auto"
       >
         <span className="text-sm">◆</span>
-        Comprar tapa blanda
+        Comprar libro físico
       </a>
     </div>
   );
 }
 
-export default function App() {
+function UniverseMap() {
+  return (
+    <section id="universo" className="relative overflow-hidden bg-black px-5 py-24 lg:px-8">
+      <div className="absolute inset-0 opacity-35" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
+      <div className="relative z-10 mx-auto max-w-7xl">
+        <div className="grid items-center gap-10 lg:grid-cols-[0.36fr_0.64fr]">
+          <div>
+            <p className="mb-4 text-xs uppercase tracking-[0.45em] text-yellow-400/70">El universo</p>
+            <h2 className="font-serif text-4xl font-black uppercase leading-tight tracking-[0.12em] text-stone-100 sm:text-5xl">Ciudades y regiones</h2>
+            <p className="mt-6 max-w-md text-base leading-8 text-stone-400">
+              La civilización se divide en ciudades capitales y regiones bajo una vigilancia que nunca duerme.
+            </p>
+            <div className="mt-8 grid gap-3 text-xs uppercase tracking-[0.25em] text-stone-400">
+              <span><b className="text-yellow-300">●</b> Ciudad Central</span>
+              <span><b className="text-yellow-300">▲</b> Ciudad Este</span>
+              <span><b className="text-yellow-300">◆</b> Ciudad Oeste</span>
+              <span><b className="text-yellow-300">◇</b> Regiones Polares</span>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-3xl border border-yellow-300/15 bg-stone-950/70 p-2 shadow-2xl shadow-black/60">
+            <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_55%_45%,transparent_0%,rgba(0,0,0,0.22)_48%,rgba(0,0,0,0.72)_100%)]" />
+            <div className="absolute inset-0 z-20 bg-[linear-gradient(90deg,rgba(250,204,21,0.08),transparent_14%,transparent_86%,rgba(250,204,21,0.08))]" />
+            <motion.img
+              src={MAP_IMG}
+              alt="Mapa del universo de La Llave I: Ciudad Central"
+              className="relative z-0 aspect-[16/10] w-full min-w-[760px] rounded-2xl object-cover opacity-90 saturate-0 md:min-w-0"
+              animate={{ scale: [1, 1.018, 1], filter: ["brightness(.78) contrast(1.12)", "brightness(.96) contrast(1.22)", "brightness(.78) contrast(1.12)"] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {regions.map((region) => (
+            <motion.article
+              key={region.title}
+              className="rounded-2xl border border-stone-800 bg-black/70 p-5 shadow-xl shadow-black/40 backdrop-blur"
+              whileHover={{ y: -5, borderColor: "rgba(253,224,71,0.42)" }}
+            >
+              <p className="text-xs uppercase tracking-[0.3em] text-yellow-400/70">{region.code}</p>
+              <h3 className="mt-3 font-serif text-xl font-black uppercase tracking-[0.12em] text-stone-100">{region.title}</h3>
+              <p className="mt-2 text-xs uppercase tracking-[0.26em] text-red-200/70">{region.tag}</p>
+              <p className="mt-4 text-sm leading-7 text-stone-400">{region.text}</p>
+            </motion.article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BookSection() {
+  return (
+    <section id="libro" className="relative overflow-hidden bg-[linear-gradient(180deg,#050505,#0d0905,#020202)] px-5 py-24 lg:px-8">
+      <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-yellow-400/10 blur-3xl" />
+      <div className="absolute -right-24 bottom-16 h-72 w-72 rounded-full bg-red-700/10 blur-3xl" />
+      <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[0.42fr_0.58fr]">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mx-auto w-full max-w-[420px]">
+          <div className="rounded-3xl border border-yellow-300/20 bg-black/60 p-4 shadow-[0_0_70px_rgba(212,166,61,0.16)] backdrop-blur">
+            <img src={BOOK_MOCKUP} alt="Mockup de La Llave I: Ciudad Central" className="w-full rounded-2xl object-cover" />
+          </div>
+        </motion.div>
+
+        <div className="text-center lg:text-left">
+          <p className="mb-4 text-xs uppercase tracking-[0.45em] text-yellow-400/70">El libro</p>
+          <h2 className="font-serif text-4xl font-black uppercase leading-tight tracking-[0.12em] text-stone-100 sm:text-6xl">La Llave I: Ciudad Central</h2>
+          <p className="mt-7 max-w-2xl text-lg leading-9 text-stone-300 lg:mx-0">
+            Una historia que atrapa desde la primera página. Disponible en Kindle y libro físico.
+          </p>
+          <div className="mt-9">
+            <CTAButtons />
+          </div>
+          <div className="mt-8 grid gap-4 text-sm text-stone-400 sm:grid-cols-3">
+            <div className="rounded-2xl border border-stone-800 bg-black/50 p-4">Entrega segura y garantizada</div>
+            <div className="rounded-2xl border border-stone-800 bg-black/50 p-4">Edición de alta calidad</div>
+            <div className="rounded-2xl border border-stone-800 bg-black/50 p-4">Envíos a todo el mundo</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function LaLlaveLanding() {
   const [active, setActive] = useState(keyCells[0]);
-  const [entered, setEntered] = useState(false);
-  const { start, stop } = useStormAudio();
-
-  useEffect(() => () => stop(), []);
-
-  const enter = async () => {
-    setEntered(true);
-    await start();
-  };
 
   return (
     <main className="min-h-screen overflow-hidden bg-black text-stone-100 selection:bg-yellow-300 selection:text-black">
       <RainLayer />
       <NoiseLayer />
+      <HazardBorders />
 
-      <AnimatePresence>
-        {!entered && (
-          <motion.div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black px-6"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, filter: "blur(10px)" }}
-            transition={{ duration: 0.8 }}
-          >
-            <CityBackdrop />
-            <div className="absolute inset-0 bg-black/72" />
-            <motion.div
-              className="relative z-10 max-w-2xl text-center"
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1 }}
-            >
-              <p className="mb-5 text-xs uppercase tracking-[0.6em] text-yellow-300/70">Acceso restringido</p>
-              <h1 className="font-serif text-4xl font-black uppercase tracking-[0.15em] sm:text-6xl">Ciudad Central</h1>
-              <p className="mx-auto mt-6 max-w-xl text-stone-300">La experiencia sonora requiere tu autorización. Al entrar, se activan lluvia, tensión y relámpagos.</p>
-              <button
-                onClick={enter}
-                className="mt-9 rounded-full border border-yellow-300/50 bg-yellow-300 px-8 py-4 text-sm font-black uppercase tracking-[0.25em] text-black shadow-[0_0_44px_rgba(251,191,36,0.28)] transition hover:scale-[1.02]"
-              >
-                Entrar a Ciudad Central
-              </button>
-              <button
-                onClick={() => setEntered(true)}
-                className="mt-5 block w-full text-xs uppercase tracking-[0.25em] text-stone-500 transition hover:text-stone-300"
-              >
-                Entrar sin sonido
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <section className="scanline relative min-h-screen overflow-hidden">
+      <section id="inicio" className="relative min-h-screen overflow-hidden">
         <CityBackdrop />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,transparent_0%,rgba(0,0,0,0.2)_38%,rgba(0,0,0,0.9)_88%)]" />
-        <div className="relative z-40 mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-8 px-5 py-24 lg:grid-cols-[0.92fr_1.08fr] lg:px-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,transparent_0%,rgba(0,0,0,0.2)_38%,rgba(0,0,0,0.86)_88%)]" />
+        <div className="relative z-30 mx-auto grid min-h-screen max-w-7xl grid-cols-1 items-center gap-8 px-5 py-20 sm:py-24 lg:grid-cols-[0.92fr_1.08fr] lg:px-10">
           <motion.div
             initial={{ opacity: 0, x: -34 }}
             animate={{ opacity: 1, x: 0 }}
@@ -436,10 +381,12 @@ export default function App() {
               transition={{ duration: 2.2, repeat: Infinity }}
             >
               <span className="text-sm">⚠</span>
-              Expediente clasificado
+              Acceso restringido
             </motion.div>
 
-            <IntroPhrase />
+            <motion.p className="mb-5 text-sm font-bold uppercase tracking-[0.5em] text-yellow-300/75" animate={{ opacity: [0, 1, 1, 0] }} transition={{ duration: 5, repeat: Infinity, repeatDelay: 1 }}>
+              Doce horas. Una llave. Una ciudad que miente.
+            </motion.p>
             <h1 className="font-serif text-5xl font-black uppercase leading-[0.92] tracking-[0.08em] text-stone-100 sm:text-7xl xl:text-8xl">
               La Llave <span className="block text-yellow-300">I</span>
             </h1>
@@ -454,8 +401,7 @@ export default function App() {
 
           <LivingKey active={active} setActive={setActive} />
         </div>
-
-        <div className="absolute bottom-0 left-0 right-0 z-40 h-20 bg-gradient-to-t from-black to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 z-30 h-20 bg-gradient-to-t from-black to-transparent" />
       </section>
 
       <section className="relative border-y border-yellow-300/10 bg-[linear-gradient(180deg,#050505,#0d0905,#050505)] px-5 py-24 lg:px-8">
@@ -486,31 +432,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="relative bg-black px-5 py-24 lg:px-8">
-        <div className="absolute inset-0 opacity-35" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
-        <div className="relative z-10 mx-auto max-w-6xl">
-          <SectionTitle kicker="Propaganda rota" title="Ciudad Central">
-            El mapa cambió. Los países se volvieron bloques. La verdad se volvió trámite.
-          </SectionTitle>
-          <div className="grid gap-5 md:grid-cols-2">
-            {worldBlocks.map((block, index) => (
-              <motion.article
-                key={block.title}
-                className="group relative overflow-hidden rounded-3xl border border-stone-800 bg-[linear-gradient(145deg,rgba(23,23,23,.94),rgba(3,3,3,.9))] p-7 shadow-2xl shadow-black/40"
-                initial={{ opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ delay: index * 0.08 }}
-              >
-                <div className="absolute right-0 top-0 h-full w-2 bg-yellow-300/70 opacity-70" />
-                <p className="mb-4 text-xs uppercase tracking-[0.34em] text-red-300/70">Bloque {String(index + 1).padStart(2, "0")}</p>
-                <h3 className="font-serif text-2xl font-black uppercase tracking-[0.16em] text-yellow-200">{block.title}</h3>
-                <p className="mt-4 leading-8 text-stone-400">{block.text}</p>
-              </motion.article>
-            ))}
-          </div>
-        </div>
-      </section>
+      <UniverseMap />
 
       <section className="relative overflow-hidden bg-[linear-gradient(180deg,#050505,#110b05,#030303)] px-5 py-24 lg:px-8">
         <div className="absolute -left-24 top-16 h-72 w-72 rounded-full bg-yellow-400/10 blur-3xl" />
@@ -533,9 +455,11 @@ export default function App() {
         </div>
       </section>
 
-      <section className="scanline relative min-h-[70vh] overflow-hidden px-5 py-24 text-center lg:px-8">
+      <BookSection />
+
+      <section className="relative min-h-[70vh] overflow-hidden px-5 py-24 text-center lg:px-8">
         <CityBackdrop />
-        <div className="absolute inset-0 bg-black/72" />
+        <div className="absolute inset-0 bg-black/70" />
         <div className="relative z-10 mx-auto max-w-4xl">
           <p className="mb-5 text-xs uppercase tracking-[0.5em] text-yellow-300/75">La puerta ya está abierta</p>
           <h2 className="font-serif text-4xl font-black uppercase leading-tight tracking-[0.12em] text-stone-100 sm:text-6xl">
@@ -564,9 +488,9 @@ export default function App() {
               <span className="text-sm">✉</span> {CONTACT_EMAIL}
             </a>
             <div className="mt-6 flex gap-3 text-stone-400">
-              <span className="text-lg">◎</span>
-              <span className="text-lg">▶</span>
-              <span className="text-lg">⌾</span>
+              <a href={SOCIAL_LINKS.instagram} className="transition hover:text-yellow-200" aria-label="Instagram">◎</a>
+              <a href={SOCIAL_LINKS.youtube} className="transition hover:text-yellow-200" aria-label="YouTube">▶</a>
+              <a href={SOCIAL_LINKS.tiktok} className="transition hover:text-yellow-200" aria-label="TikTok">♪</a>
             </div>
           </div>
         </div>
