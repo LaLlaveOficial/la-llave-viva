@@ -11,6 +11,7 @@ const ASSETS = {
 
 const AUDIO = {
   noir: "/audio/ambience-noir.mp3",
+  rain: "/audio/rain-thunder.mp3",
 };
 
 const LINKS = {
@@ -44,60 +45,35 @@ function Icon({ type }) {
 export default function App() {
   const [introOpen, setIntroOpen] = useState(true);
   const [audioOn, setAudioOn] = useState(false);
-  const [flash, setFlash] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [musicVol, setMusicVol] = useState(0.28);
-  const [rainVol, setRainVol] = useState(0.08);
+  const [rainVol, setRainVol] = useState(0.14);
+  const [sync, setSync] = useState(98.7);
+  const [omega, setOmega] = useState("ÓMEGA");
 
   const musicRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const nodesRef = useRef([]);
-
-  function stopGeneratedAudio() {
-    nodesRef.current.forEach((node) => {
-      try {
-        if (node.stop) node.stop();
-        if (node.disconnect) node.disconnect();
-      } catch {}
-    });
-    nodesRef.current = [];
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
-    }
-  }
-
-  function stopAudio() {
-    if (musicRef.current) {
-      musicRef.current.pause();
-      musicRef.current.currentTime = 0;
-    }
-    stopGeneratedAudio();
-    setAudioOn(false);
-  }
+  const rainRef = useRef(null);
 
   async function startAudio() {
-    stopGeneratedAudio();
-
     if (musicRef.current) {
       musicRef.current.volume = musicVol;
       await musicRef.current.play().catch(() => {});
     }
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (AudioContext) {
-      const ctx = new AudioContext();
-      audioCtxRef.current = ctx;
-      const master = ctx.createGain();
-      master.gain.value = 0.55;
-      master.connect(ctx.destination);
-      nodesRef.current.push(master);
-
-      createSoftRain(ctx, master, rainVol, nodesRef);
-      createSoftThunder(ctx, master, setFlash, nodesRef);
+    if (rainRef.current) {
+      rainRef.current.volume = rainVol;
+      await rainRef.current.play().catch(() => {});
     }
 
     setAudioOn(true);
+  }
+
+  function stopAudio() {
+    [musicRef.current, rainRef.current].forEach((audio) => {
+      if (!audio) return;
+      audio.pause();
+    });
+    setAudioOn(false);
   }
 
   function enter(withAudio) {
@@ -113,11 +89,25 @@ export default function App() {
     if (musicRef.current) musicRef.current.volume = musicVol;
   }, [musicVol]);
 
+  useEffect(() => {
+    if (rainRef.current) rainRef.current.volume = rainVol;
+  }, [rainVol]);
+
+  useEffect(() => {
+    const letters = ["ΩMEGA", "ÓMΞGA", "ÓMEGA", "0MΞGΛ", "ÓMEGA"];
+    const id = setInterval(() => {
+      setSync(Number((97.9 + Math.random() * 1.8).toFixed(1)));
+      setOmega(letters[Math.floor(Math.random() * letters.length)]);
+    }, 1200);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => () => stopAudio(), []);
 
   return (
-    <main className={`site ${flash ? "storm-flash" : ""}`}>
+    <main className="site">
       <audio ref={musicRef} src={AUDIO.noir} loop preload="metadata" />
+      <audio ref={rainRef} src={AUDIO.rain} loop preload="metadata" />
 
       <Background />
       <HazardBorders />
@@ -162,7 +152,7 @@ export default function App() {
       <aside className="audio-top">
         <button onClick={toggleAudio}>{audioOn ? "Pausar atmósfera" : "Activar atmósfera"}</button>
         <label>Música <input type="range" min="0" max="0.8" step="0.01" value={musicVol} onChange={(e) => setMusicVol(Number(e.target.value))} /></label>
-        <label>Lluvia <input type="range" min="0" max="0.35" step="0.01" value={rainVol} onChange={(e) => setRainVol(Number(e.target.value))} /></label>
+        <label>Lluvia <input type="range" min="0" max="0.5" step="0.01" value={rainVol} onChange={(e) => setRainVol(Number(e.target.value))} /></label>
       </aside>
 
       <section id="inicio" className="hero-section">
@@ -184,6 +174,7 @@ export default function App() {
           <p className="cryptic c1">No todas las puertas deben abrirse.</p>
           <p className="cryptic c2">La memoria también puede ser una condena.</p>
           <p className="cryptic c3">066 no es un número. Es una advertencia.</p>
+          <p className="cryptic c4">Ciudad Central siempre observa.</p>
         </div>
 
         <aside className="system-panel">
@@ -191,12 +182,12 @@ export default function App() {
           <p>Control total</p>
           <ul>
             <li><span>Código:</span><b>066</b></li>
-            <li><span>Nivel:</span><b>Ómega</b></li>
-            <li><span>Estado:</span><b>Activo</b></li>
+            <li><span>Nivel:</span><b className="matrix-text">{omega}</b></li>
+            <li><span>Estado:</span><b>ACTIVO</b></li>
           </ul>
           <div className="mini-map" />
-          <p className="sync">Sincronización global 98.7%</p>
-          <div className="bars">{Array.from({ length: 18 }).map((_, i) => <i key={i} />)}</div>
+          <p className="sync">Sincronización global {sync}%</p>
+          <div className="bars">{Array.from({ length: 18 }).map((_, i) => <i key={i} style={{ animationDelay: `${i * 0.07}s` }} />)}</div>
         </aside>
       </section>
 
@@ -225,8 +216,8 @@ export default function App() {
           <p>Primera edición · Primer umbral</p>
         </div>
 
-        <LockedBook title="LOCKED" />
-        <LockedBook title="LOCKED" />
+        <LockedBook />
+        <LockedBook />
       </section>
 
       <section id="ediciones" className="editions-section">
@@ -292,8 +283,9 @@ function Background() {
     <div className="background">
       <img src={ASSETS.hero} alt="" />
       <div className="shade" />
-      <div className="rain-layer r1" />
-      <div className="rain-layer r2" />
+      <div className="rain-drop-layer layer-a" />
+      <div className="rain-drop-layer layer-b" />
+      <div className="rain-splash" />
       <div className="lightning" />
     </div>
   );
@@ -308,11 +300,11 @@ function HazardBorders() {
   );
 }
 
-function LockedBook({ title }) {
+function LockedBook() {
   return (
     <article className="locked-book panel">
       <div className="locked-cover">?</div>
-      <h3>{title}</h3>
+      <h3>LOCKED</h3>
       <p>Para desbloquear esta puerta, primero debes leer Ciudad Central.</p>
     </article>
   );
@@ -328,77 +320,4 @@ function Press({ title, img, children }) {
       </div>
     </article>
   );
-}
-
-function createSoftRain(ctx, destination, volume, nodesRef) {
-  const bufferSize = ctx.sampleRate * 2;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.12;
-
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-  source.loop = true;
-
-  const filter = ctx.createBiquadFilter();
-  filter.type = "bandpass";
-  filter.frequency.value = 1400;
-  filter.Q.value = 0.45;
-
-  const gain = ctx.createGain();
-  gain.gain.value = volume;
-
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(destination);
-  source.start();
-
-  nodesRef.current.push(source, filter, gain);
-}
-
-function createSoftThunder(ctx, destination, setFlash, nodesRef) {
-  let active = true;
-
-  const trigger = () => {
-    if (!active) return;
-
-    window.setTimeout(() => {
-      if (!active) return;
-
-      setFlash(true);
-      window.setTimeout(() => setFlash(false), 420);
-
-      const bufferSize = ctx.sampleRate * 1.4;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-
-      for (let i = 0; i < bufferSize; i++) {
-        const decay = 1 - i / bufferSize;
-        data[i] = (Math.random() * 2 - 1) * decay * decay * 0.45;
-      }
-
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = 110;
-
-      const gain = ctx.createGain();
-      gain.gain.value = 0.2;
-
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(destination);
-      source.start();
-
-      nodesRef.current.push(source, filter, gain);
-      trigger();
-    }, 18000 + Math.random() * 18000);
-  };
-
-  trigger();
-
-  nodesRef.current.push({ stop: () => { active = false; } });
 }
