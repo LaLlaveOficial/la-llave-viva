@@ -9,12 +9,6 @@ const ASSETS = {
   stripe: "/assets/la-llave-hazard-stripe.png",
 };
 
-const AUDIO = {
-  noir: "/audio/ambience-noir.mp3",
-  rain: "/audio/rain-loop.mp3",
-  thunder: "/audio/thunder-soft.mp3",
-};
-
 const LINKS = {
   ebook: "#",
   fisico: "#",
@@ -28,85 +22,66 @@ export default function App() {
   const [introOpen, setIntroOpen] = useState(true);
   const [audioOn, setAudioOn] = useState(false);
   const [flash, setFlash] = useState(false);
-  const [musicVol, setMusicVol] = useState(0.22);
-  const [rainVol, setRainVol] = useState(0.2);
+  const [musicVol, setMusicVol] = useState(0.18);
+  const [rainVol, setRainVol] = useState(0.22);
 
-  const musicRef = useRef(null);
-  const rainRef = useRef(null);
-  const thunderRef = useRef(null);
-
-  async function startAudio() {
-    if (!musicRef.current || !rainRef.current) return;
-
-    musicRef.current.volume = musicVol;
-    rainRef.current.volume = rainVol;
-
-    const result = await Promise.allSettled([
-      musicRef.current.play(),
-      rainRef.current.play(),
-    ]);
-
-    setAudioOn(result.some((r) => r.status === "fulfilled"));
-  }
+  const audioCtxRef = useRef(null);
+  const nodesRef = useRef([]);
 
   function stopAudio() {
-    [musicRef.current, rainRef.current, thunderRef.current].forEach((audio) => {
-      if (!audio) return;
-      audio.pause();
+    nodesRef.current.forEach((node) => {
+      try {
+        if (node.stop) node.stop();
+        if (node.disconnect) node.disconnect();
+      } catch {}
     });
+    nodesRef.current = [];
+
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+
     setAudioOn(false);
   }
 
-  async function enterCity(withAudio) {
-    setIntroOpen(false);
-    if (withAudio) await startAudio();
+  function startAudio() {
+    stopAudio();
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
+
+    const master = ctx.createGain();
+    master.gain.value = 0.75;
+    master.connect(ctx.destination);
+    nodesRef.current.push(master);
+
+    createRain(ctx, master, rainVol);
+    createNoirDrone(ctx, master, musicVol);
+    createThunderLoop(ctx, master, setFlash);
+
+    setAudioOn(true);
   }
 
-  async function toggleAudio() {
+  function toggleAudio() {
     if (audioOn) stopAudio();
-    else await startAudio();
+    else startAudio();
+  }
+
+  function enterCity(withAudio) {
+    setIntroOpen(false);
+    if (withAudio) startAudio();
   }
 
   useEffect(() => {
-    if (musicRef.current) musicRef.current.volume = musicVol;
-    if (rainRef.current) rainRef.current.volume = rainVol;
-  }, [musicVol, rainVol]);
-
-  useEffect(() => {
-    if (!audioOn) return;
-
-    let timeout;
-    let flashTimeout;
-
-    const loop = () => {
-      timeout = window.setTimeout(() => {
-        setFlash(true);
-
-        if (thunderRef.current) {
-          thunderRef.current.currentTime = 0;
-          thunderRef.current.volume = 0.32;
-          thunderRef.current.play().catch(() => {});
-        }
-
-        flashTimeout = window.setTimeout(() => setFlash(false), 350);
-        loop();
-      }, 15000 + Math.random() * 17000);
-    };
-
-    loop();
-
-    return () => {
-      window.clearTimeout(timeout);
-      window.clearTimeout(flashTimeout);
-    };
-  }, [audioOn]);
+    return () => stopAudio();
+  }, []);
 
   return (
     <main className={`site ${flash ? "storm-flash" : ""}`}>
-      <audio ref={musicRef} src={AUDIO.noir} loop preload="metadata" />
-      <audio ref={rainRef} src={AUDIO.rain} loop preload="metadata" />
-      <audio ref={thunderRef} src={AUDIO.thunder} preload="none" />
-
       <Background />
       <HazardBorders />
 
@@ -119,6 +94,7 @@ export default function App() {
               Doce horas. Una llave marcada con «066». Una memoria que no
               debería existir.
             </p>
+
             <div className="intro-actions">
               <button onClick={() => enterCity(true)}>Entrar con atmósfera</button>
               <button className="ghost" onClick={() => enterCity(false)}>
@@ -159,6 +135,7 @@ export default function App() {
           <h2>Ciudad Central</h2>
           <div className="gold-line" />
           <p className="author">Un thriller distópico de Enrique G. Santibañez</p>
+
           <p className="lead">
             Doce horas. Una llave marcada con «066». Una memoria que no debería
             existir. La verdad abre la puerta… y también la tumba.
@@ -188,22 +165,14 @@ export default function App() {
           <h3>Sistema 066</h3>
           <p>Control total</p>
           <ul>
-            <li>
-              <span>Código:</span> <b>066</b>
-            </li>
-            <li>
-              <span>Nivel:</span> <b>Ómega</b>
-            </li>
-            <li>
-              <span>Estado:</span> <b>Activo</b>
-            </li>
+            <li><span>Código:</span> <b>066</b></li>
+            <li><span>Nivel:</span> <b>Ómega</b></li>
+            <li><span>Estado:</span> <b>Activo</b></li>
           </ul>
           <div className="mini-map" />
           <p className="sync">Sincronización global 98.7%</p>
           <div className="bars">
-            {Array.from({ length: 18 }).map((_, i) => (
-              <i key={i} />
-            ))}
+            {Array.from({ length: 18 }).map((_, i) => <i key={i} />)}
           </div>
         </aside>
       </section>
@@ -349,4 +318,123 @@ function Social({ href, label, icon }) {
       {icon}
     </a>
   );
+}
+
+function createRain(ctx, destination, volume) {
+  const bufferSize = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.28;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 900;
+
+  const gain = ctx.createGain();
+  gain.gain.value = volume;
+
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(destination);
+  source.start();
+
+  nodesPush(source, filter, gain);
+}
+
+function createNoirDrone(ctx, destination, volume) {
+  const gain = ctx.createGain();
+  gain.gain.value = volume;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 520;
+
+  const osc1 = ctx.createOscillator();
+  osc1.type = "sine";
+  osc1.frequency.value = 55;
+
+  const osc2 = ctx.createOscillator();
+  osc2.type = "triangle";
+  osc2.frequency.value = 82.41;
+
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  lfo.frequency.value = 0.08;
+
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.05;
+
+  lfo.connect(lfoGain);
+  lfoGain.connect(gain.gain);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gain);
+  gain.connect(destination);
+
+  osc1.start();
+  osc2.start();
+  lfo.start();
+
+  nodesPush(osc1, osc2, lfo, lfoGain, filter, gain);
+}
+
+function createThunderLoop(ctx, destination, setFlash) {
+  let cancelled = false;
+
+  const trigger = () => {
+    if (cancelled) return;
+
+    const wait = 14000 + Math.random() * 18000;
+
+    setTimeout(() => {
+      if (cancelled) return;
+
+      setFlash(true);
+      setTimeout(() => setFlash(false), 420);
+
+      const bufferSize = ctx.sampleRate * 1.8;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) {
+        const decay = 1 - i / bufferSize;
+        data[i] = (Math.random() * 2 - 1) * decay * decay;
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 140;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.38;
+
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(destination);
+      source.start();
+
+      trigger();
+    }, wait);
+  };
+
+  trigger();
+
+  const stopper = { stop: () => { cancelled = true; } };
+  nodesPush(stopper);
+}
+
+function nodesPush(...nodes) {
+  window.__llaveAudioNodes = window.__llaveAudioNodes || [];
+  window.__llaveAudioNodes.push(...nodes);
 }
