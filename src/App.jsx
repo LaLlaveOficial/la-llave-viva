@@ -23,7 +23,7 @@ const AUDIO = {
 const LINKS = {
   kindle: "https://www.amazon.com/dp/B0GX31SRTT",
   physical: "https://www.amazon.com/dp/9564237246",
-  instagram: "instagram.com/lallavesagaoficial",
+  instagram: "https://www.instagram.com/lallavesagaoficial",
   tiktok: "https://www.tiktok.com/@lallavesagaoficial",
   x: "#",
   youtube: "#",
