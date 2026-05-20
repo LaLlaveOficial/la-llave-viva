@@ -1146,6 +1146,24 @@ export default function App() {
     if (withAudio) await startAudio();
   }
 
+  const currentPath =
+    typeof window !== "undefined"
+      ? window.location.pathname.replace(/\/+$/, "")
+      : "";
+
+  if (currentPath === "/press-kit" || currentPath === "/presskit") {
+    return (
+      <PressKitPage
+        lang={lang}
+        setLang={setLang}
+        dir={dir}
+        rainDrops={rainDrops}
+        bgIndex={bgIndex}
+        setBgIndex={setBgIndex}
+      />
+    );
+  }
+
   return (
     <main className="site" lang={lang} dir={dir}>
       <audio ref={noirRef} src={AUDIO.noir} loop preload="metadata" />
@@ -1362,6 +1380,258 @@ export default function App() {
           </div>
         </div>
       )}
+    </main>
+  );
+}
+
+function PressKitPage({ lang, setLang, dir, rainDrops, bgIndex, setBgIndex }) {
+  const isEnglish = lang === "en";
+
+  const reviewSubject = encodeURIComponent(
+    isEnglish
+      ? "Review copy request - La Llave I: Ciudad Central"
+      : "Solicitud de copia digital para reseña - La Llave I: Ciudad Central"
+  );
+
+  const reviewBody = encodeURIComponent(
+    isEnglish
+      ? "Hello, I would like to request a digital review copy of La Llave I: Ciudad Central.\n\nName:\nMedia / account:\nCountry:\nMessage:"
+      : "Hola, me gustaría solicitar una copia digital de reseña de La Llave I: Ciudad Central.\n\nNombre:\nMedio / cuenta:\nPaís:\nMensaje:"
+  );
+
+  const reviewMail = `mailto:${LINKS.email}?subject=${reviewSubject}&body=${reviewBody}`;
+
+  const copy = isEnglish
+    ? {
+        navHome: "Home",
+        navMaterials: "Materials",
+        navContact: "Contact",
+        kicker: "Official Press Kit",
+        title: "La Llave I: Ciudad Central",
+        subtitle: "Chilean dystopian thriller · Code 066 · Central City",
+        intro:
+          "A cinematic, dark and atmospheric literary universe for readers of mystery, dystopia and psychological suspense.",
+        amazon: "View on Amazon",
+        request: "Request digital review copy",
+        website: "Official website",
+        synopsisTitle: "Short synopsis",
+        synopsis:
+          "When a key marked 066 appears in a city built on surveillance, silence and buried memories, the truth begins to open a door no one was supposed to find.",
+        extendedTitle: "For reviewers and media",
+        extended:
+          "La Llave I: Ciudad Central is the first threshold of a Chilean dystopian saga. It combines urban noir, mystery, conspiracy, memory and a cinematic sense of danger without losing its emotional core: what happens when the truth survives inside a city designed to erase it?",
+        detailsTitle: "Book details",
+        author: "Author",
+        genre: "Genre",
+        genreValue: "Dystopian thriller / mystery / noir fiction",
+        language: "Language",
+        languageValue: "Spanish",
+        availability: "Availability",
+        availabilityValue: "Amazon Kindle and paperback",
+        materialsTitle: "Available material",
+        cover: "Cover and mockup",
+        coverText: "Official book visuals for features, posts and editorial mentions.",
+        trailer: "Vertical trailers",
+        trailerText: "Short-form promotional videos for Instagram Reels, TikTok and stories.",
+        social: "Social media assets",
+        socialText: "Cryptic visual posts in Spanish and English for BookTok and Bookstagram.",
+        arc: "Digital review copy",
+        arcText: "Available upon request for reviewers, creators, book clubs and media.",
+        contactTitle: "Contact / Review requests",
+        contactText:
+          "For interviews, reviews, features, collaborations or digital review copies, contact the official author channel below.",
+        footer: "Saga La Llave © 2026 · Official press material",
+      }
+    : {
+        navHome: "Inicio",
+        navMaterials: "Materiales",
+        navContact: "Contacto",
+        kicker: "Press Kit Oficial",
+        title: "La Llave I: Ciudad Central",
+        subtitle: "Thriller distópico chileno · Código 066 · Ciudad Central",
+        intro:
+          "Un universo literario oscuro, cinematográfico y atmosférico para lectores de misterio, distopía y suspense psicológico.",
+        amazon: "Ver en Amazon",
+        request: "Solicitar copia digital para reseña",
+        website: "Web oficial",
+        synopsisTitle: "Sinopsis breve",
+        synopsis:
+          "Cuando una llave marcada con 066 aparece en una ciudad construida sobre vigilancia, silencio y memorias enterradas, la verdad comienza a abrir una puerta que nadie debía encontrar.",
+        extendedTitle: "Para reseñadores y medios",
+        extended:
+          "La Llave I: Ciudad Central es el primer umbral de una saga distópica chilena. Combina noir urbano, misterio, conspiración, memoria y una tensión cinematográfica sin perder su centro emocional: qué ocurre cuando la verdad sobrevive dentro de una ciudad diseñada para borrarla.",
+        detailsTitle: "Ficha del libro",
+        author: "Autor",
+        genre: "Género",
+        genreValue: "Thriller distópico / misterio / noir",
+        language: "Idioma",
+        languageValue: "Español",
+        availability: "Disponibilidad",
+        availabilityValue: "Amazon Kindle y tapa blanda",
+        materialsTitle: "Material disponible",
+        cover: "Portada y mockup",
+        coverText: "Visuales oficiales del libro para notas, publicaciones y menciones editoriales.",
+        trailer: "Tráilers verticales",
+        trailerText: "Videos promocionales cortos para Instagram Reels, TikTok e historias.",
+        social: "Piezas para redes",
+        socialText: "Posts crípticos en español e inglés para BookTok y Bookstagram.",
+        arc: "Copia digital de reseña",
+        arcText: "Disponible bajo solicitud para reseñadores, creadores, clubes de lectura y medios.",
+        contactTitle: "Contacto / Solicitudes de reseña",
+        contactText:
+          "Para entrevistas, reseñas, notas, colaboraciones o copias digitales de lectura, contacta el canal oficial del autor.",
+        footer: "Saga La Llave © 2026 · Material oficial de prensa",
+      };
+
+  return (
+    <main className="site press-kit-page" lang={lang} dir={dir}>
+      <Background
+        rainDrops={rainDrops}
+        bgSrc={BG_SOURCES[bgIndex]}
+        onBgError={() => setBgIndex((current) => current + 1)}
+        hideBg={bgIndex >= BG_SOURCES.length}
+      />
+
+      <HazardBorders />
+
+      <nav className="nav presskit-nav" aria-label="Press Kit navigation">
+        <a className="brand" href="/">
+          <span className="brand-icon">066</span>
+          <span>
+            LA LLAVE I
+            <small>PRESS KIT</small>
+          </span>
+        </a>
+
+        <div className="nav-links">
+          <a href="/">{copy.navHome}</a>
+          <a href="#materiales">{copy.navMaterials}</a>
+          <a href="#contacto-prensa">{copy.navContact}</a>
+        </div>
+
+        <div className="nav-right">
+          <div className="nav-socials">
+            <Social href={LINKS.instagram} label="Instagram"><InstagramIcon /></Social>
+            <Social href={LINKS.tiktok} label="TikTok"><TikTokIcon /></Social>
+          </div>
+
+          <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Idioma">
+            {LANGUAGE_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+      </nav>
+
+      <section className="presskit-hero">
+        <article className="presskit-copy panel">
+          <p className="kicker spaced">{copy.kicker}</p>
+          <h1>{copy.title}</h1>
+          <div className="gold-line" />
+          <p className="author">{copy.subtitle}</p>
+          <p className="lead">{copy.intro}</p>
+
+          <div className="cta-row">
+            <a className="cta primary" href={LINKS.physical} target="_blank" rel="noreferrer noopener">
+              {copy.amazon}
+            </a>
+            <a className="cta" href={reviewMail}>
+              {copy.request}
+            </a>
+            <a className="cta" href="/">
+              {copy.website}
+            </a>
+          </div>
+        </article>
+
+        <aside className="presskit-cover panel">
+          <img src={ASSETS.mockup} alt="La Llave I: Ciudad Central" />
+        </aside>
+      </section>
+
+      <section className="presskit-section panel">
+        <p className="kicker">{copy.synopsisTitle}</p>
+        <h2>{copy.synopsis}</h2>
+      </section>
+
+      <section className="presskit-two">
+        <article className="panel">
+          <p className="kicker">{copy.extendedTitle}</p>
+          <p>{copy.extended}</p>
+        </article>
+
+        <article className="panel presskit-facts">
+          <p className="kicker">{copy.detailsTitle}</p>
+          <ul>
+            <li><span>{copy.author}</span><b>Enrique G. Santibañez</b></li>
+            <li><span>{copy.genre}</span><b>{copy.genreValue}</b></li>
+            <li><span>{copy.language}</span><b>{copy.languageValue}</b></li>
+            <li><span>{copy.availability}</span><b>{copy.availabilityValue}</b></li>
+          </ul>
+        </article>
+      </section>
+
+      <section id="materiales" className="presskit-materials">
+        <article className="press-card panel">
+          <img src={ASSETS.mockup} alt="" />
+          <div>
+            <h3>{copy.cover}</h3>
+            <p>{copy.coverText}</p>
+          </div>
+        </article>
+
+        <article className="press-card panel">
+          <img src={BG_SOURCES[0]} alt="" />
+          <div>
+            <h3>{copy.trailer}</h3>
+            <p>{copy.trailerText}</p>
+          </div>
+        </article>
+
+        <article className="press-card panel">
+          <img src={ASSETS.key} alt="" />
+          <div>
+            <h3>{copy.social}</h3>
+            <p>{copy.socialText}</p>
+          </div>
+        </article>
+
+        <article className="press-card panel">
+          <img src={ASSETS.map} alt="" />
+          <div>
+            <h3>{copy.arc}</h3>
+            <p>{copy.arcText}</p>
+          </div>
+        </article>
+      </section>
+
+      <section id="contacto-prensa" className="presskit-contact panel">
+        <p className="kicker">{copy.contactTitle}</p>
+        <h2>{copy.contactText}</h2>
+
+        <div className="cta-row">
+          <a className="cta primary" href={reviewMail}>
+            {copy.request}
+          </a>
+          <a className="cta" href={`mailto:${LINKS.email}`}>
+            {LINKS.email}
+          </a>
+          <a className="cta" href={LINKS.instagram} target="_blank" rel="noreferrer noopener">
+            Instagram
+          </a>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <p>{copy.footer}</p>
+
+        <div className="footer-socials">
+          <Social href={LINKS.instagram} label="Instagram"><InstagramIcon /></Social>
+          <Social href={LINKS.tiktok} label="TikTok"><TikTokIcon /></Social>
+          <Social href={LINKS.x} label="X"><XIcon /></Social>
+          <Social href={LINKS.youtube} label="YouTube"><YouTubeIcon /></Social>
+        </div>
+      </footer>
     </main>
   );
 }
