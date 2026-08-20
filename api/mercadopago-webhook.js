@@ -4,9 +4,9 @@ const BOOK_PRICE = 15990;
 const SHIPPING_RM = 3000;
 const SHIPPING_REGIONS = 4500;
 
-const VALID_TOTALS = new Set([
-  BOOK_PRICE + SHIPPING_RM,
-  BOOK_PRICE + SHIPPING_REGIONS,
+const VALID_SHIPPING_AMOUNTS = new Set([
+  SHIPPING_RM,
+  SHIPPING_REGIONS,
 ]);
 
 function firstValue(value) {
@@ -131,13 +131,16 @@ async function getPayment(paymentId, accessToken) {
 function isOurOrder(payment) {
   const reference = String(payment?.external_reference || "");
   const currency = String(payment?.currency_id || "");
-  const amount = Number(payment?.transaction_amount);
+  const productAmount = Number(payment?.transaction_amount);
+  const shippingAmount = Number(payment?.shipping_amount);
 
   return (
     /^LLAVE-\d+-[A-Z0-9]+$/.test(reference) &&
     currency === "CLP" &&
-    Number.isFinite(amount) &&
-    VALID_TOTALS.has(amount)
+    Number.isFinite(productAmount) &&
+    productAmount === BOOK_PRICE &&
+    Number.isFinite(shippingAmount) &&
+    VALID_SHIPPING_AMOUNTS.has(shippingAmount)
   );
 }
 
@@ -250,7 +253,8 @@ export default async function handler(req, res) {
         paymentId: payment?.id,
         externalReference: payment?.external_reference,
         currency: payment?.currency_id,
-        amount: payment?.transaction_amount,
+        productAmount: payment?.transaction_amount,
+        shippingAmount: payment?.shipping_amount,
       });
 
       return res.status(409).json({
@@ -258,12 +262,18 @@ export default async function handler(req, res) {
       });
     }
 
+    const productAmount = Number(payment.transaction_amount);
+    const shippingAmount = Number(payment.shipping_amount);
+    const expectedTotal = productAmount + shippingAmount;
+
     const verifiedPayment = {
       paymentId: String(payment.id),
       status: String(payment.status || ""),
       statusDetail: String(payment.status_detail || ""),
       externalReference: String(payment.external_reference || ""),
-      amount: Number(payment.transaction_amount),
+      productAmount,
+      shippingAmount,
+      expectedTotal,
       currency: String(payment.currency_id || ""),
       liveMode: Boolean(payment.live_mode),
       dateApproved: payment.date_approved || null,
