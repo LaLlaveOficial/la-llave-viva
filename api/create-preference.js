@@ -1,3 +1,5 @@
+import { neon } from "@neondatabase/serverless";
+
 const BOOK_PRICE = 15990;
 const SHIPPING_RM = 3000;
 const SHIPPING_REGIONS = 4500;
@@ -50,6 +52,24 @@ function buildReference() {
   return `LLAVE-${Date.now()}-${random}`;
 }
 
+async function updateOrderStatus(sql, externalReference, status) {
+  try {
+    await sql`
+      UPDATE orders
+      SET
+        payment_status = ${status},
+        updated_at = NOW()
+      WHERE external_reference = ${externalReference}
+    `;
+  } catch (error) {
+    console.error("Order status update error:", {
+      externalReference,
+      status,
+      message: error?.message,
+    });
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -57,10 +77,17 @@ export default async function handler(req, res) {
   }
 
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const databaseUrl = process.env.DATABASE_URL;
 
   if (!accessToken) {
     return res.status(500).json({
       error: "Mercado Pago todavía no está configurado en el servidor.",
+    });
+  }
+
+  if (!databaseUrl) {
+    return res.status(500).json({
+      error: "La base de datos de pedidos todavía no está configurada.",
     });
   }
 
@@ -100,6 +127,7 @@ export default async function handler(req, res) {
   const shippingCost =
     regionCode === "RM" ? SHIPPING_RM : SHIPPING_REGIONS;
 
+  const totalAmount = BOOK_PRICE + shippingCost;
   const { name, surname } = splitName(fullName);
 
   const siteUrl = (
@@ -107,6 +135,56 @@ export default async function handler(req, res) {
   ).replace(/\/+$/, "");
 
   const externalReference = buildReference();
+  const sql = neon(databaseUrl);
+
+  try {
+    await sql`
+      INSERT INTO orders (
+        external_reference,
+        payment_status,
+        buyer_name,
+        buyer_email,
+        buyer_phone,
+        region_code,
+        region_name,
+        commune,
+        street,
+        street_number,
+        address_extra,
+        book_price,
+        shipping_amount,
+        total_amount,
+        currency
+      )
+      VALUES (
+        ${externalReference},
+        'pending',
+        ${fullName},
+        ${email},
+        ${phone},
+        ${regionCode},
+        ${REGION_NAMES[regionCode]},
+        ${commune},
+        ${street},
+        ${numberText},
+        ${extra || null},
+        ${BOOK_PRICE},
+        ${shippingCost},
+        ${totalAmount},
+        'CLP'
+      )
+    `;
+  } catch (error) {
+    console.error("Order insert error:", {
+      externalReference,
+      message: error?.message,
+    });
+
+    return res.status(500).json({
+      error:
+        "No pudimos registrar tu pedido antes del pago. No se realizó ningún cobro. Intenta nuevamente.",
+    });
+  }
 
   const preference = {
     items: [
@@ -151,7 +229,7 @@ export default async function handler(req, res) {
     external_reference: externalReference,
     statement_descriptor: "KELOKE LLAVE",
     additional_info: [
-      `Pedido web La Llave I`,
+      "Pedido web La Llave I",
       `Región: ${REGION_NAMES[regionCode]}`,
       `Comuna: ${commune}`,
       extra ? `Referencia de despacho: ${extra}` : "",
@@ -177,23 +255,53 @@ export default async function handler(req, res) {
 
     if (!mpResponse.ok) {
       console.error("Mercado Pago preference error:", {
+        externalReference,
         status: mpResponse.status,
         cause: data?.cause,
         message: data?.message,
       });
 
+      await updateOrderStatus(sql, externalReference, "preference_error");
+
       return res.status(502).json({
         error:
-          "Mercado Pago no pudo crear el pago en este momento. Intenta nuevamente.",
+          "Mercado Pago no pudo crear el pago en este momento. No se realizó ningún cobro. Intenta nuevamente.",
       });
     }
 
-    if (!data?.init_point) {
-      console.error("Mercado Pago response without init_point:", data);
+    if (!data?.id || !data?.init_point) {
+      console.error("Mercado Pago response incomplete:", {
+        externalReference,
+        hasId: Boolean(data?.id),
+        hasInitPoint: Boolean(data?.init_point),
+      });
+
+      await updateOrderStatus(sql, externalReference, "preference_error");
 
       return res.status(502).json({
         error:
-          "Mercado Pago respondió sin una URL de pago válida. Intenta nuevamente.",
+          "Mercado Pago respondió sin los datos necesarios para continuar. No se realizó ningún cobro. Intenta nuevamente.",
+      });
+    }
+
+    try {
+      await sql`
+        UPDATE orders
+        SET
+          mercadopago_preference_id = ${String(data.id)},
+          updated_at = NOW()
+        WHERE external_reference = ${externalReference}
+      `;
+    } catch (error) {
+      console.error("Preference ID persistence error:", {
+        externalReference,
+        preferenceId: String(data.id),
+        message: error?.message,
+      });
+
+      return res.status(500).json({
+        error:
+          "El pago fue preparado, pero no pudimos terminar de registrar el pedido. No continúes con el pago e intenta nuevamente.",
       });
     }
 
@@ -203,11 +311,16 @@ export default async function handler(req, res) {
       external_reference: externalReference,
     });
   } catch (error) {
-    console.error("Create preference exception:", error);
+    console.error("Create preference exception:", {
+      externalReference,
+      message: error?.message,
+    });
+
+    await updateOrderStatus(sql, externalReference, "preference_error");
 
     return res.status(500).json({
       error:
-        "No fue posible conectar con Mercado Pago. Intenta nuevamente en unos minutos.",
+        "No fue posible conectar con Mercado Pago. No se realizó ningún cobro. Intenta nuevamente en unos minutos.",
     });
   }
 }
