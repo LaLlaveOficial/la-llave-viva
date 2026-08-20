@@ -12,6 +12,7 @@ const ASSETS = {
   key: "/assets/llave-alpha.webp",
   map: "/assets/mapa-universo.webp",
   mockup: "/assets/mockup-portada-original.webp",
+  physicalBook: "/assets/la-llave-edicion-fisica.png",
   stripe: "/assets/la-llave-hazard-stripe.png",
 };
 
@@ -19,6 +20,96 @@ const AUDIO = {
   noir: "/audio/ambience-noir.mp3",
   rain: "/audio/rain-thunder.mp3",
 };
+
+const DIRECT_SALE = {
+  price: 15990,
+  shippingRM: 3000,
+  shippingRegions: 4500,
+};
+
+const CHILE_REGIONS = [
+  { code: "AP", name: "Arica y Parinacota" },
+  { code: "TA", name: "Tarapacá" },
+  { code: "AN", name: "Antofagasta" },
+  { code: "AT", name: "Atacama" },
+  { code: "CO", name: "Coquimbo" },
+  { code: "VS", name: "Valparaíso" },
+  { code: "RM", name: "Región Metropolitana" },
+  { code: "LI", name: "O'Higgins" },
+  { code: "ML", name: "Maule" },
+  { code: "NB", name: "Ñuble" },
+  { code: "BI", name: "Biobío" },
+  { code: "AR", name: "La Araucanía" },
+  { code: "LR", name: "Los Ríos" },
+  { code: "LL", name: "Los Lagos" },
+  { code: "AI", name: "Aysén" },
+  { code: "MA", name: "Magallanes y de la Antártica Chilena" },
+];
+
+const SALE_COPY = {
+  es: {
+    navBuy: "Comprar",
+    heroBuy: "Comprar edición impresa",
+    kicker: "Venta directa · Chile",
+    title: "Obtén tu ejemplar",
+    lead: "La Llave I: Ciudad Central · edición impresa oficial · venta directa en Chile.",
+    edition: "Primera edición impresa",
+    priceLabel: "Precio del libro",
+    region: "Región de despacho",
+    fullName: "Nombre y apellido",
+    email: "Correo electrónico",
+    phone: "Teléfono",
+    commune: "Comuna",
+    street: "Calle / dirección",
+    number: "Número",
+    extra: "Depto., casa u otra referencia (opcional)",
+    book: "Libro",
+    shipping: "Envío",
+    total: "Total",
+    shippingNote: "Tarifa de despacho: $3.000 RM · $4.500 otras regiones.",
+    pay: "Pagar seguro con Mercado Pago",
+    processing: "Preparando pago seguro…",
+    secure: "Serás redirigido al entorno seguro de Mercado Pago.",
+    error: "No pudimos iniciar el pago. Intenta nuevamente en unos minutos.",
+    required: "Completa los datos de despacho antes de continuar.",
+    amazon: "También disponible en Amazon",
+  },
+  en: {
+    navBuy: "Buy",
+    heroBuy: "Buy printed edition",
+    kicker: "Direct sale · Chile",
+    title: "Get your copy",
+    lead: "La Llave I: Ciudad Central · official printed edition · direct sale in Chile.",
+    edition: "First printed edition",
+    priceLabel: "Book price",
+    region: "Shipping region",
+    fullName: "Full name",
+    email: "Email",
+    phone: "Phone",
+    commune: "Commune / district",
+    street: "Street / address",
+    number: "Number",
+    extra: "Apartment, house or reference (optional)",
+    book: "Book",
+    shipping: "Shipping",
+    total: "Total",
+    shippingNote: "Shipping: CLP $3,000 Metropolitan Region · CLP $4,500 other regions.",
+    pay: "Pay securely with Mercado Pago",
+    processing: "Preparing secure payment…",
+    secure: "You will be redirected to Mercado Pago's secure checkout.",
+    error: "We could not start the payment. Please try again in a few minutes.",
+    required: "Complete the shipping details before continuing.",
+    amazon: "Also available on Amazon",
+  },
+};
+
+function formatCLP(value) {
+  return new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
 const LINKS = {
   kindle: "https://www.amazon.com/dp/B0GX31SRTT",
@@ -1082,9 +1173,31 @@ export default function App() {
   const [omegaText, setOmegaText] = useState("OMEGA");
   const [percent, setPercent] = useState(98.7);
   const [bgIndex, setBgIndex] = useState(0);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [buyer, setBuyer] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    region: "RM",
+    commune: "",
+    street: "",
+    number: "",
+    extra: "",
+  });
 
   const noirRef = useRef(null);
   const rainRef = useRef(null);
+
+  const saleCopy = SALE_COPY[lang] || SALE_COPY.en;
+  const selectedRegion =
+    CHILE_REGIONS.find((region) => region.code === buyer.region) ||
+    CHILE_REGIONS.find((region) => region.code === "RM");
+  const shippingCost =
+    selectedRegion?.code === "RM"
+      ? DIRECT_SALE.shippingRM
+      : DIRECT_SALE.shippingRegions;
+  const saleTotal = DIRECT_SALE.price + shippingCost;
 
   const rainDrops = useMemo(
     () =>
@@ -1146,10 +1259,88 @@ export default function App() {
     if (withAudio) await startAudio();
   }
 
+  function updateBuyer(field, value) {
+    setBuyer((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function startCheckout(event) {
+    event.preventDefault();
+    setCheckoutError("");
+
+    const requiredFields = [
+      buyer.fullName,
+      buyer.email,
+      buyer.phone,
+      buyer.region,
+      buyer.commune,
+      buyer.street,
+      buyer.number,
+    ];
+
+    if (requiredFields.some((value) => !String(value).trim())) {
+      setCheckoutError(saleCopy.required);
+      return;
+    }
+
+    setCheckoutLoading(true);
+
+    try {
+      const response = await fetch("/api/create-preference", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          buyer,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.init_point) {
+        throw new Error(data.error || saleCopy.error);
+      }
+
+      window.location.assign(data.init_point);
+    } catch (error) {
+      setCheckoutError(error?.message || saleCopy.error);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
+
   const currentPath =
     typeof window !== "undefined"
       ? window.location.pathname.replace(/\/+$/, "")
       : "";
+
+  if (
+    currentPath === "/compra-confirmada" ||
+    currentPath === "/pago-pendiente" ||
+    currentPath === "/pago-rechazado"
+  ) {
+    const statusType =
+      currentPath === "/compra-confirmada"
+        ? "success"
+        : currentPath === "/pago-pendiente"
+          ? "pending"
+          : "failure";
+
+    return (
+      <PaymentStatusPage
+        type={statusType}
+        lang={lang}
+        setLang={setLang}
+        dir={dir}
+        rainDrops={rainDrops}
+        bgIndex={bgIndex}
+        setBgIndex={setBgIndex}
+      />
+    );
+  }
 
   if (currentPath === "/press-kit" || currentPath === "/presskit") {
     return (
@@ -1212,6 +1403,10 @@ export default function App() {
         </div>
 
         <div className="nav-right">
+          <a className="nav-buy" href="#compra-directa">
+            {saleCopy.navBuy}
+          </a>
+
           <div className="nav-socials">
             <Social href={LINKS.instagram} label="Instagram"><InstagramIcon /></Social>
             <Social href={LINKS.tiktok} label="TikTok"><TikTokIcon /></Social>
@@ -1264,9 +1459,16 @@ export default function App() {
           <p className="lead">{t.hero}</p>
 
           <div className="cta-row">
-            <a className="cta primary" href={LINKS.kindle}>{t.ebook}</a>
-            <a className="cta primary" href={LINKS.physical}>{t.physical}</a>
+            <a className="cta primary hero-buy-cta" href="#compra-directa">
+              {saleCopy.heroBuy} · {formatCLP(DIRECT_SALE.price)}
+            </a>
+            <a className="cta" href={LINKS.kindle} target="_blank" rel="noreferrer noopener">
+              {t.ebook}
+            </a>
           </div>
+          <p className="hero-sale-note">
+            {saleCopy.kicker} · {saleCopy.secure}
+          </p>
         </div>
 
         <div className="hero-key">
@@ -1298,6 +1500,168 @@ export default function App() {
             ))}
           </div>
         </aside>
+      </section>
+
+      <section id="compra-directa" className="direct-sale-section panel">
+        <div className="sale-visual">
+          <div className="sale-photo-frame">
+            <img
+              src={ASSETS.physicalBook}
+              alt="Edición impresa de La Llave I: Ciudad Central"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <p className="sale-edition-tag">{saleCopy.edition}</p>
+        </div>
+
+        <div className="sale-content">
+          <p className="kicker">{saleCopy.kicker}</p>
+          <h2>{saleCopy.title}</h2>
+          <p className="sale-lead">{saleCopy.lead}</p>
+
+          <div className="sale-price-block">
+            <span>{saleCopy.priceLabel}</span>
+            <strong>{formatCLP(DIRECT_SALE.price)}</strong>
+          </div>
+
+          <form className="sale-form" onSubmit={startCheckout}>
+            <div className="sale-fields">
+              <label className="sale-field sale-field-wide">
+                <span>{saleCopy.fullName}</span>
+                <input
+                  type="text"
+                  autoComplete="name"
+                  value={buyer.fullName}
+                  onChange={(event) => updateBuyer("fullName", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="sale-field">
+                <span>{saleCopy.email}</span>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={buyer.email}
+                  onChange={(event) => updateBuyer("email", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="sale-field">
+                <span>{saleCopy.phone}</span>
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  value={buyer.phone}
+                  onChange={(event) => updateBuyer("phone", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="sale-field sale-field-wide">
+                <span>{saleCopy.region}</span>
+                <select
+                  value={buyer.region}
+                  onChange={(event) => updateBuyer("region", event.target.value)}
+                  required
+                >
+                  {CHILE_REGIONS.map((region) => (
+                    <option key={region.code} value={region.code}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="sale-field">
+                <span>{saleCopy.commune}</span>
+                <input
+                  type="text"
+                  autoComplete="address-level2"
+                  value={buyer.commune}
+                  onChange={(event) => updateBuyer("commune", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="sale-field">
+                <span>{saleCopy.street}</span>
+                <input
+                  type="text"
+                  autoComplete="address-line1"
+                  value={buyer.street}
+                  onChange={(event) => updateBuyer("street", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="sale-field">
+                <span>{saleCopy.number}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={buyer.number}
+                  onChange={(event) => updateBuyer("number", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="sale-field">
+                <span>{saleCopy.extra}</span>
+                <input
+                  type="text"
+                  autoComplete="address-line2"
+                  value={buyer.extra}
+                  onChange={(event) => updateBuyer("extra", event.target.value)}
+                />
+              </label>
+            </div>
+
+            <p className="sale-shipping-note">{saleCopy.shippingNote}</p>
+
+            <div className="sale-summary" aria-live="polite">
+              <div>
+                <span>{saleCopy.book}</span>
+                <strong>{formatCLP(DIRECT_SALE.price)}</strong>
+              </div>
+              <div>
+                <span>{saleCopy.shipping}</span>
+                <strong>{formatCLP(shippingCost)}</strong>
+              </div>
+              <div className="sale-total">
+                <span>{saleCopy.total}</span>
+                <strong>{formatCLP(saleTotal)}</strong>
+              </div>
+            </div>
+
+            <button
+              className="checkout-button"
+              type="submit"
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? saleCopy.processing : saleCopy.pay}
+            </button>
+
+            <p className="checkout-note">🔒 {saleCopy.secure}</p>
+
+            {checkoutError && (
+              <p className="checkout-error" role="alert">
+                {checkoutError}
+              </p>
+            )}
+
+            <a
+              className="sale-amazon-link"
+              href={LINKS.physical}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {saleCopy.amazon}
+            </a>
+          </form>
+        </div>
       </section>
 
       <section id="historia" className="history-section panel">
@@ -1380,6 +1744,114 @@ export default function App() {
           </div>
         </div>
       )}
+    </main>
+  );
+}
+
+
+function PaymentStatusPage({
+  type,
+  lang,
+  setLang,
+  dir,
+  rainDrops,
+  bgIndex,
+  setBgIndex,
+}) {
+  const copy =
+    type === "success"
+      ? {
+          kicker: "SISTEMA 066 · PAGO",
+          title: "Pago enviado a validación",
+          message:
+            "Mercado Pago te devolvió al sitio después del pago. Estamos validando la operación antes de considerar el pedido confirmado.",
+        }
+      : type === "pending"
+        ? {
+            kicker: "SISTEMA 066 · PAGO PENDIENTE",
+            title: "Tu pago está pendiente",
+            message:
+              "Mercado Pago informó que la operación aún no está aprobada. Conserva los datos del pago y revisaremos su actualización.",
+          }
+        : {
+            kicker: "SISTEMA 066 · PAGO NO COMPLETADO",
+            title: "El pago no se completó",
+            message:
+              "La operación fue cancelada o rechazada. No marcaremos ningún pedido como pagado mientras Mercado Pago no confirme la aprobación.",
+          };
+
+  const params =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+
+  const paymentId = params.get("payment_id") || params.get("collection_id");
+  const externalReference = params.get("external_reference");
+
+  return (
+    <main className="site payment-status-page" lang={lang} dir={dir}>
+      <Background
+        rainDrops={rainDrops}
+        bgSrc={BG_SOURCES[bgIndex]}
+        onBgError={() => setBgIndex((current) => current + 1)}
+        hideBg={bgIndex >= BG_SOURCES.length}
+      />
+
+      <HazardBorders />
+
+      <nav className="nav" aria-label="Navegación">
+        <a className="brand" href="/">
+          <span className="brand-icon">066</span>
+          <span>
+            LA LLAVE I
+            <small>CIUDAD CENTRAL</small>
+          </span>
+        </a>
+
+        <div />
+
+        <div className="nav-right">
+          <select value={lang} onChange={(event) => setLang(event.target.value)} aria-label="Idioma">
+            {LANGUAGE_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </nav>
+
+      <section className={`payment-status-card panel payment-${type}`}>
+        <p className="kicker">{copy.kicker}</p>
+        <h1>{copy.title}</h1>
+        <p>{copy.message}</p>
+
+        {(paymentId || externalReference) && (
+          <div className="payment-reference">
+            {paymentId && (
+              <p>
+                <span>ID de pago</span>
+                <strong>{paymentId}</strong>
+              </p>
+            )}
+            {externalReference && (
+              <p>
+                <span>Referencia</span>
+                <strong>{externalReference}</strong>
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="cta-row">
+          <a className="cta primary" href="/">
+            Volver a Ciudad Central
+          </a>
+          <a className="cta" href={`mailto:${LINKS.email}`}>
+            {LINKS.email}
+          </a>
+        </div>
+      </section>
     </main>
   );
 }
