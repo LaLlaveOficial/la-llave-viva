@@ -8,6 +8,18 @@
     {
       "source": "/presskit",
       "destination": "/index.html"
+    },
+    {
+      "source": "/compra-confirmada",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/pago-pendiente",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/pago-rechazado",
+      "destination": "/index.html"
     }
   ]
 }
