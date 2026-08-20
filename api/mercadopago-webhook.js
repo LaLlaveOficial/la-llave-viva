@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { neon } from "@neondatabase/serverless";
 
 const BOOK_PRICE = 15990;
 const SHIPPING_RM = 3000;
@@ -144,6 +145,18 @@ function isOurOrder(payment) {
   );
 }
 
+function normalizeTimestamp(value) {
+  if (!value) return null;
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
+}
+
 export default async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({
@@ -155,6 +168,7 @@ export default async function handler(req, res) {
       access_token_configured: Boolean(
         process.env.MERCADOPAGO_ACCESS_TOKEN
       ),
+      database_configured: Boolean(process.env.DATABASE_URL),
     });
   }
 
@@ -167,12 +181,13 @@ export default async function handler(req, res) {
 
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
+  const databaseUrl = process.env.DATABASE_URL;
 
-  if (!accessToken || !webhookSecret) {
+  if (!accessToken || !webhookSecret || !databaseUrl) {
     console.error("Mercado Pago webhook: faltan variables de entorno.");
 
     return res.status(500).json({
-      error: "Webhook todavía no configurado en el servidor.",
+      error: "Webhook todavía no configurado completamente en el servidor.",
     });
   }
 
@@ -262,36 +277,123 @@ export default async function handler(req, res) {
       });
     }
 
+    const externalReference = String(payment.external_reference);
     const productAmount = Number(payment.transaction_amount);
     const shippingAmount = Number(payment.shipping_amount);
     const expectedTotal = productAmount + shippingAmount;
+    const status = String(payment.status || "unknown");
+    const statusDetail = String(payment.status_detail || "");
+    const approvedAt = normalizeTimestamp(payment.date_approved);
+    const lastUpdatedAt = normalizeTimestamp(payment.date_last_updated);
+
+    const sql = neon(databaseUrl);
+
+    const existingOrders = await sql`
+      SELECT
+        id,
+        external_reference,
+        book_price,
+        shipping_amount,
+        total_amount,
+        currency
+      FROM orders
+      WHERE external_reference = ${externalReference}
+      LIMIT 1
+    `;
+
+    if (!existingOrders.length) {
+      console.warn("Mercado Pago webhook: pedido histórico o no registrado.", {
+        paymentId: payment.id,
+        externalReference,
+      });
+
+      return res.status(200).json({
+        received: true,
+        verified: true,
+        persisted: false,
+        reason: "order_not_found",
+      });
+    }
+
+    const order = existingOrders[0];
+
+    if (
+      Number(order.book_price) !== productAmount ||
+      Number(order.shipping_amount) !== shippingAmount ||
+      Number(order.total_amount) !== expectedTotal ||
+      String(order.currency) !== String(payment.currency_id)
+    ) {
+      console.error("Mercado Pago webhook: montos no coinciden con el pedido.", {
+        paymentId: payment.id,
+        externalReference,
+        databaseBookPrice: order.book_price,
+        databaseShipping: order.shipping_amount,
+        databaseTotal: order.total_amount,
+        paymentBookPrice: productAmount,
+        paymentShipping: shippingAmount,
+        paymentTotal: expectedTotal,
+      });
+
+      return res.status(409).json({
+        error: "Los montos del pago no coinciden con el pedido registrado.",
+      });
+    }
+
+    const updatedOrders = await sql`
+      UPDATE orders
+      SET
+        mercadopago_payment_id = ${String(payment.id)},
+        payment_status = ${status},
+        payment_status_detail = ${statusDetail || null},
+        live_mode = ${Boolean(payment.live_mode)},
+        mercado_pago_approved_at = ${approvedAt},
+        mercado_pago_updated_at = ${lastUpdatedAt},
+        updated_at = NOW()
+      WHERE external_reference = ${externalReference}
+      RETURNING
+        id,
+        external_reference,
+        mercadopago_payment_id,
+        payment_status,
+        payment_status_detail,
+        total_amount,
+        currency,
+        mercado_pago_approved_at,
+        mercado_pago_updated_at,
+        updated_at
+    `;
+
+    if (!updatedOrders.length) {
+      throw new Error("El pedido desapareció antes de poder actualizarse.");
+    }
 
     const verifiedPayment = {
       paymentId: String(payment.id),
-      status: String(payment.status || ""),
-      statusDetail: String(payment.status_detail || ""),
-      externalReference: String(payment.external_reference || ""),
+      status,
+      statusDetail,
+      externalReference,
       productAmount,
       shippingAmount,
       expectedTotal,
       currency: String(payment.currency_id || ""),
       liveMode: Boolean(payment.live_mode),
-      dateApproved: payment.date_approved || null,
-      dateLastUpdated: payment.date_last_updated || null,
+      dateApproved: approvedAt,
+      dateLastUpdated: lastUpdatedAt,
     };
 
     console.info(
-      "MERCADOPAGO_PAYMENT_VERIFIED",
+      "MERCADOPAGO_PAYMENT_PERSISTED",
       JSON.stringify(verifiedPayment)
     );
 
     return res.status(200).json({
       received: true,
       verified: true,
+      persisted: true,
       payment: verifiedPayment,
     });
   } catch (error) {
-    console.error("Mercado Pago webhook: error consultando pago.", {
+    console.error("Mercado Pago webhook: error verificando o guardando pago.", {
       paymentId,
       message: error?.message,
       status: error?.status,
@@ -300,7 +402,7 @@ export default async function handler(req, res) {
 
     return res.status(502).json({
       error:
-        "La notificación fue válida, pero no pudimos verificar el pago en Mercado Pago.",
+        "La notificación fue válida, pero no pudimos verificar o guardar el pago.",
     });
   }
 }
