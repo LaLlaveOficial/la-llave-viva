@@ -3,6 +3,17 @@
   const STYLE_ID = "instagram-showcase-styles";
   const PROFILE_URL = "https://www.instagram.com/lallavesagaoficial/";
   const GRID_IMAGE = "/assets/instagram-grid-source.svg";
+  const POST_URLS = [
+    "https://www.instagram.com/p/DcM9ntqCrcX/",
+    "https://www.instagram.com/p/DYuY8KNIOUo/",
+    "https://www.instagram.com/reel/Da1MyKMETvA/",
+    "https://www.instagram.com/reel/DcT0wn0Bi2S/",
+    "https://www.instagram.com/reel/Db4JRXNBnnW/",
+    "https://www.instagram.com/p/DZBOHDxjtab/",
+    "https://www.instagram.com/reel/DYzwU1-DpCX/",
+    "https://www.instagram.com/reel/DYnXeWOArxM/",
+    "https://www.instagram.com/p/DY-3JaImhZI/",
+  ];
 
   if (document.getElementById(SECTION_ID)) return;
 
@@ -66,7 +77,7 @@
     style.textContent = `
       #${SECTION_ID} {
         position: relative;
-        width: min(1180px, calc(100% - 40px));
+        width: min(820px, calc(100% - 40px));
         margin: 92px auto 76px;
         padding: 0;
         color: #f3eadb;
@@ -96,7 +107,7 @@
       }
 
       #${SECTION_ID} .ig-showcase-copy {
-        max-width: 760px;
+        max-width: 640px;
       }
 
       #${SECTION_ID} .ig-showcase-eyebrow {
@@ -163,7 +174,9 @@
       #${SECTION_ID} .ig-showcase-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 7px;
+        gap: 6px;
+        width: min(686px, 100%);
+        margin: 0 auto;
       }
 
       #${SECTION_ID} .ig-showcase-card {
@@ -177,6 +190,7 @@
         background-repeat: no-repeat;
         background-size: 300% 300%;
         background-position: var(--ig-x) var(--ig-y);
+        image-rendering: auto;
         border: 1px solid rgba(255,255,255,0.055);
         text-decoration: none;
         transform: translateZ(0);
@@ -312,11 +326,11 @@
     const cards = positions.map(([x, y], index) => `
       <a
         class="ig-showcase-card"
-        href="${PROFILE_URL}"
+        href="${POST_URLS[index]}"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Abrir Instagram de La Llave Saga Oficial, publicación ${index + 1}"
-        data-open="Ver en Instagram"
+        aria-label="Abrir publicación ${index + 1} de La Llave Saga Oficial en Instagram"
+        data-open="Ver publicación"
         style="--ig-x:${x};--ig-y:${y}"
       ></a>
     `).join("");
