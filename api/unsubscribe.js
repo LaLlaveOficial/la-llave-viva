@@ -6,10 +6,57 @@ function isValidToken(value) {
   return /^[a-f0-9]{64}$/i.test(String(value || "").trim());
 }
 
+function cleanText(value, maxLength = 500) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, maxLength);
+}
+
 function sendHtml(res, statusCode, html) {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
   return res.status(statusCode).send(html);
+}
+
+async function parseResendResponse(response) {
+  const responseText = await response.text();
+  let data = null;
+
+  try {
+    data = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    data = { raw: responseText };
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.message ||
+        data?.error?.message ||
+        `Resend respondió con estado ${response.status}.`
+    );
+
+    error.status = response.status;
+    error.details = data;
+    throw error;
+  }
+
+  return data;
+}
+
+async function cancelScheduledResendEmail({ apiKey, emailId }) {
+  const response = await fetch(
+    `https://api.resend.com/emails/${encodeURIComponent(emailId)}/cancel`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+    }
+  );
+
+  return parseResendResponse(response);
 }
 
 function pageShell({
@@ -94,7 +141,7 @@ function confirmationPage(token) {
   });
 }
 
-function successPage() {
+function successPage({ cancellationWarning = false } = {}) {
   const actionHtml = `
     <div style="text-align:center;">
       <a href="${SITE_URL}/"
@@ -108,8 +155,9 @@ function successPage() {
   return pageShell({
     eyebrow: "ARCHIVO 066 · ACCESO ACTUALIZADO",
     title: "BAJA CONFIRMADA",
-    message:
-      "Tu dirección fue retirada de las comunicaciones del Archivo 066. No recibirás futuros correos de marketing mientras permanezcas dado de baja.",
+    message: cancellationWarning
+      ? "Tu baja fue registrada correctamente. Uno o más envíos ya programados requieren revisión técnica antes de poder confirmar su cancelación."
+      : "Tu dirección fue retirada de las comunicaciones del Archivo 066 y los envíos futuros que estaban programados fueron cancelados.",
     actionHtml,
   });
 }
@@ -164,6 +212,102 @@ function errorPage() {
   });
 }
 
+async function cancelPendingSequenceEmails({
+  sql,
+  apiKey,
+  subscriberId,
+}) {
+  const rows = await sql`
+    SELECT
+      id,
+      resend_email_id,
+      scheduled_for
+    FROM mailing_sequence_emails
+    WHERE subscriber_id = ${subscriberId}
+      AND status = 'scheduled'
+      AND scheduled_for > NOW()
+    ORDER BY scheduled_for ASC
+  `;
+
+  if (!rows.length) {
+    return {
+      attempted: 0,
+      cancelled: 0,
+      failed: 0,
+    };
+  }
+
+  let cancelled = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    if (!row.resend_email_id) {
+      failed += 1;
+
+      await sql`
+        UPDATE mailing_sequence_emails
+        SET
+          error_message = 'No existe resend_email_id para cancelar este envío',
+          updated_at = NOW()
+        WHERE id = ${row.id}
+      `;
+
+      continue;
+    }
+
+    try {
+      await cancelScheduledResendEmail({
+        apiKey,
+        emailId: row.resend_email_id,
+      });
+
+      await sql`
+        UPDATE mailing_sequence_emails
+        SET
+          status = 'cancelled',
+          cancelled_at = NOW(),
+          error_message = NULL,
+          updated_at = NOW()
+        WHERE id = ${row.id}
+      `;
+
+      cancelled += 1;
+    } catch (error) {
+      failed += 1;
+
+      console.error("Scheduled email cancellation error:", {
+        subscriberId,
+        sequenceEmailId: row.id,
+        resendEmailId: row.resend_email_id,
+        status: error?.status,
+        message: error?.message,
+        details: error?.details,
+      });
+
+      try {
+        await sql`
+          UPDATE mailing_sequence_emails
+          SET
+            error_message = ${cleanText(error?.message || "No se pudo cancelar el envío programado", 500)},
+            updated_at = NOW()
+          WHERE id = ${row.id}
+        `;
+      } catch (dbError) {
+        console.error("Scheduled cancellation logging error:", {
+          sequenceEmailId: row.id,
+          message: dbError?.message,
+        });
+      }
+    }
+  }
+
+  return {
+    attempted: rows.length,
+    cancelled,
+    failed,
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "GET" && req.method !== "POST") {
     res.setHeader("Allow", "GET, POST");
@@ -174,6 +318,7 @@ export default async function handler(req, res) {
   }
 
   const databaseUrl = process.env.DATABASE_URL;
+  const resendApiKey = process.env.RESEND_API_KEY;
 
   if (!databaseUrl) {
     if (req.method === "POST") {
@@ -245,11 +390,11 @@ export default async function handler(req, res) {
   /*
    * GET NO elimina la suscripción.
    *
-   * Esto es deliberado: algunos sistemas de seguridad y previsualización
-   * abren enlaces automáticamente. En GET mostramos una confirmación.
+   * Esto evita que escáneres de seguridad o previsualizaciones de enlaces
+   * den de baja a una persona sin que haya confirmado la acción.
    *
-   * El POST sí ejecuta la baja. Esto también permite que los clientes de
-   * correo que soportan List-Unsubscribe-Post hagan la baja con un clic.
+   * El POST ejecuta la baja real y también es compatible con
+   * List-Unsubscribe-Post.
    */
   if (req.method === "GET") {
     if (subscriber.status === "unsubscribed") {
@@ -259,7 +404,6 @@ export default async function handler(req, res) {
     return sendHtml(res, 200, confirmationPage(token));
   }
 
-  // POST: ejecutar la baja real.
   if (subscriber.status === "unsubscribed") {
     const acceptsHtml = String(req.headers.accept || "").includes("text/html");
 
@@ -301,15 +445,69 @@ export default async function handler(req, res) {
     });
   }
 
+  let cancellationResult = {
+    attempted: 0,
+    cancelled: 0,
+    failed: 0,
+  };
+
+  if (resendApiKey) {
+    try {
+      cancellationResult = await cancelPendingSequenceEmails({
+        sql,
+        apiKey: resendApiKey,
+        subscriberId: subscriber.id,
+      });
+    } catch (error) {
+      console.error("Sequence cancellation process error:", {
+        subscriberId: subscriber.id,
+        message: error?.message,
+      });
+
+      cancellationResult.failed = 1;
+    }
+  } else {
+    try {
+      const futureRows = await sql`
+        SELECT id
+        FROM mailing_sequence_emails
+        WHERE subscriber_id = ${subscriber.id}
+          AND status = 'scheduled'
+          AND scheduled_for > NOW()
+      `;
+
+      cancellationResult = {
+        attempted: futureRows.length,
+        cancelled: 0,
+        failed: futureRows.length,
+      };
+    } catch (error) {
+      console.error("Sequence cancellation precheck error:", {
+        subscriberId: subscriber.id,
+        message: error?.message,
+      });
+
+      cancellationResult.failed = 1;
+    }
+  }
+
   const acceptsHtml = String(req.headers.accept || "").includes("text/html");
+  const cancellationWarning = cancellationResult.failed > 0;
 
   if (acceptsHtml) {
-    return sendHtml(res, 200, successPage());
+    return sendHtml(
+      res,
+      200,
+      successPage({
+        cancellationWarning,
+      })
+    );
   }
 
   return res.status(200).json({
     ok: true,
     alreadyUnsubscribed: false,
     message: "Baja confirmada.",
+    scheduledEmails: cancellationResult,
   });
 }
