@@ -54,7 +54,7 @@
       }
 
       .site .audio-top button::before {
-        content: "♫";
+        content: "";
         position: absolute;
         left: 15px;
         top: 50%;
