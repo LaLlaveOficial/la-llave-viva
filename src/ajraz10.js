@@ -338,7 +338,7 @@ function applyPromoToSummary() {
 
   if (rows[0]?.querySelector("strong")) {
     rows[0].querySelector("strong").textContent = formatCLP(
-      DISCOUNTED_BOOK_PRICE
+      ORIGINAL_BOOK_PRICE
     );
   }
 
