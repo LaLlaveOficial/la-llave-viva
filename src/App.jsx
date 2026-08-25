@@ -103,6 +103,122 @@ const SALE_COPY = {
   },
 };
 
+
+const GA4_ATTRIBUTION_STORAGE_KEY = "llave066_ga4_attribution_v1";
+const GA4_CHECKOUT_STORAGE_KEY = "llave066_ga4_checkout_v1";
+const GA4_PURCHASE_STORAGE_PREFIX = "llave066_ga4_purchase_";
+
+function readStoredJson(storage, key) {
+  try {
+    const raw = storage?.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredJson(storage, key, value) {
+  try {
+    storage?.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getAttributionContext() {
+  if (typeof window === "undefined") return {};
+
+  const existing =
+    readStoredJson(window.sessionStorage, GA4_ATTRIBUTION_STORAGE_KEY) || {};
+
+  const params = new URLSearchParams(window.location.search);
+
+  let referrerHost = existing.referrer_host || "";
+
+  if (!referrerHost && document.referrer) {
+    try {
+      referrerHost = new URL(document.referrer).hostname;
+    } catch {
+      referrerHost = "";
+    }
+  }
+
+  const context = {
+    utm_source: params.get("utm_source") || existing.utm_source || "",
+    utm_medium: params.get("utm_medium") || existing.utm_medium || "",
+    utm_campaign: params.get("utm_campaign") || existing.utm_campaign || "",
+    utm_content: params.get("utm_content") || existing.utm_content || "",
+    utm_term: params.get("utm_term") || existing.utm_term || "",
+    landing_path: existing.landing_path || window.location.pathname || "/",
+    referrer_host: referrerHost,
+  };
+
+  writeStoredJson(
+    window.sessionStorage,
+    GA4_ATTRIBUTION_STORAGE_KEY,
+    context
+  );
+
+  return Object.fromEntries(
+    Object.entries(context).filter(([, value]) => value !== "")
+  );
+}
+
+function trackGA4Event(eventName, params = {}) {
+  if (
+    typeof window === "undefined" ||
+    typeof window.gtag !== "function" ||
+    !eventName
+  ) {
+    return false;
+  }
+
+  window.gtag("event", eventName, {
+    ...getAttributionContext(),
+    ...params,
+  });
+
+  return true;
+}
+
+function getCheckoutPromoState() {
+  if (typeof document === "undefined") {
+    return {
+      applied: false,
+      code: "",
+      bookPrice: DIRECT_SALE.price,
+    };
+  }
+
+  const discountRow = document.querySelector(
+    "#compra-directa .ajraz10-summary-discount"
+  );
+  const codeInput = document.getElementById("ajraz10-code-input");
+  const code = String(codeInput?.value || "")
+    .trim()
+    .toUpperCase();
+
+  const applied = Boolean(discountRow && code);
+
+  return {
+    applied,
+    code: applied ? code : "",
+    bookPrice: applied ? 14391 : DIRECT_SALE.price,
+  };
+}
+
+function buildBookItem(price) {
+  return {
+    item_id: "la-llave-i-ciudad-central-physical",
+    item_name: "La Llave I: Ciudad Central",
+    item_category: "Libro",
+    item_variant: "Edición impresa",
+    price,
+    quantity: 1,
+  };
+}
+
 function formatCLP(value) {
   return new Intl.NumberFormat("es-CL", {
     style: "currency",
@@ -1189,6 +1305,106 @@ export default function App() {
   const noirRef = useRef(null);
   const rainRef = useRef(null);
 
+  useEffect(() => {
+    getAttributionContext();
+  }, []);
+
+  useEffect(() => {
+    function handleAnalyticsClick(event) {
+      const element =
+        event.target instanceof Element ? event.target : event.target?.parentElement;
+
+      if (!element) return;
+
+      const sampleButton = element.closest(
+        "#book-sample-showcase .bs-open, #book-sample-modal .bs-open"
+      );
+
+      if (sampleButton) {
+        trackGA4Event("sample_open", {
+          sample_id: "la_llave_i_primeras_paginas",
+          content_type: "reading_sample",
+          language: lang,
+        });
+      }
+
+      const amazonLink = element.closest('a[href*="amazon.com"]');
+
+      if (amazonLink) {
+        const href = String(amazonLink.getAttribute("href") || "");
+        const format = href.includes("B0GX31SRTT")
+          ? "kindle"
+          : href.includes("9564237246")
+            ? "physical"
+            : "unknown";
+
+        const container = amazonLink.closest(
+          "section[id], article, nav, footer"
+        );
+        const placement =
+          container?.id ||
+          (typeof container?.className === "string"
+            ? container.className.split(/\s+/)[0]
+            : "") ||
+          "site";
+
+        trackGA4Event("amazon_click", {
+          format,
+          placement,
+          link_url: href,
+          language: lang,
+        });
+      }
+    }
+
+    document.addEventListener("click", handleAnalyticsClick, true);
+
+    return () => {
+      document.removeEventListener("click", handleAnalyticsClick, true);
+    };
+  }, [lang]);
+
+  useEffect(() => {
+    const previousFetch = window.fetch;
+
+    async function analyticsFetch(input, init) {
+      const rawUrl =
+        typeof input === "string"
+          ? input
+          : input?.url || "";
+
+      const response = await previousFetch.call(window, input, init);
+
+      if (response?.ok) {
+        const isArchivo066 =
+          rawUrl === "/api/subscribe" ||
+          rawUrl.endsWith("/api/subscribe");
+
+        const isAjraz10 =
+          rawUrl === "/api/ajraz10-subscribe" ||
+          rawUrl.endsWith("/api/ajraz10-subscribe");
+
+        if (isArchivo066 || isAjraz10) {
+          trackGA4Event("generate_lead", {
+            lead_type: isAjraz10 ? "archivo_066_promo" : "archivo_066",
+            form_name: isAjraz10 ? "ajraz10" : "archivo_066",
+            language: lang,
+          });
+        }
+      }
+
+      return response;
+    }
+
+    window.fetch = analyticsFetch;
+
+    return () => {
+      if (window.fetch === analyticsFetch) {
+        window.fetch = previousFetch;
+      }
+    };
+  }, [lang]);
+
   const saleCopy = SALE_COPY[lang] || SALE_COPY.en;
   const selectedRegion =
     CHILE_REGIONS.find((region) => region.code === buyer.region) ||
@@ -1302,6 +1518,35 @@ export default function App() {
       setCheckoutError(saleCopy.required);
       return;
     }
+
+    const promo = getCheckoutPromoState();
+    const trackedBookPrice = promo.bookPrice;
+    const checkoutSnapshot = {
+      bookPrice: trackedBookPrice,
+      shippingCost,
+      total: trackedBookPrice + shippingCost,
+      region: selectedRegion?.code || buyer.region,
+      promoCode: promo.code || "",
+      checkoutType: promo.applied ? "promo_ajraz10" : "direct",
+      createdAt: new Date().toISOString(),
+    };
+
+    writeStoredJson(
+      window.sessionStorage,
+      GA4_CHECKOUT_STORAGE_KEY,
+      checkoutSnapshot
+    );
+
+    trackGA4Event("begin_checkout", {
+      currency: "CLP",
+      value: trackedBookPrice,
+      shipping: shippingCost,
+      checkout_total: trackedBookPrice + shippingCost,
+      checkout_type: checkoutSnapshot.checkoutType,
+      coupon: promo.code || undefined,
+      items: [buildBookItem(trackedBookPrice)],
+      language: lang,
+    });
 
     setCheckoutLoading(true);
 
@@ -1805,6 +2050,81 @@ function PaymentStatusPage({
 
   const paymentId = params.get("payment_id") || params.get("collection_id");
   const externalReference = params.get("external_reference");
+  const paymentStatus = String(
+    params.get("status") || params.get("collection_status") || ""
+  ).toLowerCase();
+
+  useEffect(() => {
+    if (type !== "success" || paymentStatus !== "approved") return;
+
+    const transactionId = paymentId || externalReference;
+
+    if (!transactionId) return;
+
+    const dedupeKey = `${GA4_PURCHASE_STORAGE_PREFIX}${transactionId}`;
+
+    try {
+      if (window.localStorage.getItem(dedupeKey)) return;
+    } catch {
+      // Si el navegador bloquea storage, GA4 igualmente puede registrar el evento.
+    }
+
+    const snapshot = readStoredJson(
+      window.sessionStorage,
+      GA4_CHECKOUT_STORAGE_KEY
+    );
+
+    const purchaseParams = {
+      transaction_id: transactionId,
+      currency: "CLP",
+      payment_provider: "mercado_pago",
+      payment_status: "approved",
+    };
+
+    if (snapshot) {
+      const bookPrice = Number(snapshot.bookPrice);
+      const shipping = Number(snapshot.shippingCost);
+
+      if (Number.isFinite(bookPrice)) {
+        purchaseParams.value = bookPrice;
+        purchaseParams.items = [buildBookItem(bookPrice)];
+      }
+
+      if (Number.isFinite(shipping)) {
+        purchaseParams.shipping = shipping;
+      }
+
+      if (snapshot.total != null && Number.isFinite(Number(snapshot.total))) {
+        purchaseParams.purchase_total = Number(snapshot.total);
+      }
+
+      if (snapshot.promoCode) {
+        purchaseParams.coupon = snapshot.promoCode;
+      }
+
+      if (snapshot.checkoutType) {
+        purchaseParams.checkout_type = snapshot.checkoutType;
+      }
+    }
+
+    const tracked = trackGA4Event("purchase", purchaseParams);
+
+    if (tracked) {
+      try {
+        window.localStorage.setItem(
+          dedupeKey,
+          new Date().toISOString()
+        );
+      } catch {
+        // No bloqueamos la compra ni la página si storage no está disponible.
+      }
+    }
+  }, [
+    type,
+    paymentStatus,
+    paymentId,
+    externalReference,
+  ]);
 
   return (
     <main className="site payment-status-page" lang={lang} dir={dir}>
