@@ -5,7 +5,8 @@
   const SAMPLE_ID = "book-sample-showcase";
   const ARCHIVE_ID = "archivo-066-mailing";
   const ARIZAKI_URL =
-    "https://heyzine.com/flip-book/d4dcc61e75.html#page/191";
+    "https://heyzine.com/flip-book/d4dcc61e75.html#page/129";
+  const ARIZAKI_IMAGE = "/assets/arizaki-destacado-mes.png";
   const KINDLE_URL = "https://www.amazon.com/dp/B0GX31SRTT";
 
   if (window[SCRIPT_FLAG]) return;
@@ -155,44 +156,35 @@
         box-shadow: 0 32px 90px rgba(0, 0, 0, 0.38);
       }
 
-      #${ARIZAKI_ID} .az-seal {
+      #${ARIZAKI_ID} .az-media-visual {
         position: relative;
-        min-height: 250px;
-        display: grid;
-        place-items: center;
-        border: 1px solid rgba(241, 193, 90, 0.18);
-        background:
-          linear-gradient(145deg, rgba(217, 155, 36, 0.07), rgba(0, 0, 0, 0.3)),
-          rgba(0, 0, 0, 0.24);
+        display: block;
+        overflow: hidden;
+        border: 1px solid rgba(241, 193, 90, 0.22);
+        background: rgba(0, 0, 0, 0.28);
+        box-shadow: 0 22px 54px rgba(0, 0, 0, 0.38);
+        text-decoration: none;
       }
 
-      #${ARIZAKI_ID} .az-seal::before {
-        content: "A";
-        position: absolute;
-        color: rgba(241, 193, 90, 0.055);
-        font: 900 clamp(150px, 21vw, 245px)/1 Georgia, "Times New Roman", serif;
+      #${ARIZAKI_ID} .az-media-visual img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: 620px;
+        object-fit: contain;
+        background: #0a0a0a;
+        transition: transform 220ms ease, filter 220ms ease;
       }
 
-      #${ARIZAKI_ID} .az-seal-inner {
-        position: relative;
-        z-index: 2;
-        text-align: center;
+      #${ARIZAKI_ID} .az-media-visual:hover img,
+      #${ARIZAKI_ID} .az-media-visual:focus-visible img {
+        transform: scale(1.012);
+        filter: brightness(1.04);
       }
 
-      #${ARIZAKI_ID} .az-magazine {
-        margin: 0;
-        color: #e0a846;
-        font-size: 11px;
-        font-weight: 950;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-      }
-
-      #${ARIZAKI_ID} .az-feature {
-        margin: 14px 0 0;
-        color: #f5f0e6;
-        font: 700 clamp(26px, 4vw, 40px)/1.05 Georgia, "Times New Roman", serif;
-        text-transform: uppercase;
+      #${ARIZAKI_ID} .az-media-visual:focus-visible {
+        outline: 1px solid rgba(241, 193, 90, 0.78);
+        outline-offset: 4px;
       }
 
       #${ARIZAKI_ID} .az-copy {
@@ -274,8 +266,8 @@
           padding: 22px 18px 26px;
         }
 
-        #${ARIZAKI_ID} .az-seal {
-          min-height: 190px;
+        #${ARIZAKI_ID} .az-media-visual img {
+          max-height: none;
         }
 
         #${ARIZAKI_ID} .az-copy {
@@ -396,12 +388,20 @@
 
       section.innerHTML = `
         <div class="az-shell">
-          <div class="az-seal" aria-hidden="true">
-            <div class="az-seal-inner">
-              <p class="az-magazine"></p>
-              <p class="az-feature"></p>
-            </div>
-          </div>
+          <a
+            class="az-media-visual"
+            href="${ARIZAKI_URL}"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="Abrir publicación de Revista Arizaki"
+          >
+            <img
+              src="${ARIZAKI_IMAGE}"
+              alt="Revista Arizaki presenta La Llave I: Ciudad Central como Nuestro destacado del mes"
+              loading="lazy"
+              decoding="async"
+            />
+          </a>
 
           <div class="az-copy">
             <p class="az-eyebrow"></p>
@@ -435,8 +435,6 @@
       if (el && el.textContent !== value) el.textContent = value;
     };
 
-    setText(".az-magazine", copy.mediaName);
-    setText(".az-feature", copy.mediaTitle);
     setText(".az-eyebrow", copy.mediaEyebrow);
     setText(".az-title", copy.mediaTitle);
     setText(".az-text", copy.mediaText);
