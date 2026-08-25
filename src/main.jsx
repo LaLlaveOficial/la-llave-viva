@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 import './ajraz10.css';
+import './attribution.js';
 import './ajraz10.js';
 
 createRoot(document.getElementById('root')).render(
