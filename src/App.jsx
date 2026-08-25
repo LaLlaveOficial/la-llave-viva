@@ -1231,7 +1231,25 @@ export default function App() {
     return () => window.clearInterval(id);
   }, []);
 
+  function ensureAudioSources() {
+    const audioSources = [
+      [noirRef.current, AUDIO.noir],
+      [rainRef.current, AUDIO.rain],
+    ];
+
+    audioSources.forEach(([audio, src]) => {
+      if (!audio) return;
+
+      if (!audio.getAttribute("src")) {
+        audio.src = src;
+        audio.load();
+      }
+    });
+  }
+
   async function startAudio() {
+    ensureAudioSources();
+
     const results = await Promise.allSettled([
       noirRef.current?.play(),
       rainRef.current?.play(),
@@ -1357,8 +1375,8 @@ export default function App() {
 
   return (
     <main className="site" lang={lang} dir={dir}>
-      <audio ref={noirRef} src={AUDIO.noir} loop preload="metadata" />
-      <audio ref={rainRef} src={AUDIO.rain} loop preload="metadata" />
+      <audio ref={noirRef} loop preload="none" />
+      <audio ref={rainRef} loop preload="none" />
 
       <Background
         rainDrops={rainDrops}
