@@ -27,7 +27,7 @@ function isValidExternalReference(value) {
 function cleanAttribution(raw) {
   const attribution = raw && typeof raw === "object" ? raw : {};
 
-  const result = {
+  return {
     utm_source: cleanText(attribution.utm_source, 120) || null,
     utm_medium: cleanText(attribution.utm_medium, 120) || null,
     utm_campaign: cleanText(attribution.utm_campaign, 180) || null,
@@ -37,12 +37,26 @@ function cleanAttribution(raw) {
     referrer_host:
       cleanText(attribution.referrer_host, 255).toLowerCase() || null,
   };
-
-  return result;
 }
 
 function hasAttribution(attribution) {
   return Object.values(attribution).some(Boolean);
+}
+
+function cleanGa4(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+
+  const clientId = cleanText(source.client_id, 100);
+  const sessionId = cleanText(source.session_id, 40);
+
+  return {
+    client_id: /^\d+\.\d+$/.test(clientId) ? clientId : null,
+    session_id: /^\d+$/.test(sessionId) ? sessionId : null,
+  };
+}
+
+function hasGa4(ga4) {
+  return Boolean(ga4.client_id || ga4.session_id);
 }
 
 export default async function handler(req, res) {
@@ -66,8 +80,12 @@ export default async function handler(req, res) {
   const body = req.body || {};
   const kind = cleanText(body.kind, 20).toLowerCase();
   const attribution = cleanAttribution(body.attribution);
+  const ga4 = cleanGa4(body.ga4);
 
-  if (!hasAttribution(attribution)) {
+  if (
+    !hasAttribution(attribution) &&
+    !(kind === "order" && hasGa4(ga4))
+  ) {
     return res.status(200).json({
       ok: true,
       stored: false,
@@ -133,6 +151,8 @@ export default async function handler(req, res) {
           utm_term = COALESCE(utm_term, ${attribution.utm_term}),
           landing_path = COALESCE(landing_path, ${attribution.landing_path}),
           referrer_host = COALESCE(referrer_host, ${attribution.referrer_host}),
+          ga4_client_id = COALESCE(ga4_client_id, ${ga4.client_id}),
+          ga4_session_id = COALESCE(ga4_session_id, ${ga4.session_id}),
           updated_at = NOW()
         WHERE external_reference = ${externalReference}
           AND created_at >= NOW() - INTERVAL '10 minutes'
@@ -143,6 +163,9 @@ export default async function handler(req, res) {
         ok: true,
         stored: rows.length > 0,
         target: "order",
+        ga4_stored: Boolean(
+          rows.length > 0 && (ga4.client_id || ga4.session_id)
+        ),
       });
     }
 
