@@ -3,6 +3,7 @@ import { neon } from "@neondatabase/serverless";
 
 const SHIPPING_RM = 3000;
 const SHIPPING_REGIONS = 4500;
+const GA4_DEFAULT_MEASUREMENT_ID = "G-G17WQELH77";
 
 const VALID_SHIPPING_AMOUNTS = new Set([
   SHIPPING_RM,
@@ -115,7 +116,9 @@ async function getPayment(paymentId, accessToken) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    const error = new Error("No fue posible consultar el pago en Mercado Pago.");
+    const error = new Error(
+      "No fue posible consultar el pago en Mercado Pago."
+    );
     error.status = response.status;
     error.details = {
       message: data?.message,
@@ -156,6 +159,142 @@ function normalizeTimestamp(value) {
   return date.toISOString();
 }
 
+function validGa4ClientId(value) {
+  const text = String(value || "").trim();
+  return /^\d+\.\d+$/.test(text) ? text : "";
+}
+
+function validGa4SessionId(value) {
+  const text = String(value || "").trim();
+  return /^\d+$/.test(text) ? text : "";
+}
+
+function buildGa4Item(price) {
+  return {
+    item_id: "la-llave-i-ciudad-central-physical",
+    item_name: "La Llave I: Ciudad Central",
+    item_category: "Libro",
+    item_variant: "Edición impresa",
+    price,
+    quantity: 1,
+  };
+}
+
+async function sendGa4Purchase({
+  apiSecret,
+  measurementId,
+  order,
+  payment,
+}) {
+  const clientId = validGa4ClientId(order.ga4_client_id);
+  const sessionId = validGa4SessionId(order.ga4_session_id);
+
+  if (!apiSecret) {
+    return {
+      sent: false,
+      reason: "missing_api_secret",
+    };
+  }
+
+  if (!clientId) {
+    return {
+      sent: false,
+      reason: "missing_client_id",
+    };
+  }
+
+  if (order.ga4_purchase_sent_at) {
+    return {
+      sent: false,
+      reason: "already_sent",
+    };
+  }
+
+  const bookPrice = Number(order.book_price);
+  const shippingAmount = Number(order.shipping_amount);
+
+  const params = {
+    transaction_id: String(payment.id),
+    currency: String(order.currency || "CLP"),
+    value: bookPrice,
+    shipping: shippingAmount,
+    payment_provider: "mercado_pago",
+    payment_status: "approved",
+    engagement_time_msec: 1,
+    items: [buildGa4Item(bookPrice)],
+  };
+
+  if (sessionId) {
+    params.session_id = sessionId;
+  }
+
+  const url = new URL(
+    "https://www.google-analytics.com/mp/collect"
+  );
+
+  url.searchParams.set("measurement_id", measurementId);
+  url.searchParams.set("api_secret", apiSecret);
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      client_id: clientId,
+      events: [
+        {
+          name: "purchase",
+          params,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    const error = new Error(
+      `GA4 Measurement Protocol respondió ${response.status}.`
+    );
+    error.details = details.slice(0, 500);
+    throw error;
+  }
+
+  return {
+    sent: true,
+    transactionId: String(payment.id),
+    clientId,
+    sessionId: sessionId || null,
+  };
+}
+
+async function persistGa4Result(sql, orderId, result) {
+  if (result?.sent) {
+    await sql`
+      UPDATE orders
+      SET
+        ga4_purchase_sent_at = NOW(),
+        ga4_purchase_error = NULL,
+        updated_at = NOW()
+      WHERE id = ${orderId}
+    `;
+    return;
+  }
+
+  if (
+    result?.reason &&
+    result.reason !== "already_sent"
+  ) {
+    await sql`
+      UPDATE orders
+      SET
+        ga4_purchase_error = ${String(result.reason).slice(0, 500)},
+        updated_at = NOW()
+      WHERE id = ${orderId}
+    `;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({
@@ -168,6 +307,12 @@ export default async function handler(req, res) {
         process.env.MERCADOPAGO_ACCESS_TOKEN
       ),
       database_configured: Boolean(process.env.DATABASE_URL),
+      ga4_measurement_id:
+        process.env.GA4_MEASUREMENT_ID ||
+        GA4_DEFAULT_MEASUREMENT_ID,
+      ga4_api_secret_configured: Boolean(
+        process.env.GA4_API_SECRET
+      ),
     });
   }
 
@@ -181,12 +326,19 @@ export default async function handler(req, res) {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
   const webhookSecret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
   const databaseUrl = process.env.DATABASE_URL;
+  const ga4ApiSecret = process.env.GA4_API_SECRET || "";
+  const ga4MeasurementId =
+    process.env.GA4_MEASUREMENT_ID ||
+    GA4_DEFAULT_MEASUREMENT_ID;
 
   if (!accessToken || !webhookSecret || !databaseUrl) {
-    console.error("Mercado Pago webhook: faltan variables de entorno.");
+    console.error(
+      "Mercado Pago webhook: faltan variables de entorno."
+    );
 
     return res.status(500).json({
-      error: "Webhook todavía no configurado completamente en el servidor.",
+      error:
+        "Webhook todavía no configurado completamente en el servidor.",
     });
   }
 
@@ -203,11 +355,14 @@ export default async function handler(req, res) {
   const paymentId = queryDataId || bodyDataId;
 
   if (!signatureHeader || !requestId || !paymentId) {
-    console.warn("Mercado Pago webhook: solicitud incompleta.", {
-      hasSignature: Boolean(signatureHeader),
-      hasRequestId: Boolean(requestId),
-      hasPaymentId: Boolean(paymentId),
-    });
+    console.warn(
+      "Mercado Pago webhook: solicitud incompleta.",
+      {
+        hasSignature: Boolean(signatureHeader),
+        hasRequestId: Boolean(requestId),
+        hasPaymentId: Boolean(paymentId),
+      }
+    );
 
     return res.status(400).json({
       error: "Notificación incompleta.",
@@ -222,10 +377,13 @@ export default async function handler(req, res) {
   });
 
   if (!signatureValid) {
-    console.warn("Mercado Pago webhook: firma inválida.", {
-      paymentId,
-      requestId,
-    });
+    console.warn(
+      "Mercado Pago webhook: firma inválida.",
+      {
+        paymentId,
+        requestId,
+      }
+    );
 
     return res.status(401).json({
       error: "Firma de webhook inválida.",
@@ -233,14 +391,19 @@ export default async function handler(req, res) {
   }
 
   const notificationType = String(
-    firstValue(req.query?.type) || req.body?.type || ""
+    firstValue(req.query?.type) ||
+      req.body?.type ||
+      ""
   ).toLowerCase();
 
   if (notificationType && notificationType !== "payment") {
-    console.info("Mercado Pago webhook: evento ignorado.", {
-      type: notificationType,
-      paymentId,
-    });
+    console.info(
+      "Mercado Pago webhook: evento ignorado.",
+      {
+        type: notificationType,
+        paymentId,
+      }
+    );
 
     return res.status(200).json({
       received: true,
@@ -252,38 +415,54 @@ export default async function handler(req, res) {
     const payment = await getPayment(paymentId, accessToken);
 
     if (String(payment?.id) !== String(paymentId)) {
-      console.error("Mercado Pago webhook: ID de pago no coincide.", {
-        notifiedPaymentId: paymentId,
-        fetchedPaymentId: payment?.id,
-      });
+      console.error(
+        "Mercado Pago webhook: ID de pago no coincide.",
+        {
+          notifiedPaymentId: paymentId,
+          fetchedPaymentId: payment?.id,
+        }
+      );
 
       return res.status(409).json({
-        error: "El pago consultado no coincide con la notificación.",
+        error:
+          "El pago consultado no coincide con la notificación.",
       });
     }
 
     if (!isOurOrder(payment)) {
-      console.error("Mercado Pago webhook: pago no corresponde a La Llave.", {
-        paymentId: payment?.id,
-        externalReference: payment?.external_reference,
-        currency: payment?.currency_id,
-        productAmount: payment?.transaction_amount,
-        shippingAmount: payment?.shipping_amount,
-      });
+      console.error(
+        "Mercado Pago webhook: pago no corresponde a La Llave.",
+        {
+          paymentId: payment?.id,
+          externalReference: payment?.external_reference,
+          currency: payment?.currency_id,
+          productAmount: payment?.transaction_amount,
+          shippingAmount: payment?.shipping_amount,
+        }
+      );
 
       return res.status(409).json({
-        error: "El pago no corresponde a un pedido válido de La Llave.",
+        error:
+          "El pago no corresponde a un pedido válido de La Llave.",
       });
     }
 
-    const externalReference = String(payment.external_reference);
+    const externalReference = String(
+      payment.external_reference
+    );
     const productAmount = Number(payment.transaction_amount);
     const shippingAmount = Number(payment.shipping_amount);
     const expectedTotal = productAmount + shippingAmount;
     const status = String(payment.status || "unknown");
-    const statusDetail = String(payment.status_detail || "");
-    const approvedAt = normalizeTimestamp(payment.date_approved);
-    const lastUpdatedAt = normalizeTimestamp(payment.date_last_updated);
+    const statusDetail = String(
+      payment.status_detail || ""
+    );
+    const approvedAt = normalizeTimestamp(
+      payment.date_approved
+    );
+    const lastUpdatedAt = normalizeTimestamp(
+      payment.date_last_updated
+    );
 
     const sql = neon(databaseUrl);
 
@@ -294,17 +473,24 @@ export default async function handler(req, res) {
         book_price,
         shipping_amount,
         total_amount,
-        currency
+        currency,
+        ga4_client_id,
+        ga4_session_id,
+        ga4_purchase_sent_at,
+        ga4_purchase_error
       FROM orders
       WHERE external_reference = ${externalReference}
       LIMIT 1
     `;
 
     if (!existingOrders.length) {
-      console.warn("Mercado Pago webhook: pedido histórico o no registrado.", {
-        paymentId: payment.id,
-        externalReference,
-      });
+      console.warn(
+        "Mercado Pago webhook: pedido histórico o no registrado.",
+        {
+          paymentId: payment.id,
+          externalReference,
+        }
+      );
 
       return res.status(200).json({
         received: true,
@@ -322,19 +508,23 @@ export default async function handler(req, res) {
       Number(order.total_amount) !== expectedTotal ||
       String(order.currency) !== String(payment.currency_id)
     ) {
-      console.error("Mercado Pago webhook: montos no coinciden con el pedido.", {
-        paymentId: payment.id,
-        externalReference,
-        databaseBookPrice: order.book_price,
-        databaseShipping: order.shipping_amount,
-        databaseTotal: order.total_amount,
-        paymentBookPrice: productAmount,
-        paymentShipping: shippingAmount,
-        paymentTotal: expectedTotal,
-      });
+      console.error(
+        "Mercado Pago webhook: montos no coinciden con el pedido.",
+        {
+          paymentId: payment.id,
+          externalReference,
+          databaseBookPrice: order.book_price,
+          databaseShipping: order.shipping_amount,
+          databaseTotal: order.total_amount,
+          paymentBookPrice: productAmount,
+          paymentShipping: shippingAmount,
+          paymentTotal: expectedTotal,
+        }
+      );
 
       return res.status(409).json({
-        error: "Los montos del pago no coinciden con el pedido registrado.",
+        error:
+          "Los montos del pago no coinciden con el pedido registrado.",
       });
     }
 
@@ -363,7 +553,9 @@ export default async function handler(req, res) {
     `;
 
     if (!updatedOrders.length) {
-      throw new Error("El pedido desapareció antes de poder actualizarse.");
+      throw new Error(
+        "El pedido desapareció antes de poder actualizarse."
+      );
     }
 
     const verifiedPayment = {
@@ -385,19 +577,95 @@ export default async function handler(req, res) {
       JSON.stringify(verifiedPayment)
     );
 
+    let ga4Result = {
+      sent: false,
+      reason: "not_approved",
+    };
+
+    if (status === "approved") {
+      try {
+        ga4Result = await sendGa4Purchase({
+          apiSecret: ga4ApiSecret,
+          measurementId: ga4MeasurementId,
+          order,
+          payment,
+        });
+
+        await persistGa4Result(
+          sql,
+          order.id,
+          ga4Result
+        );
+
+        console.info(
+          "GA4_PURCHASE_RESULT",
+          JSON.stringify({
+            externalReference,
+            paymentId: String(payment.id),
+            sent: Boolean(ga4Result.sent),
+            reason: ga4Result.reason || null,
+          })
+        );
+      } catch (ga4Error) {
+        const message = String(
+          ga4Error?.message || "ga4_purchase_send_failed"
+        ).slice(0, 500);
+
+        try {
+          await sql`
+            UPDATE orders
+            SET
+              ga4_purchase_error = ${message},
+              updated_at = NOW()
+            WHERE id = ${order.id}
+          `;
+        } catch (persistError) {
+          console.error(
+            "GA4 purchase error persistence failed:",
+            {
+              orderId: order.id,
+              message: persistError?.message,
+            }
+          );
+        }
+
+        ga4Result = {
+          sent: false,
+          reason: "send_failed",
+        };
+
+        console.error(
+          "GA4 purchase send failed:",
+          {
+            externalReference,
+            paymentId: String(payment.id),
+            message: ga4Error?.message,
+            details: ga4Error?.details,
+          }
+        );
+      }
+    }
+
     return res.status(200).json({
       received: true,
       verified: true,
       persisted: true,
       payment: verifiedPayment,
+      ga4: {
+        sent: Boolean(ga4Result.sent),
+        reason: ga4Result.reason || null,
+      },
     });
   } catch (error) {
-    console.error("Mercado Pago webhook: error verificando o guardando pago.", {
-      paymentId,
-      message: error?.message,
-      status: error?.status,
-      details: error?.details,
-    });
+    console.error(
+      "Mercado Pago webhook: error verificando o guardando pago.",
+      {
+        paymentId,
+        message: error?.message,
+        status: error?.status,
+        details: error?.details,
+      }
+    );
 
     return res.status(502).json({
       error:
