@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 
-const BOOK_PRICE = 15990;
 const SHIPPING_RM = 3000;
 const SHIPPING_REGIONS = 4500;
 
@@ -139,7 +138,7 @@ function isOurOrder(payment) {
     /^LLAVE-\d+-[A-Z0-9]+$/.test(reference) &&
     currency === "CLP" &&
     Number.isFinite(productAmount) &&
-    productAmount === BOOK_PRICE &&
+    productAmount > 0 &&
     Number.isFinite(shippingAmount) &&
     VALID_SHIPPING_AMOUNTS.has(shippingAmount)
   );
