@@ -2,62 +2,133 @@
 <html lang="es">
   <head>
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-G17WQELH77"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-G17WQELH77"
+    ></script>
+
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
 
-      gtag('config', 'G-G17WQELH77');
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+
+      gtag("js", new Date());
+      gtag("config", "G-G17WQELH77");
     </script>
 
-<!-- Meta Pixel Code -->
-<script>
-!function(f,b,e,v,n,t,s)
-{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-n.queue=[];t=b.createElement(e);t.async=!0;
-t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
-'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '3507755626065116');
-fbq('track', 'PageView');
-</script>
-<noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=3507755626065116&ev=PageView&noscript=1"
-/></noscript>
-<!-- End Meta Pixel Code -->
-    
+    <!-- Meta Pixel Code -->
+    <script>
+      !(function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+
+        n = f.fbq = function () {
+          n.callMethod
+            ? n.callMethod.apply(n, arguments)
+            : n.queue.push(arguments);
+        };
+
+        if (!f._fbq) f._fbq = n;
+
+        n.push = n;
+        n.loaded = true;
+        n.version = "2.0";
+        n.queue = [];
+
+        t = b.createElement(e);
+        t.async = true;
+        t.src = v;
+
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(
+        window,
+        document,
+        "script",
+        "https://connect.facebook.net/en_US/fbevents.js"
+      );
+
+      fbq("init", "3507755626065116");
+      fbq("track", "PageView");
+    </script>
+    <!-- End Meta Pixel Code -->
+
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="canonical" href="https://www.lallaveoficial.com/" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
 
-    <title>La Llave I: Ciudad Central | Thriller distópico chileno</title>
+    <link
+      rel="canonical"
+      href="https://www.lallaveoficial.com/"
+    />
+
+    <title>
+      La Llave I: Ciudad Central | Thriller distópico chileno
+    </title>
+
     <meta
       name="description"
       content="La Llave I: Ciudad Central, thriller distópico chileno de Enrique G. Santibáñez. Lee una muestra gratis y entra al universo del código 066."
     />
 
-    <meta property="og:title" content="La Llave I: Ciudad Central | Thriller distópico chileno" />
+    <meta
+      property="og:title"
+      content="La Llave I: Ciudad Central | Thriller distópico chileno"
+    />
+
     <meta
       property="og:description"
       content="Doce horas. Una llave marcada con «066». Una memoria que no debería existir."
     />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.lallaveoficial.com/" />
-    <meta property="og:site_name" content="La Llave Oficial" />
-    <meta property="og:locale" content="es_CL" />
-    <meta property="og:image" content="https://www.lallaveoficial.com/assets/la-llave-ciudad-central-hero.png" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="La Llave I: Ciudad Central | Thriller distópico chileno" />
+    <meta
+      property="og:type"
+      content="website"
+    />
+
+    <meta
+      property="og:url"
+      content="https://www.lallaveoficial.com/"
+    />
+
+    <meta
+      property="og:site_name"
+      content="La Llave Oficial"
+    />
+
+    <meta
+      property="og:locale"
+      content="es_CL"
+    />
+
+    <meta
+      property="og:image"
+      content="https://www.lallaveoficial.com/assets/la-llave-ciudad-central-hero.png"
+    />
+
+    <meta
+      name="twitter:card"
+      content="summary_large_image"
+    />
+
+    <meta
+      name="twitter:title"
+      content="La Llave I: Ciudad Central | Thriller distópico chileno"
+    />
+
     <meta
       name="twitter:description"
       content="Doce horas. Una llave marcada con «066». Una memoria que no debería existir."
     />
-    <meta name="twitter:image" content="https://www.lallaveoficial.com/assets/la-llave-ciudad-central-hero.png" />
+
+    <meta
+      name="twitter:image"
+      content="https://www.lallaveoficial.com/assets/la-llave-ciudad-central-hero.png"
+    />
 
     <script type="application/ld+json">
       {
@@ -101,39 +172,74 @@ src="https://www.facebook.com/tr?id=3507755626065116&ev=PageView&noscript=1"
       }
     </script>
   </head>
+
   <body>
+    <!-- Meta Pixel fallback para navegadores sin JavaScript -->
+    <noscript>
+      <img
+        height="1"
+        width="1"
+        style="display:none"
+        src="https://www.facebook.com/tr?id=3507755626065116&ev=PageView&noscript=1"
+        alt=""
+      />
+    </noscript>
+
     <div id="root"></div>
 
-    <script type="module" src="/src/main.jsx"></script>
+    <script
+      type="module"
+      src="/src/main.jsx"
+    ></script>
 
     <!-- Sección curada de Instagram: se monta antes del footer sin tocar App.jsx -->
-    <script src="/instagram-showcase.js" defer></script>
+    <script
+      src="/instagram-showcase.js"
+      defer
+    ></script>
 
     <!-- Muestra interactiva del libro -->
-    <script src="/sample-reader.js" defer></script>
+    <script
+      src="/sample-reader.js"
+      defer
+    ></script>
 
     <!-- Archivo 066 · sistema propio de mailing -->
-    <script src="/archivo-066.js" defer></script>
+    <script
+      src="/archivo-066.js"
+      defer
+    ></script>
 
     <!-- Conversión: muestra primero + Archivo 066 + autoridad Arizaki -->
-    <script src="/conversion-066.js" defer></script>
+    <script
+      src="/conversion-066.js"
+      defer
+    ></script>
 
     <!-- Pulido móvil global: control de atmósfera compacto -->
-    <script src="/mobile-polish.js" defer></script>
+    <script
+      src="/mobile-polish.js"
+      defer
+    ></script>
 
     <!-- Metricool -->
     <script>
       function loadScript(a) {
-        var b = document.getElementsByTagName("head")[0],
-          c = document.createElement("script");
+        var b = document.getElementsByTagName("head")[0];
+        var c = document.createElement("script");
+
         c.type = "text/javascript";
         c.src = "https://tracker.metricool.com/resources/be.js";
         c.onreadystatechange = a;
         c.onload = a;
+
         b.appendChild(c);
       }
+
       loadScript(function () {
-        beTracker.t({ hash: "4f7bb4095b6cc276ed62709c9b5172f7" });
+        beTracker.t({
+          hash: "4f7bb4095b6cc276ed62709c9b5172f7"
+        });
       });
     </script>
   </body>
