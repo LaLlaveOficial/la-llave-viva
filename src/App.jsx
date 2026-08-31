@@ -74,6 +74,7 @@ const SALE_COPY = {
     required: "Completa los datos de despacho antes de continuar.",
     amazon: "También disponible en Amazon",
   },
+
   en: {
     navBuy: "Buy",
     heroBuy: "Buy printed edition",
@@ -182,7 +183,7 @@ function trackGA4Event(eventName, params = {}) {
   return true;
 }
 
-function trackMetaEvent(eventName, params = {}) {
+function trackMetaEvent(eventName, params = {}, options = {}) {
   if (
     typeof window === "undefined" ||
     typeof window.fbq !== "function" ||
@@ -191,7 +192,7 @@ function trackMetaEvent(eventName, params = {}) {
     return false;
   }
 
-  window.fbq("track", eventName, params);
+  window.fbq("track", eventName, params, options);
 
   return true;
 }
@@ -208,7 +209,9 @@ function getCheckoutPromoState() {
   const discountRow = document.querySelector(
     "#compra-directa .ajraz10-summary-discount"
   );
+
   const codeInput = document.getElementById("ajraz10-code-input");
+
   const code = String(codeInput?.value || "")
     .trim()
     .toUpperCase();
@@ -429,7 +432,7 @@ const LANGS = {
     sync: "Synchronisation globale",
     storyTitle: "La première porte d'une saga qui commence à peine.",
     story1: "Quand Paula Garrido disparaît après avoir diffusé une vidéo interdite, son frère Issei entre dans une ville où chaque indice semble conçu pour l'enfoncer davantage.",
-    story2: "Avec la détective Karen Ajraz, il découvrira que Ville Centrale ne fait que surveiller : elle se souvient, punit et efface.",
+    story2: "Avec la détective Karen Ajraz, il découvrira que Ville Centrale ne fait pas que surveiller : elle se souvient, punit et efface.",
     story3: "La Llave I: Ciudad Central lance une saga dystopique chilienne où la vérité n'est pas publiée : elle est divulguée, traquée et payée cher.",
     universeTitle: "Carte tactique mondiale",
     openMap: "Ouvrir la carte tactique",
@@ -1242,10 +1245,25 @@ const LANGS = {
 };
 
 const LANGUAGE_OPTIONS = [
-  ["es", "ES"], ["en", "EN"], ["pt", "PT"], ["fr", "FR"], ["de", "DE"], ["it", "IT"],
-  ["ru", "RU"], ["zh-CN", "简"], ["zh-TW", "繁"], ["yue", "粵"], ["ar", "AR"],
-  ["hi", "HI"], ["he", "HE"], ["pl", "PL"], ["nl", "NL"], ["ko", "KO"],
-  ["th", "TH"], ["mn", "MN"], ["ja", "JA"],
+  ["es", "ES"],
+  ["en", "EN"],
+  ["pt", "PT"],
+  ["fr", "FR"],
+  ["de", "DE"],
+  ["it", "IT"],
+  ["ru", "RU"],
+  ["zh-CN", "简"],
+  ["zh-TW", "繁"],
+  ["yue", "粵"],
+  ["ar", "AR"],
+  ["hi", "HI"],
+  ["he", "HE"],
+  ["pl", "PL"],
+  ["nl", "NL"],
+  ["ko", "KO"],
+  ["th", "TH"],
+  ["mn", "MN"],
+  ["ja", "JA"],
 ];
 
 function InstagramIcon() {
@@ -1284,7 +1302,13 @@ function YouTubeIcon() {
 
 function Social({ href, label, children }) {
   return (
-    <a href={href} target="_blank" rel="noreferrer noopener" aria-label={label} title={label}>
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      aria-label={label}
+      title={label}
+    >
       {children}
     </a>
   );
@@ -1305,6 +1329,7 @@ export default function App() {
   const [bgIndex, setBgIndex] = useState(0);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+
   const [buyer, setBuyer] = useState({
     fullName: "",
     email: "",
@@ -1326,7 +1351,9 @@ export default function App() {
   useEffect(() => {
     function handleAnalyticsClick(event) {
       const element =
-        event.target instanceof Element ? event.target : event.target?.parentElement;
+        event.target instanceof Element
+          ? event.target
+          : event.target?.parentElement;
 
       if (!element) return;
 
@@ -1346,6 +1373,7 @@ export default function App() {
 
       if (amazonLink) {
         const href = String(amazonLink.getAttribute("href") || "");
+
         const format = href.includes("B0GX31SRTT")
           ? "kindle"
           : href.includes("9564237246")
@@ -1355,6 +1383,7 @@ export default function App() {
         const container = amazonLink.closest(
           "section[id], article, nav, footer"
         );
+
         const placement =
           container?.id ||
           (typeof container?.className === "string"
@@ -1420,14 +1449,18 @@ export default function App() {
   }, [lang]);
 
   const saleCopy = SALE_COPY[lang] || SALE_COPY.en;
+
   const selectedRegion =
     CHILE_REGIONS.find((region) => region.code === buyer.region) ||
     CHILE_REGIONS.find((region) => region.code === "RM");
+
   const shippingCost =
     selectedRegion?.code === "RM"
       ? DIRECT_SALE.shippingRM
       : DIRECT_SALE.shippingRegions;
-  const saleTotal = DIRECT_SALE.price + shippingCost;
+
+  const saleTotal =
+    DIRECT_SALE.price + shippingCost;
 
   const rainDrops = useMemo(
     () =>
@@ -1442,27 +1475,51 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (noirRef.current) noirRef.current.volume = musicVol;
+    if (noirRef.current) {
+      noirRef.current.volume = musicVol;
+    }
   }, [musicVol]);
 
   useEffect(() => {
-    if (rainRef.current) rainRef.current.volume = rainVol;
+    if (rainRef.current) {
+      rainRef.current.volume = rainVol;
+    }
   }, [rainVol]);
 
   useEffect(() => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
     const id = window.setInterval(() => {
       const random = Array.from(
         { length: 5 },
-        () => chars[Math.floor(Math.random() * chars.length)]
+        () =>
+          chars[
+            Math.floor(
+              Math.random() * chars.length
+            )
+          ]
       ).join("");
 
       setOmegaText(random);
-      setPercent(Number((94 + Math.random() * 5.8).toFixed(1)));
-      window.setTimeout(() => setOmegaText("OMEGA"), 420);
+
+      setPercent(
+        Number(
+          (
+            94 +
+            Math.random() * 5.8
+          ).toFixed(1)
+        )
+      );
+
+      window.setTimeout(
+        () => setOmegaText("OMEGA"),
+        420
+      );
     }, 2200);
 
-    return () => window.clearInterval(id);
+    return () =>
+      window.clearInterval(id);
   }, []);
 
   function ensureAudioSources() {
@@ -1471,30 +1528,44 @@ export default function App() {
       [rainRef.current, AUDIO.rain],
     ];
 
-    audioSources.forEach(([audio, src]) => {
-      if (!audio) return;
+    audioSources.forEach(
+      ([audio, src]) => {
+        if (!audio) return;
 
-      if (!audio.getAttribute("src")) {
-        audio.src = src;
-        audio.load();
+        if (
+          !audio.getAttribute("src")
+        ) {
+          audio.src = src;
+          audio.load();
+        }
       }
-    });
+    );
   }
 
   async function startAudio() {
     ensureAudioSources();
 
-    const results = await Promise.allSettled([
-      noirRef.current?.play(),
-      rainRef.current?.play(),
-    ]);
+    const results =
+      await Promise.allSettled([
+        noirRef.current?.play(),
+        rainRef.current?.play(),
+      ]);
 
-    setAudioOn(results.some((r) => r.status === "fulfilled"));
+    setAudioOn(
+      results.some(
+        (r) =>
+          r.status === "fulfilled"
+      )
+    );
   }
 
   function stopAudio() {
-    [noirRef.current, rainRef.current].forEach((audio) => {
+    [
+      noirRef.current,
+      rainRef.current,
+    ].forEach((audio) => {
       if (!audio) return;
+
       audio.pause();
     });
 
@@ -1502,13 +1573,19 @@ export default function App() {
   }
 
   function toggleAudio() {
-    if (audioOn) stopAudio();
-    else startAudio();
+    if (audioOn) {
+      stopAudio();
+    } else {
+      startAudio();
+    }
   }
 
   async function enterCity(withAudio) {
     setIntroOpen(false);
-    if (withAudio) await startAudio();
+
+    if (withAudio) {
+      await startAudio();
+    }
   }
 
   function updateBuyer(field, value) {
@@ -1520,6 +1597,7 @@ export default function App() {
 
   async function startCheckout(event) {
     event.preventDefault();
+
     setCheckoutError("");
 
     const requiredFields = [
@@ -1532,22 +1610,49 @@ export default function App() {
       buyer.number,
     ];
 
-    if (requiredFields.some((value) => !String(value).trim())) {
-      setCheckoutError(saleCopy.required);
+    if (
+      requiredFields.some(
+        (value) =>
+          !String(value).trim()
+      )
+    ) {
+      setCheckoutError(
+        saleCopy.required
+      );
+
       return;
     }
 
-    const promo = getCheckoutPromoState();
-    const trackedBookPrice = promo.bookPrice;
+    const promo =
+      getCheckoutPromoState();
+
+    const trackedBookPrice =
+      promo.bookPrice;
 
     const checkoutSnapshot = {
-      bookPrice: trackedBookPrice,
+      bookPrice:
+        trackedBookPrice,
+
       shippingCost,
-      total: trackedBookPrice + shippingCost,
-      region: selectedRegion?.code || buyer.region,
-      promoCode: promo.code || "",
-      checkoutType: promo.applied ? "promo_ajraz10" : "direct",
-      createdAt: new Date().toISOString(),
+
+      total:
+        trackedBookPrice +
+        shippingCost,
+
+      region:
+        selectedRegion?.code ||
+        buyer.region,
+
+      promoCode:
+        promo.code || "",
+
+      checkoutType:
+        promo.applied
+          ? "promo_ajraz10"
+          : "direct",
+
+      createdAt:
+        new Date().toISOString(),
     };
 
     writeStoredJson(
@@ -1556,39 +1661,81 @@ export default function App() {
       checkoutSnapshot
     );
 
-    trackGA4Event("begin_checkout", {
-      currency: "CLP",
-      value: trackedBookPrice,
-      shipping: shippingCost,
-      checkout_total: trackedBookPrice + shippingCost,
-      checkout_type: checkoutSnapshot.checkoutType,
-      coupon: promo.code || undefined,
-      items: [buildBookItem(trackedBookPrice)],
-      language: lang,
-    });
+    trackGA4Event(
+      "begin_checkout",
+      {
+        currency: "CLP",
+
+        value:
+          trackedBookPrice,
+
+        shipping:
+          shippingCost,
+
+        checkout_total:
+          trackedBookPrice +
+          shippingCost,
+
+        checkout_type:
+          checkoutSnapshot.checkoutType,
+
+        coupon:
+          promo.code ||
+          undefined,
+
+        items: [
+          buildBookItem(
+            trackedBookPrice
+          ),
+        ],
+
+        language: lang,
+      }
+    );
 
     setCheckoutLoading(true);
 
     try {
-      const response = await fetch("/api/create-preference", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          buyer,
-        }),
-      });
+      const response =
+        await fetch(
+          "/api/create-preference",
+          {
+            method: "POST",
 
-      const data = await response.json().catch(() => ({}));
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-      if (!response.ok || !data.init_point) {
-        throw new Error(data.error || saleCopy.error);
+            body: JSON.stringify({
+              buyer,
+            }),
+          }
+        );
+
+      const data =
+        await response
+          .json()
+          .catch(() => ({}));
+
+      if (
+        !response.ok ||
+        !data.init_point
+      ) {
+        throw new Error(
+          data.error ||
+            saleCopy.error
+        );
       }
 
-      window.location.assign(data.init_point);
+      window.location.assign(
+        data.init_point
+      );
     } catch (error) {
-      setCheckoutError(error?.message || saleCopy.error);
+      setCheckoutError(
+        error?.message ||
+          saleCopy.error
+      );
     } finally {
       setCheckoutLoading(false);
     }
@@ -1596,18 +1743,26 @@ export default function App() {
 
   const currentPath =
     typeof window !== "undefined"
-      ? window.location.pathname.replace(/\/+$/, "")
+      ? window.location.pathname.replace(
+          /\/+$/,
+          ""
+        )
       : "";
 
   if (
-    currentPath === "/compra-confirmada" ||
-    currentPath === "/pago-pendiente" ||
-    currentPath === "/pago-rechazado"
+    currentPath ===
+      "/compra-confirmada" ||
+    currentPath ===
+      "/pago-pendiente" ||
+    currentPath ===
+      "/pago-rechazado"
   ) {
     const statusType =
-      currentPath === "/compra-confirmada"
+      currentPath ===
+      "/compra-confirmada"
         ? "success"
-        : currentPath === "/pago-pendiente"
+        : currentPath ===
+            "/pago-pendiente"
           ? "pending"
           : "failure";
 
@@ -1624,7 +1779,12 @@ export default function App() {
     );
   }
 
-  if (currentPath === "/press-kit" || currentPath === "/presskit") {
+  if (
+    currentPath ===
+      "/press-kit" ||
+    currentPath ===
+      "/presskit"
+  ) {
     return (
       <PressKitPage
         lang={lang}
@@ -1638,33 +1798,76 @@ export default function App() {
   }
 
   return (
-    <main className="site" lang={lang} dir={dir}>
-      <audio ref={noirRef} loop preload="none" />
-      <audio ref={rainRef} loop preload="none" />
+    <main
+      className="site"
+      lang={lang}
+      dir={dir}
+    >
+      <audio
+        ref={noirRef}
+        loop
+        preload="none"
+      />
+
+      <audio
+        ref={rainRef}
+        loop
+        preload="none"
+      />
 
       <Background
         rainDrops={rainDrops}
-        bgSrc={BG_SOURCES[bgIndex]}
-        onBgError={() => setBgIndex((current) => current + 1)}
-        hideBg={bgIndex >= BG_SOURCES.length}
+        bgSrc={
+          BG_SOURCES[bgIndex]
+        }
+        onBgError={() =>
+          setBgIndex(
+            (current) =>
+              current + 1
+          )
+        }
+        hideBg={
+          bgIndex >=
+          BG_SOURCES.length
+        }
       />
 
       <HazardBorders />
 
       {introOpen && (
-        <section className="intro" aria-label={t.gateTitle}>
+        <section
+          className="intro"
+          aria-label={
+            t.gateTitle
+          }
+        >
           <div className="intro-card">
-            <p className="kicker">{t.system} · 066</p>
-            <h1>{t.gateTitle}</h1>
-            <p>{t.gateCopy}</p>
+            <p className="kicker">
+              {t.system} · 066
+            </p>
+
+            <h1>
+              {t.gateTitle}
+            </h1>
+
+            <p>
+              {t.gateCopy}
+            </p>
 
             <div className="intro-actions">
-              <button onClick={() => enterCity(true)}>
+              <button
+                onClick={() =>
+                  enterCity(true)
+                }
+              >
                 {t.enterSound}
               </button>
+
               <button
                 className="ghost"
-                onClick={() => enterCity(false)}
+                onClick={() =>
+                  enterCity(false)
+                }
               >
                 {t.enterSilent}
               </button>
@@ -1673,105 +1876,200 @@ export default function App() {
         </section>
       )}
 
-      <nav className="nav" aria-label="Navegación principal">
-        <a className="brand" href="#inicio">
-          <span className="brand-icon">066</span>
+      <nav
+        className="nav"
+        aria-label="Navegación principal"
+      >
+        <a
+          className="brand"
+          href="#inicio"
+        >
+          <span className="brand-icon">
+            066
+          </span>
+
           <span>
             LA LLAVE I
-            <small>CIUDAD CENTRAL</small>
+            <small>
+              CIUDAD CENTRAL
+            </small>
           </span>
         </a>
 
         <div className="nav-links">
-          <a href="#inicio">{t.nav[0]}</a>
-          <a href="#historia">{t.nav[1]}</a>
-          <a href="#universo">{t.nav[2]}</a>
-          <a href="#ediciones">{t.nav[3]}</a>
-          <a href="#prensa">{t.nav[4]}</a>
-          <a href="#contacto">{t.nav[5]}</a>
+          <a href="#inicio">
+            {t.nav[0]}
+          </a>
+
+          <a href="#historia">
+            {t.nav[1]}
+          </a>
+
+          <a href="#universo">
+            {t.nav[2]}
+          </a>
+
+          <a href="#ediciones">
+            {t.nav[3]}
+          </a>
+
+          <a href="#prensa">
+            {t.nav[4]}
+          </a>
+
+          <a href="#contacto">
+            {t.nav[5]}
+          </a>
         </div>
 
         <div className="nav-right">
-          <a className="nav-buy" href="#compra-directa">
+          <a
+            className="nav-buy"
+            href="#compra-directa"
+          >
             {saleCopy.navBuy}
           </a>
 
           <div className="nav-socials">
-            <Social href={LINKS.instagram} label="Instagram">
+            <Social
+              href={
+                LINKS.instagram
+              }
+              label="Instagram"
+            >
               <InstagramIcon />
             </Social>
 
-            <Social href={LINKS.tiktok} label="TikTok">
+            <Social
+              href={
+                LINKS.tiktok
+              }
+              label="TikTok"
+            >
               <TikTokIcon />
             </Social>
 
-            <Social href={LINKS.x} label="X">
+            <Social
+              href={LINKS.x}
+              label="X"
+            >
               <XIcon />
             </Social>
 
-            <Social href={LINKS.youtube} label="YouTube">
+            <Social
+              href={
+                LINKS.youtube
+              }
+              label="YouTube"
+            >
               <YouTubeIcon />
             </Social>
           </div>
 
           <select
             value={lang}
-            onChange={(e) => setLang(e.target.value)}
+            onChange={(e) =>
+              setLang(
+                e.target.value
+              )
+            }
             aria-label="Idioma"
           >
-            {LANGUAGE_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
+            {LANGUAGE_OPTIONS.map(
+              ([value, label]) => (
+                <option
+                  key={value}
+                  value={value}
+                >
+                  {label}
+                </option>
+              )
+            )}
           </select>
         </div>
       </nav>
 
-      <aside className="audio-top" aria-label="Controles de sonido">
-        <button onClick={toggleAudio}>
-          {audioOn ? t.audioOn : t.audioOff}
+      <aside
+        className="audio-top"
+        aria-label="Controles de sonido"
+      >
+        <button
+          onClick={toggleAudio}
+        >
+          {audioOn
+            ? t.audioOn
+            : t.audioOff}
         </button>
 
         <label>
           {t.music}
+
           <input
             type="range"
             min="0"
             max="0.8"
             step="0.01"
             value={musicVol}
-            onChange={(e) => setMusicVol(Number(e.target.value))}
+            onChange={(e) =>
+              setMusicVol(
+                Number(
+                  e.target.value
+                )
+              )
+            }
           />
         </label>
 
         <label>
           {t.rain}
+
           <input
             type="range"
             min="0"
             max="0.5"
             step="0.01"
             value={rainVol}
-            onChange={(e) => setRainVol(Number(e.target.value))}
+            onChange={(e) =>
+              setRainVol(
+                Number(
+                  e.target.value
+                )
+              )
+            }
           />
         </label>
       </aside>
 
-      <section id="inicio" className="hero-section">
+      <section
+        id="inicio"
+        className="hero-section"
+      >
         <div className="hero-copy">
-          <p className="kicker spaced">{t.welcome}</p>
+          <p className="kicker spaced">
+            {t.welcome}
+          </p>
+
           <h2>{t.city}</h2>
+
           <div className="gold-line" />
-          <p className="author">{t.subtitle}</p>
-          <p className="lead">{t.hero}</p>
+
+          <p className="author">
+            {t.subtitle}
+          </p>
+
+          <p className="lead">
+            {t.hero}
+          </p>
 
           <div className="cta-row">
             <a
               className="cta primary hero-buy-cta"
               href="#compra-directa"
             >
-              {saleCopy.heroBuy} · {formatCLP(DIRECT_SALE.price)}
+              {saleCopy.heroBuy} ·{" "}
+              {formatCLP(
+                DIRECT_SALE.price
+              )}
             </a>
 
             <a
@@ -1785,52 +2083,84 @@ export default function App() {
           </div>
 
           <p className="hero-sale-note">
-            {saleCopy.kicker} · {saleCopy.secure}
+            {saleCopy.kicker} ·{" "}
+            {saleCopy.secure}
           </p>
         </div>
 
         <div className="hero-key">
-          <img src={ASSETS.key} alt="Llave 066" />
+          <img
+            src={ASSETS.key}
+            alt="Llave 066"
+          />
 
-          {t.words.map((word, index) => (
-            <span
-              key={`${word}-${index}`}
-              className={`cryptic word-${index + 1}`}
-            >
-              {word}
-            </span>
-          ))}
+          {t.words.map(
+            (word, index) => (
+              <span
+                key={`${word}-${index}`}
+                className={`cryptic word-${index + 1}`}
+              >
+                {word}
+              </span>
+            )
+          )}
         </div>
 
-        <aside className="system-panel" aria-label={t.system}>
+        <aside
+          className="system-panel"
+          aria-label={t.system}
+        >
           <h3>{t.system}</h3>
+
           <p>{t.control}</p>
 
           <ul>
             <li>
-              <span>{t.code}:</span>
+              <span>
+                {t.code}:
+              </span>
+
               <b>066</b>
             </li>
+
             <li>
-              <span>{t.level}:</span>
-              <b className="omega">{omegaText}</b>
+              <span>
+                {t.level}:
+              </span>
+
+              <b className="omega">
+                {omegaText}
+              </b>
             </li>
+
             <li>
-              <span>{t.status}:</span>
-              <b>{t.active}</b>
+              <span>
+                {t.status}:
+              </span>
+
+              <b>
+                {t.active}
+              </b>
             </li>
           </ul>
 
           <div className="mini-map" />
+
           <p className="sync">
-            {t.sync} {percent}%
+            {t.sync}{" "}
+            {percent}%
           </p>
 
           <div className="bars">
-            {Array.from({ length: 18 }).map((_, i) => (
+            {Array.from({
+              length: 18,
+            }).map((_, i) => (
               <i
                 key={i}
-                style={{ animationDelay: `${i * 0.07}s` }}
+                style={{
+                  animationDelay:
+                    `${i * 0.07}s`,
+                }}
               />
             ))}
           </div>
@@ -1844,44 +2174,70 @@ export default function App() {
         <div className="sale-visual">
           <div className="sale-photo-frame">
             <img
-              src={ASSETS.physicalBook}
+              src={
+                ASSETS.physicalBook
+              }
               alt="Edición impresa de La Llave I: Ciudad Central"
               loading="lazy"
               decoding="async"
             />
           </div>
+
           <p className="sale-edition-tag">
             {saleCopy.edition}
           </p>
         </div>
 
         <div className="sale-content">
-          <p className="kicker">{saleCopy.kicker}</p>
-          <h2>{saleCopy.title}</h2>
-          <p className="sale-lead">{saleCopy.lead}</p>
+          <p className="kicker">
+            {saleCopy.kicker}
+          </p>
+
+          <h2>
+            {saleCopy.title}
+          </h2>
+
+          <p className="sale-lead">
+            {saleCopy.lead}
+          </p>
 
           <div className="sale-price-block">
-            <span>{saleCopy.priceLabel}</span>
+            <span>
+              {saleCopy.priceLabel}
+            </span>
+
             <strong>
-              {formatCLP(DIRECT_SALE.price)}
+              {formatCLP(
+                DIRECT_SALE.price
+              )}
             </strong>
           </div>
 
           <form
             className="sale-form"
-            onSubmit={startCheckout}
+            onSubmit={
+              startCheckout
+            }
           >
             <div className="sale-fields">
               <label className="sale-field sale-field-wide">
-                <span>{saleCopy.fullName}</span>
+                <span>
+                  {saleCopy.fullName}
+                </span>
+
                 <input
                   type="text"
                   autoComplete="name"
-                  value={buyer.fullName}
-                  onChange={(event) =>
+                  value={
+                    buyer.fullName
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "fullName",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -1889,15 +2245,23 @@ export default function App() {
               </label>
 
               <label className="sale-field">
-                <span>{saleCopy.email}</span>
+                <span>
+                  {saleCopy.email}
+                </span>
+
                 <input
                   type="email"
                   autoComplete="email"
-                  value={buyer.email}
-                  onChange={(event) =>
+                  value={
+                    buyer.email
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "email",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -1905,15 +2269,23 @@ export default function App() {
               </label>
 
               <label className="sale-field">
-                <span>{saleCopy.phone}</span>
+                <span>
+                  {saleCopy.phone}
+                </span>
+
                 <input
                   type="tel"
                   autoComplete="tel"
-                  value={buyer.phone}
-                  onChange={(event) =>
+                  value={
+                    buyer.phone
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "phone",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -1921,38 +2293,62 @@ export default function App() {
               </label>
 
               <label className="sale-field sale-field-wide">
-                <span>{saleCopy.region}</span>
+                <span>
+                  {saleCopy.region}
+                </span>
+
                 <select
-                  value={buyer.region}
-                  onChange={(event) =>
+                  value={
+                    buyer.region
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "region",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
                 >
-                  {CHILE_REGIONS.map((region) => (
-                    <option
-                      key={region.code}
-                      value={region.code}
-                    >
-                      {region.name}
-                    </option>
-                  ))}
+                  {CHILE_REGIONS.map(
+                    (region) => (
+                      <option
+                        key={
+                          region.code
+                        }
+                        value={
+                          region.code
+                        }
+                      >
+                        {
+                          region.name
+                        }
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
 
               <label className="sale-field">
-                <span>{saleCopy.commune}</span>
+                <span>
+                  {saleCopy.commune}
+                </span>
+
                 <input
                   type="text"
                   autoComplete="address-level2"
-                  value={buyer.commune}
-                  onChange={(event) =>
+                  value={
+                    buyer.commune
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "commune",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -1960,15 +2356,23 @@ export default function App() {
               </label>
 
               <label className="sale-field">
-                <span>{saleCopy.street}</span>
+                <span>
+                  {saleCopy.street}
+                </span>
+
                 <input
                   type="text"
                   autoComplete="address-line1"
-                  value={buyer.street}
-                  onChange={(event) =>
+                  value={
+                    buyer.street
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "street",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -1976,15 +2380,23 @@ export default function App() {
               </label>
 
               <label className="sale-field">
-                <span>{saleCopy.number}</span>
+                <span>
+                  {saleCopy.number}
+                </span>
+
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={buyer.number}
-                  onChange={(event) =>
+                  value={
+                    buyer.number
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "number",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                   required
@@ -1992,15 +2404,23 @@ export default function App() {
               </label>
 
               <label className="sale-field">
-                <span>{saleCopy.extra}</span>
+                <span>
+                  {saleCopy.extra}
+                </span>
+
                 <input
                   type="text"
                   autoComplete="address-line2"
-                  value={buyer.extra}
-                  onChange={(event) =>
+                  value={
+                    buyer.extra
+                  }
+                  onChange={(
+                    event
+                  ) =>
                     updateBuyer(
                       "extra",
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
                 />
@@ -2008,7 +2428,9 @@ export default function App() {
             </div>
 
             <p className="sale-shipping-note">
-              {saleCopy.shippingNote}
+              {
+                saleCopy.shippingNote
+              }
             </p>
 
             <div
@@ -2016,23 +2438,38 @@ export default function App() {
               aria-live="polite"
             >
               <div>
-                <span>{saleCopy.book}</span>
+                <span>
+                  {saleCopy.book}
+                </span>
+
                 <strong>
-                  {formatCLP(DIRECT_SALE.price)}
+                  {formatCLP(
+                    DIRECT_SALE.price
+                  )}
                 </strong>
               </div>
 
               <div>
-                <span>{saleCopy.shipping}</span>
+                <span>
+                  {saleCopy.shipping}
+                </span>
+
                 <strong>
-                  {formatCLP(shippingCost)}
+                  {formatCLP(
+                    shippingCost
+                  )}
                 </strong>
               </div>
 
               <div className="sale-total">
-                <span>{saleCopy.total}</span>
+                <span>
+                  {saleCopy.total}
+                </span>
+
                 <strong>
-                  {formatCLP(saleTotal)}
+                  {formatCLP(
+                    saleTotal
+                  )}
                 </strong>
               </div>
             </div>
@@ -2040,7 +2477,9 @@ export default function App() {
             <button
               className="checkout-button"
               type="submit"
-              disabled={checkoutLoading}
+              disabled={
+                checkoutLoading
+              }
             >
               {checkoutLoading
                 ? saleCopy.processing
@@ -2048,7 +2487,8 @@ export default function App() {
             </button>
 
             <p className="checkout-note">
-              🔒 {saleCopy.secure}
+              🔒{" "}
+              {saleCopy.secure}
             </p>
 
             {checkoutError && (
@@ -2062,7 +2502,9 @@ export default function App() {
 
             <a
               className="sale-amazon-link"
-              href={LINKS.physical}
+              href={
+                LINKS.physical
+              }
               target="_blank"
               rel="noreferrer noopener"
             >
@@ -2076,12 +2518,22 @@ export default function App() {
         id="historia"
         className="history-section panel"
       >
-        <p className="kicker">{t.nav[1]}</p>
-        <h2>{t.storyTitle}</h2>
+        <p className="kicker">
+          {t.nav[1]}
+        </p>
+
+        <h2>
+          {t.storyTitle}
+        </h2>
+
         <p>{t.story1}</p>
+
         <p>{t.story2}</p>
+
         <p>
-          <strong>{t.story3}</strong>
+          <strong>
+            {t.story3}
+          </strong>
         </p>
       </section>
 
@@ -2090,27 +2542,43 @@ export default function App() {
         className="universe-section"
       >
         <article className="map-card panel">
-          <p className="kicker">{t.nav[2]}</p>
-          <h2>{t.universeTitle}</h2>
+          <p className="kicker">
+            {t.nav[2]}
+          </p>
+
+          <h2>
+            {t.universeTitle}
+          </h2>
+
           <img
             src={ASSETS.map}
             alt="Mapa táctico del universo 066"
           />
+
           <button
             className="map-button"
-            onClick={() => setMapOpen(true)}
+            onClick={() =>
+              setMapOpen(true)
+            }
           >
             {t.openMap}
           </button>
         </article>
 
         <article className="saga-card panel">
-          <h3>La Llave I: Ciudad Central</h3>
+          <h3>
+            La Llave I:
+            Ciudad Central
+          </h3>
+
           <img
             src={ASSETS.mockup}
             alt="Mockup La Llave I: Ciudad Central"
           />
-          <p>{t.firstBook}</p>
+
+          <p>
+            {t.firstBook}
+          </p>
         </article>
 
         <LockedBook
@@ -2129,19 +2597,43 @@ export default function App() {
         className="editions-section"
       >
         <article className="edition-card panel">
-          <h3>{t.digitalEdition}</h3>
+          <h3>
+            {t.digitalEdition}
+          </h3>
+
           <h4>{t.ebook}</h4>
-          <p>{t.press2Text}</p>
-          <a href={LINKS.kindle}>
+
+          <p>
+            {t.press2Text}
+          </p>
+
+          <a
+            href={
+              LINKS.kindle
+            }
+          >
             {t.ebook}
           </a>
         </article>
 
         <article className="edition-card panel">
-          <h3>{t.physicalEdition}</h3>
-          <h4>{t.physical}</h4>
-          <p>{t.press1Text}</p>
-          <a href={LINKS.physical}>
+          <h3>
+            {t.physicalEdition}
+          </h3>
+
+          <h4>
+            {t.physical}
+          </h4>
+
+          <p>
+            {t.press1Text}
+          </p>
+
+          <a
+            href={
+              LINKS.physical
+            }
+          >
             {t.physical}
           </a>
         </article>
@@ -2184,8 +2676,13 @@ export default function App() {
         id="contacto"
         className="contact-section panel"
       >
-        <p className="kicker">{t.nav[5]}</p>
-        <h2>{t.contactTitle}</h2>
+        <p className="kicker">
+          {t.nav[5]}
+        </p>
+
+        <h2>
+          {t.contactTitle}
+        </h2>
 
         <form
           action={`mailto:${LINKS.email}`}
@@ -2196,32 +2693,45 @@ export default function App() {
             name="nombre"
             placeholder={t.name}
           />
+
           <input
             name="email"
             placeholder={t.email}
           />
+
           <textarea
             name="mensaje"
-            placeholder={t.message}
+            placeholder={
+              t.message
+            }
             rows="5"
           />
-          <button>{t.send}</button>
+
+          <button>
+            {t.send}
+          </button>
         </form>
       </section>
 
       <footer className="footer">
-        <p>{t.footer}</p>
+        <p>
+          {t.footer}
+        </p>
 
         <div className="footer-socials">
           <Social
-            href={LINKS.instagram}
+            href={
+              LINKS.instagram
+            }
             label="Instagram"
           >
             <InstagramIcon />
           </Social>
 
           <Social
-            href={LINKS.tiktok}
+            href={
+              LINKS.tiktok
+            }
             label="TikTok"
           >
             <TikTokIcon />
@@ -2235,7 +2745,9 @@ export default function App() {
           </Social>
 
           <Social
-            href={LINKS.youtube}
+            href={
+              LINKS.youtube
+            }
             label="YouTube"
           >
             <YouTubeIcon />
@@ -2246,15 +2758,21 @@ export default function App() {
       {mapOpen && (
         <div
           className="modal"
-          onClick={() => setMapOpen(false)}
+          onClick={() =>
+            setMapOpen(false)
+          }
         >
           <div
             className="modal-inner"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
             <button
               className="modal-close"
-              onClick={() => setMapOpen(false)}
+              onClick={() =>
+                setMapOpen(false)
+              }
             >
               {t.close}
             </button>
@@ -2282,55 +2800,82 @@ function PaymentStatusPage({
   const copy =
     type === "success"
       ? {
-          kicker: "SISTEMA 066 · PAGO",
-          title: "Pago enviado a validación",
+          kicker:
+            "SISTEMA 066 · PAGO",
+
+          title:
+            "Pago enviado a validación",
+
           message:
             "Mercado Pago te devolvió al sitio después del pago. Estamos validando la operación antes de considerar el pedido confirmado.",
         }
       : type === "pending"
         ? {
-            kicker: "SISTEMA 066 · PAGO PENDIENTE",
-            title: "Tu pago está pendiente",
+            kicker:
+              "SISTEMA 066 · PAGO PENDIENTE",
+
+            title:
+              "Tu pago está pendiente",
+
             message:
               "Mercado Pago informó que la operación aún no está aprobada. Conserva los datos del pago y revisaremos su actualización.",
           }
         : {
-            kicker: "SISTEMA 066 · PAGO NO COMPLETADO",
-            title: "El pago no se completó",
+            kicker:
+              "SISTEMA 066 · PAGO NO COMPLETADO",
+
+            title:
+              "El pago no se completó",
+
             message:
               "La operación fue cancelada o rechazada. No marcaremos ningún pedido como pagado mientras Mercado Pago no confirme la aprobación.",
           };
 
   const params =
     typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
+      ? new URLSearchParams(
+          window.location.search
+        )
       : new URLSearchParams();
 
   const paymentId =
-    params.get("payment_id") ||
-    params.get("collection_id");
+    params.get(
+      "payment_id"
+    ) ||
+    params.get(
+      "collection_id"
+    );
 
   const externalReference =
-    params.get("external_reference");
+    params.get(
+      "external_reference"
+    );
 
-  const paymentStatus = String(
-    params.get("status") ||
-      params.get("collection_status") ||
-      ""
-  ).toLowerCase();
+  const paymentStatus =
+    String(
+      params.get("status") ||
+        params.get(
+          "collection_status"
+        ) ||
+        ""
+    ).toLowerCase();
 
   useEffect(() => {
     if (
       type !== "success" ||
-      paymentStatus !== "approved"
+      paymentStatus !==
+        "approved"
     ) {
       return;
     }
 
     const transactionId =
-      paymentId || externalReference;
+      paymentId ||
+      externalReference;
 
-    if (!transactionId) return;
+    if (!transactionId) {
+      return;
+    }
 
     const ga4DedupeKey =
       `${GA4_PURCHASE_STORAGE_PREFIX}${transactionId}`;
@@ -2338,67 +2883,107 @@ function PaymentStatusPage({
     const metaDedupeKey =
       `${META_PURCHASE_STORAGE_PREFIX}${transactionId}`;
 
-    const snapshot = readStoredJson(
-      window.sessionStorage,
-      GA4_CHECKOUT_STORAGE_KEY
-    );
+    const snapshot =
+      readStoredJson(
+        window.sessionStorage,
+        GA4_CHECKOUT_STORAGE_KEY
+      );
 
     const purchaseParams = {
-      transaction_id: transactionId,
+      transaction_id:
+        transactionId,
+
       currency: "CLP",
-      payment_provider: "mercado_pago",
-      payment_status: "approved",
+
+      payment_provider:
+        "mercado_pago",
+
+      payment_status:
+        "approved",
     };
 
     if (snapshot) {
       const bookPrice =
-        Number(snapshot.bookPrice);
+        Number(
+          snapshot.bookPrice
+        );
 
       const shipping =
-        Number(snapshot.shippingCost);
+        Number(
+          snapshot.shippingCost
+        );
 
       const total =
-        Number(snapshot.total);
+        Number(
+          snapshot.total
+        );
 
-      if (Number.isFinite(bookPrice)) {
-        purchaseParams.value = bookPrice;
-        purchaseParams.items = [
-          buildBookItem(bookPrice),
-        ];
+      if (
+        Number.isFinite(
+          bookPrice
+        )
+      ) {
+        purchaseParams.value =
+          bookPrice;
+
+        purchaseParams.items =
+          [
+            buildBookItem(
+              bookPrice
+            ),
+          ];
       }
 
-      if (Number.isFinite(shipping)) {
-        purchaseParams.shipping = shipping;
+      if (
+        Number.isFinite(
+          shipping
+        )
+      ) {
+        purchaseParams.shipping =
+          shipping;
       }
 
-      if (Number.isFinite(total)) {
-        purchaseParams.purchase_total = total;
+      if (
+        Number.isFinite(
+          total
+        )
+      ) {
+        purchaseParams.purchase_total =
+          total;
       }
 
-      if (snapshot.promoCode) {
+      if (
+        snapshot.promoCode
+      ) {
         purchaseParams.coupon =
           snapshot.promoCode;
       }
 
-      if (snapshot.checkoutType) {
+      if (
+        snapshot.checkoutType
+      ) {
         purchaseParams.checkout_type =
           snapshot.checkoutType;
       }
     }
 
-    let ga4AlreadyTracked = false;
+    let ga4AlreadyTracked =
+      false;
 
     try {
-      ga4AlreadyTracked = Boolean(
-        window.localStorage.getItem(
-          ga4DedupeKey
-        )
-      );
+      ga4AlreadyTracked =
+        Boolean(
+          window.localStorage.getItem(
+            ga4DedupeKey
+          )
+        );
     } catch {
       // GA4 puede continuar aunque localStorage esté bloqueado.
     }
 
-    if (!ga4AlreadyTracked) {
+    if (
+      !ga4AlreadyTracked
+    ) {
       const ga4Tracked =
         trackGA4Event(
           "purchase",
@@ -2417,19 +3002,23 @@ function PaymentStatusPage({
       }
     }
 
-    let metaAlreadyTracked = false;
+    let metaAlreadyTracked =
+      false;
 
     try {
-      metaAlreadyTracked = Boolean(
-        window.localStorage.getItem(
-          metaDedupeKey
-        )
-      );
+      metaAlreadyTracked =
+        Boolean(
+          window.localStorage.getItem(
+            metaDedupeKey
+          )
+        );
     } catch {
       // Meta puede continuar aunque localStorage esté bloqueado.
     }
 
-    if (!metaAlreadyTracked) {
+    if (
+      !metaAlreadyTracked
+    ) {
       const totalValue =
         Number.isFinite(
           Number(
@@ -2440,25 +3029,47 @@ function PaymentStatusPage({
               purchaseParams.purchase_total
             )
           : Number.isFinite(
-                Number(purchaseParams.value)
+                Number(
+                  purchaseParams.value
+                )
               )
-            ? Number(purchaseParams.value)
+            ? Number(
+                purchaseParams.value
+              )
             : null;
 
-      if (totalValue !== null) {
+      if (
+        totalValue !== null
+      ) {
         const metaTracked =
           trackMetaEvent(
             "Purchase",
+
             {
-              value: totalValue,
-              currency: "CLP",
+              value:
+                totalValue,
+
+              currency:
+                "CLP",
+
               content_name:
                 "La Llave I: Ciudad Central",
+
               content_ids: [
                 "la-llave-i-ciudad-central-physical",
               ],
-              content_type: "product",
+
+              content_type:
+                "product",
+
               num_items: 1,
+            },
+
+            {
+              eventID:
+                String(
+                  transactionId
+                ),
             }
           );
 
@@ -2489,14 +3100,18 @@ function PaymentStatusPage({
     >
       <Background
         rainDrops={rainDrops}
-        bgSrc={BG_SOURCES[bgIndex]}
+        bgSrc={
+          BG_SOURCES[bgIndex]
+        }
         onBgError={() =>
           setBgIndex(
-            (current) => current + 1
+            (current) =>
+              current + 1
           )
         }
         hideBg={
-          bgIndex >= BG_SOURCES.length
+          bgIndex >=
+          BG_SOURCES.length
         }
       />
 
@@ -2516,6 +3131,7 @@ function PaymentStatusPage({
 
           <span>
             LA LLAVE I
+
             <small>
               CIUDAD CENTRAL
             </small>
@@ -2527,8 +3143,13 @@ function PaymentStatusPage({
         <div className="nav-right">
           <select
             value={lang}
-            onChange={(event) =>
-              setLang(event.target.value)
+            onChange={(
+              event
+            ) =>
+              setLang(
+                event.target
+                  .value
+              )
             }
             aria-label="Idioma"
           >
@@ -2553,15 +3174,23 @@ function PaymentStatusPage({
           {copy.kicker}
         </p>
 
-        <h1>{copy.title}</h1>
-        <p>{copy.message}</p>
+        <h1>
+          {copy.title}
+        </h1>
+
+        <p>
+          {copy.message}
+        </p>
 
         {(paymentId ||
           externalReference) && (
           <div className="payment-reference">
             {paymentId && (
               <p>
-                <span>ID de pago</span>
+                <span>
+                  ID de pago
+                </span>
+
                 <strong>
                   {paymentId}
                 </strong>
@@ -2570,9 +3199,14 @@ function PaymentStatusPage({
 
             {externalReference && (
               <p>
-                <span>Referencia</span>
+                <span>
+                  Referencia
+                </span>
+
                 <strong>
-                  {externalReference}
+                  {
+                    externalReference
+                  }
                 </strong>
               </p>
             )}
@@ -2584,7 +3218,8 @@ function PaymentStatusPage({
             className="cta primary"
             href="/"
           >
-            Volver a Ciudad Central
+            Volver a Ciudad
+            Central
           </a>
 
           <a
@@ -2607,7 +3242,8 @@ function PressKitPage({
   bgIndex,
   setBgIndex,
 }) {
-  const isEnglish = lang === "en";
+  const isEnglish =
+    lang === "en";
 
   const reviewSubject =
     encodeURIComponent(
@@ -2626,114 +3262,146 @@ function PressKitPage({
   const reviewMail =
     `mailto:${LINKS.email}?subject=${reviewSubject}&body=${reviewBody}`;
 
-  const copy = isEnglish
-    ? {
-        navHome: "Home",
-        navMaterials: "Materials",
-        navContact: "Contact",
-        kicker: "Official Press Kit",
-        title: "La Llave I: Ciudad Central",
-        subtitle:
-          "Chilean dystopian thriller · Code 066 · Central City",
-        intro:
-          "A cinematic, dark and atmospheric literary universe for readers of mystery, dystopia and psychological suspense.",
-        amazon: "View on Amazon",
-        request:
-          "Request digital review copy",
-        website: "Official website",
-        synopsisTitle: "Short synopsis",
-        synopsis:
-          "When a key marked 066 appears in a city built on surveillance, silence and buried memories, the truth begins to open a door no one was supposed to find.",
-        extendedTitle:
-          "For reviewers and media",
-        extended:
-          "La Llave I: Ciudad Central is the first threshold of a Chilean dystopian saga. It combines urban noir, mystery, conspiracy, memory and a cinematic sense of danger without losing its emotional core: what happens when the truth survives inside a city designed to erase it?",
-        detailsTitle: "Book details",
-        author: "Author",
-        genre: "Genre",
-        genreValue:
-          "Dystopian thriller / mystery / noir fiction",
-        language: "Language",
-        languageValue: "Spanish",
-        availability: "Availability",
-        availabilityValue:
-          "Amazon Kindle and paperback",
-        materialsTitle:
-          "Available material",
-        cover: "Cover and mockup",
-        coverText:
-          "Official book visuals for features, posts and editorial mentions.",
-        trailer: "Vertical trailers",
-        trailerText:
-          "Short-form promotional videos for Instagram Reels, TikTok and stories.",
-        social: "Social media assets",
-        socialText:
-          "Cryptic visual posts in Spanish and English for BookTok and Bookstagram.",
-        arc: "Digital review copy",
-        arcText:
-          "Available upon request for reviewers, creators, book clubs and media.",
-        contactTitle:
-          "Contact / Review requests",
-        contactText:
-          "For interviews, reviews, features, collaborations or digital review copies, contact the official author channel below.",
-        footer:
-          "Saga La Llave © 2026 · Official press material",
-      }
-    : {
-        navHome: "Inicio",
-        navMaterials: "Materiales",
-        navContact: "Contacto",
-        kicker: "Press Kit Oficial",
-        title: "La Llave I: Ciudad Central",
-        subtitle:
-          "Thriller distópico chileno · Código 066 · Ciudad Central",
-        intro:
-          "Un universo literario oscuro, cinematográfico y atmosférico para lectores de misterio, distopía y suspense psicológico.",
-        amazon: "Ver en Amazon",
-        request:
-          "Solicitar copia digital para reseña",
-        website: "Web oficial",
-        synopsisTitle: "Sinopsis breve",
-        synopsis:
-          "Cuando una llave marcada con 066 aparece en una ciudad construida sobre vigilancia, silencio y memorias enterradas, la verdad comienza a abrir una puerta que nadie debía encontrar.",
-        extendedTitle:
-          "Para reseñadores y medios",
-        extended:
-          "La Llave I: Ciudad Central es el primer umbral de una saga distópica chilena. Combina noir urbano, misterio, conspiración, memoria y una tensión cinematográfica sin perder su centro emocional: qué ocurre cuando la verdad sobrevive dentro de una ciudad diseñada para borrarla.",
-        detailsTitle:
-          "Ficha del libro",
-        author: "Autor",
-        genre: "Género",
-        genreValue:
-          "Thriller distópico / misterio / noir",
-        language: "Idioma",
-        languageValue: "Español",
-        availability: "Disponibilidad",
-        availabilityValue:
-          "Amazon Kindle y tapa blanda",
-        materialsTitle:
-          "Material disponible",
-        cover: "Portada y mockup",
-        coverText:
-          "Visuales oficiales del libro para notas, publicaciones y menciones editoriales.",
-        trailer:
-          "Tráilers verticales",
-        trailerText:
-          "Videos promocionales cortos para Instagram Reels, TikTok e historias.",
-        social: "Piezas para redes",
-        socialText:
-          "Posts crípticos en español e inglés para BookTok y Bookstagram.",
-        arc:
-          "Copia digital de reseña",
-        arcText:
-          "Disponible bajo solicitud para reseñadores, creadores, clubes de lectura y medios.",
-        contactTitle:
-          "Contacto / Solicitudes de reseña",
-        contactText:
-          "Para entrevistas, reseñas, notas, colaboraciones o copias digitales de lectura, contacta el canal oficial del autor.",
-        footer:
-          "Saga La Llave © 2026 · Material oficial de prensa",
-      };
+  const copy =
+    isEnglish
+      ? {
+          navHome: "Home",
+          navMaterials:
+            "Materials",
+          navContact:
+            "Contact",
+          kicker:
+            "Official Press Kit",
+          title:
+            "La Llave I: Ciudad Central",
+          subtitle:
+            "Chilean dystopian thriller · Code 066 · Central City",
+          intro:
+            "A cinematic, dark and atmospheric literary universe for readers of mystery, dystopia and psychological suspense.",
+          amazon:
+            "View on Amazon",
+          request:
+            "Request digital review copy",
+          website:
+            "Official website",
+          synopsisTitle:
+            "Short synopsis",
+          synopsis:
+            "When a key marked 066 appears in a city built on surveillance, silence and buried memories, the truth begins to open a door no one was supposed to find.",
+          extendedTitle:
+            "For reviewers and media",
+          extended:
+            "La Llave I: Ciudad Central is the first threshold of a Chilean dystopian saga. It combines urban noir, mystery, conspiracy, memory and a cinematic sense of danger without losing its emotional core: what happens when the truth survives inside a city designed to erase it?",
+          detailsTitle:
+            "Book details",
+          author:
+            "Author",
+          genre:
+            "Genre",
+          genreValue:
+            "Dystopian thriller / mystery / noir fiction",
+          language:
+            "Language",
+          languageValue:
+            "Spanish",
+          availability:
+            "Availability",
+          availabilityValue:
+            "Amazon Kindle and paperback",
+          materialsTitle:
+            "Available material",
+          cover:
+            "Cover and mockup",
+          coverText:
+            "Official book visuals for features, posts and editorial mentions.",
+          trailer:
+            "Vertical trailers",
+          trailerText:
+            "Short-form promotional videos for Instagram Reels, TikTok and stories.",
+          social:
+            "Social media assets",
+          socialText:
+            "Cryptic visual posts in Spanish and English for BookTok and Bookstagram.",
+          arc:
+            "Digital review copy",
+          arcText:
+            "Available upon request for reviewers, creators, book clubs and media.",
+          contactTitle:
+            "Contact / Review requests",
+          contactText:
+            "For interviews, reviews, features, collaborations or digital review copies, contact the official author channel below.",
+          footer:
+            "Saga La Llave © 2026 · Official press material",
+        }
+      : {
+          navHome: "Inicio",
+          navMaterials:
+            "Materiales",
+          navContact:
+            "Contacto",
+          kicker:
+            "Press Kit Oficial",
+          title:
+            "La Llave I: Ciudad Central",
+          subtitle:
+            "Thriller distópico chileno · Código 066 · Ciudad Central",
+          intro:
+            "Un universo literario oscuro, cinematográfico y atmosférico para lectores de misterio, distopía y suspense psicológico.",
+          amazon:
+            "Ver en Amazon",
+          request:
+            "Solicitar copia digital para reseña",
+          website:
+            "Web oficial",
+          synopsisTitle:
+            "Sinopsis breve",
+          synopsis:
+            "Cuando una llave marcada con 066 aparece en una ciudad construida sobre vigilancia, silencio y memorias enterradas, la verdad comienza a abrir una puerta que nadie debía encontrar.",
+          extendedTitle:
+            "Para reseñadores y medios",
+          extended:
+            "La Llave I: Ciudad Central es el primer umbral de una saga distópica chilena. Combina noir urbano, misterio, conspiración, memoria y una tensión cinematográfica sin perder su centro emocional: qué ocurre cuando la verdad sobrevive dentro de una ciudad diseñada para borrarla.",
+          detailsTitle:
+            "Ficha del libro",
+          author:
+            "Autor",
+          genre:
+            "Género",
+          genreValue:
+            "Thriller distópico / misterio / noir",
+          language:
+            "Idioma",
+          languageValue:
+            "Español",
+          availability:
+            "Disponibilidad",
+          availabilityValue:
+            "Amazon Kindle y tapa blanda",
+          materialsTitle:
+            "Material disponible",
+          cover:
+            "Portada y mockup",
+          coverText:
+            "Visuales oficiales del libro para notas, publicaciones y menciones editoriales.",
+          trailer:
+            "Tráilers verticales",
+          trailerText:
+            "Videos promocionales cortos para Instagram Reels, TikTok e historias.",
+          social:
+            "Piezas para redes",
+          socialText:
+            "Posts crípticos en español e inglés para BookTok y Bookstagram.",
+          arc:
+            "Copia digital de reseña",
+          arcText:
+            "Disponible bajo solicitud para reseñadores, creadores, clubes de lectura y medios.",
+          contactTitle:
+            "Contacto / Solicitudes de reseña",
+          contactText:
+            "Para entrevistas, reseñas, notas, colaboraciones o copias digitales de lectura, contacta el canal oficial del autor.",
+          footer:
+            "Saga La Llave © 2026 · Material oficial de prensa",
+        };
 
   return (
     <main
@@ -2743,14 +3411,18 @@ function PressKitPage({
     >
       <Background
         rainDrops={rainDrops}
-        bgSrc={BG_SOURCES[bgIndex]}
+        bgSrc={
+          BG_SOURCES[bgIndex]
+        }
         onBgError={() =>
           setBgIndex(
-            (current) => current + 1
+            (current) =>
+              current + 1
           )
         }
         hideBg={
-          bgIndex >= BG_SOURCES.length
+          bgIndex >=
+          BG_SOURCES.length
         }
       />
 
@@ -2770,7 +3442,10 @@ function PressKitPage({
 
           <span>
             LA LLAVE I
-            <small>PRESS KIT</small>
+
+            <small>
+              PRESS KIT
+            </small>
           </span>
         </a>
 
@@ -2780,7 +3455,9 @@ function PressKitPage({
           </a>
 
           <a href="#materiales">
-            {copy.navMaterials}
+            {
+              copy.navMaterials
+            }
           </a>
 
           <a href="#contacto-prensa">
@@ -2791,14 +3468,18 @@ function PressKitPage({
         <div className="nav-right">
           <div className="nav-socials">
             <Social
-              href={LINKS.instagram}
+              href={
+                LINKS.instagram
+              }
               label="Instagram"
             >
               <InstagramIcon />
             </Social>
 
             <Social
-              href={LINKS.tiktok}
+              href={
+                LINKS.tiktok
+              }
               label="TikTok"
             >
               <TikTokIcon />
@@ -2808,7 +3489,9 @@ function PressKitPage({
           <select
             value={lang}
             onChange={(e) =>
-              setLang(e.target.value)
+              setLang(
+                e.target.value
+              )
             }
             aria-label="Idioma"
           >
@@ -2832,7 +3515,9 @@ function PressKitPage({
             {copy.kicker}
           </p>
 
-          <h1>{copy.title}</h1>
+          <h1>
+            {copy.title}
+          </h1>
 
           <div className="gold-line" />
 
@@ -2847,7 +3532,9 @@ function PressKitPage({
           <div className="cta-row">
             <a
               className="cta primary"
-              href={LINKS.physical}
+              href={
+                LINKS.physical
+              }
               target="_blank"
               rel="noreferrer noopener"
             >
@@ -2872,7 +3559,9 @@ function PressKitPage({
 
         <aside className="presskit-cover panel">
           <img
-            src={ASSETS.mockup}
+            src={
+              ASSETS.mockup
+            }
             alt="La Llave I: Ciudad Central"
           />
         </aside>
@@ -2880,24 +3569,34 @@ function PressKitPage({
 
       <section className="presskit-section panel">
         <p className="kicker">
-          {copy.synopsisTitle}
+          {
+            copy.synopsisTitle
+          }
         </p>
 
-        <h2>{copy.synopsis}</h2>
+        <h2>
+          {copy.synopsis}
+        </h2>
       </section>
 
       <section className="presskit-two">
         <article className="panel">
           <p className="kicker">
-            {copy.extendedTitle}
+            {
+              copy.extendedTitle
+            }
           </p>
 
-          <p>{copy.extended}</p>
+          <p>
+            {copy.extended}
+          </p>
         </article>
 
         <article className="panel presskit-facts">
           <p className="kicker">
-            {copy.detailsTitle}
+            {
+              copy.detailsTitle
+            }
           </p>
 
           <ul>
@@ -2907,7 +3606,8 @@ function PressKitPage({
               </span>
 
               <b>
-                Enrique G. Santibañez
+                Enrique G.
+                Santibañez
               </b>
             </li>
 
@@ -2917,7 +3617,9 @@ function PressKitPage({
               </span>
 
               <b>
-                {copy.genreValue}
+                {
+                  copy.genreValue
+                }
               </b>
             </li>
 
@@ -2927,17 +3629,23 @@ function PressKitPage({
               </span>
 
               <b>
-                {copy.languageValue}
+                {
+                  copy.languageValue
+                }
               </b>
             </li>
 
             <li>
               <span>
-                {copy.availability}
+                {
+                  copy.availability
+                }
               </span>
 
               <b>
-                {copy.availabilityValue}
+                {
+                  copy.availabilityValue
+                }
               </b>
             </li>
           </ul>
@@ -2950,25 +3658,43 @@ function PressKitPage({
       >
         <article className="press-card panel">
           <img
-            src={ASSETS.mockup}
+            src={
+              ASSETS.mockup
+            }
             alt=""
           />
 
           <div>
-            <h3>{copy.cover}</h3>
-            <p>{copy.coverText}</p>
+            <h3>
+              {copy.cover}
+            </h3>
+
+            <p>
+              {
+                copy.coverText
+              }
+            </p>
           </div>
         </article>
 
         <article className="press-card panel">
           <img
-            src={BG_SOURCES[0]}
+            src={
+              BG_SOURCES[0]
+            }
             alt=""
           />
 
           <div>
-            <h3>{copy.trailer}</h3>
-            <p>{copy.trailerText}</p>
+            <h3>
+              {copy.trailer}
+            </h3>
+
+            <p>
+              {
+                copy.trailerText
+              }
+            </p>
           </div>
         </article>
 
@@ -2979,8 +3705,15 @@ function PressKitPage({
           />
 
           <div>
-            <h3>{copy.social}</h3>
-            <p>{copy.socialText}</p>
+            <h3>
+              {copy.social}
+            </h3>
+
+            <p>
+              {
+                copy.socialText
+              }
+            </p>
           </div>
         </article>
 
@@ -2991,8 +3724,13 @@ function PressKitPage({
           />
 
           <div>
-            <h3>{copy.arc}</h3>
-            <p>{copy.arcText}</p>
+            <h3>
+              {copy.arc}
+            </h3>
+
+            <p>
+              {copy.arcText}
+            </p>
           </div>
         </article>
       </section>
@@ -3002,7 +3740,9 @@ function PressKitPage({
         className="presskit-contact panel"
       >
         <p className="kicker">
-          {copy.contactTitle}
+          {
+            copy.contactTitle
+          }
         </p>
 
         <h2>
@@ -3026,7 +3766,9 @@ function PressKitPage({
 
           <a
             className="cta"
-            href={LINKS.instagram}
+            href={
+              LINKS.instagram
+            }
             target="_blank"
             rel="noreferrer noopener"
           >
@@ -3036,18 +3778,24 @@ function PressKitPage({
       </section>
 
       <footer className="footer">
-        <p>{copy.footer}</p>
+        <p>
+          {copy.footer}
+        </p>
 
         <div className="footer-socials">
           <Social
-            href={LINKS.instagram}
+            href={
+              LINKS.instagram
+            }
             label="Instagram"
           >
             <InstagramIcon />
           </Social>
 
           <Social
-            href={LINKS.tiktok}
+            href={
+              LINKS.tiktok
+            }
             label="TikTok"
           >
             <TikTokIcon />
@@ -3061,7 +3809,9 @@ function PressKitPage({
           </Social>
 
           <Social
-            href={LINKS.youtube}
+            href={
+              LINKS.youtube
+            }
             label="YouTube"
           >
             <YouTubeIcon />
@@ -3104,13 +3854,20 @@ function Background({
             <span
               key={index}
               style={{
-                left: drop.left,
+                left:
+                  drop.left,
+
                 animationDelay:
                   drop.delay,
+
                 animationDuration:
                   drop.duration,
-                height: drop.height,
-                opacity: drop.opacity,
+
+                height:
+                  drop.height,
+
+                opacity:
+                  drop.opacity,
               }}
             />
           )
@@ -3129,14 +3886,18 @@ function HazardBorders() {
     <>
       <div className="hazard hazard-left">
         <img
-          src={ASSETS.stripe}
+          src={
+            ASSETS.stripe
+          }
           alt=""
         />
       </div>
 
       <div className="hazard hazard-right">
         <img
-          src={ASSETS.stripe}
+          src={
+            ASSETS.stripe
+          }
           alt=""
         />
       </div>
@@ -3154,8 +3915,13 @@ function LockedBook({
         ?
       </div>
 
-      <h3>{title}</h3>
-      <p>{copy}</p>
+      <h3>
+        {title}
+      </h3>
+
+      <p>
+        {copy}
+      </p>
     </article>
   );
 }
@@ -3173,9 +3939,14 @@ function Press({
       />
 
       <div>
-        <h3>{title}</h3>
-        <p>{children}</p>
+        <h3>
+          {title}
+        </h3>
+
+        <p>
+          {children}
+        </p>
       </div>
     </article>
   );
-    }
+}
