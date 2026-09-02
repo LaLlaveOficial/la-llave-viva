@@ -1,6 +1,14 @@
-const STORAGE_SUBSCRIBED = "ajraz10_subscribed_v1";
-const STORAGE_DISMISSED = "ajraz10_dismissed_at_v1";
-const DISMISS_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const STORAGE_SUBSCRIBED =
+  "ajraz10_subscribed_v1";
+
+const STORAGE_PENDING =
+  "ajraz10_pending_email_v1";
+
+const STORAGE_DISMISSED =
+  "ajraz10_dismissed_at_v1";
+
+const DISMISS_COOLDOWN_MS =
+  12 * 60 * 60 * 1000;
 
 const ORIGINAL_BOOK_PRICE = 15990;
 const DISCOUNT_AMOUNT = 1599;
@@ -9,21 +17,35 @@ const DISCOUNTED_BOOK_PRICE = 14391;
 let appliedPromo = null;
 let originalFetch = null;
 
-function chileClockKey(date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Santiago",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
+function chileClockKey(
+  date = new Date()
+) {
+  const parts =
+    new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone:
+          "America/Santiago",
 
-  const values = Object.fromEntries(
-    parts.map((part) => [part.type, part.value])
-  );
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+      }
+    ).formatToParts(date);
+
+  const values =
+    Object.fromEntries(
+      parts.map(
+        (part) => [
+          part.type,
+          part.value,
+        ]
+      )
+    );
 
   return Number(
     `${values.year}${values.month}${values.day}${values.hour}${values.minute}${values.second}`
@@ -31,7 +53,8 @@ function chileClockKey(date = new Date()) {
 }
 
 function campaignActive() {
-  const key = chileClockKey();
+  const key =
+    chileClockKey();
 
   return (
     key >= 20260824000000 &&
@@ -41,24 +64,142 @@ function campaignActive() {
 
 function previewEnabled() {
   return (
-    new URLSearchParams(window.location.search).get(
+    new URLSearchParams(
+      window.location.search
+    ).get(
       "ajraz10_preview"
     ) === "1"
   );
 }
 
 function formatCLP(value) {
-  return new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return new Intl.NumberFormat(
+    "es-CL",
+    {
+      style: "currency",
+      currency: "CLP",
+      maximumFractionDigits: 0,
+    }
+  ).format(value);
 }
 
-function closePopup(remember = true) {
-  const overlay = document.getElementById(
-    "ajraz10-overlay"
+function safeStorageSet(
+  key,
+  value
+) {
+  try {
+    localStorage.setItem(
+      key,
+      String(value)
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeStorageRemove(
+  key
+) {
+  try {
+    localStorage.removeItem(
+      key
+    );
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function markPromoPending(
+  email
+) {
+  safeStorageSet(
+    STORAGE_PENDING,
+    email
   );
+}
+
+function markPromoActive(
+  email
+) {
+  safeStorageRemove(
+    STORAGE_PENDING
+  );
+
+  safeStorageSet(
+    STORAGE_SUBSCRIBED,
+    email
+  );
+}
+
+function isPendingVerification(
+  result
+) {
+  return Boolean(
+    result?.pendingVerification ===
+      true ||
+      result?.verificationRequired ===
+        true ||
+      result?.status ===
+        "pending" ||
+      result?.entitlementStatus ===
+        "pending"
+  );
+}
+
+async function requestPromoAccess({
+  name,
+  email,
+  consent,
+  website = "",
+}) {
+  const response =
+    await fetch(
+      "/api/ajraz10-subscribe",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          name,
+          email,
+          consent,
+          website,
+        }),
+      }
+    );
+
+  const result =
+    await response
+      .json()
+      .catch(
+        () => ({})
+      );
+
+  if (!response.ok) {
+    throw new Error(
+      result?.error ||
+        "No pudimos solicitar el acceso."
+    );
+  }
+
+  return result;
+}
+
+function closePopup(
+  remember = true
+) {
+  const overlay =
+    document.getElementById(
+      "ajraz10-overlay"
+    );
 
   if (overlay) {
     overlay.remove();
@@ -68,11 +209,221 @@ function closePopup(remember = true) {
     remember &&
     !previewEnabled()
   ) {
-    localStorage.setItem(
+    safeStorageSet(
       STORAGE_DISMISSED,
-      String(Date.now())
+      Date.now()
     );
   }
+}
+
+function bindPopupClose(
+  overlay,
+  remember = false
+) {
+  overlay
+    ?.querySelector(
+      ".ajraz10-close"
+    )
+    ?.addEventListener(
+      "click",
+      () =>
+        closePopup(
+          remember
+        )
+    );
+}
+
+function renderPendingPopup(
+  overlay,
+  result,
+  fallbackEmail
+) {
+  const email =
+    String(
+      result?.email ||
+        fallbackEmail ||
+        ""
+    );
+
+  markPromoPending(
+    email
+  );
+
+  const modal =
+    overlay.querySelector(
+      ".ajraz10-modal"
+    );
+
+  if (!modal) {
+    return;
+  }
+
+  modal.innerHTML = `
+    <button
+      class="ajraz10-close"
+      type="button"
+      aria-label="Cerrar"
+    >
+      ×
+    </button>
+
+    <div class="ajraz10-eyebrow">
+      ARCHIVO 066 · VERIFICACIÓN REQUERIDA
+    </div>
+
+    <div class="ajraz10-code-mark">
+      CONFIRMACIÓN PENDIENTE
+    </div>
+
+    <h2>
+      REVISA TU CORREO
+    </h2>
+
+    <p class="ajraz10-lead">
+      Enviamos un enlace de confirmación a
+      <strong>${email}</strong>.
+      <br><br>
+      El 10% todavía
+      <strong>no está activo</strong>.
+      Debes abrir el mensaje y confirmar
+      que ese correo te pertenece.
+    </p>
+
+    <button
+      class="ajraz10-go-buy"
+      type="button"
+    >
+      VOLVER A LA COMPRA
+    </button>
+
+    <p class="ajraz10-terms">
+      El enlace de verificación vence en
+      24 horas. Sin confirmación del correo,
+      AJRAZ10 no puede utilizarse.
+    </p>
+  `;
+
+  bindPopupClose(
+    overlay,
+    false
+  );
+
+  modal
+    .querySelector(
+      ".ajraz10-go-buy"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        closePopup(
+          false
+        );
+
+        document
+          .getElementById(
+            "compra-directa"
+          )
+          ?.scrollIntoView({
+            behavior:
+              "smooth",
+
+            block:
+              "start",
+          });
+      }
+    );
+}
+
+function renderGrantedPopup(
+  overlay,
+  result,
+  fallbackEmail
+) {
+  const email =
+    String(
+      result?.email ||
+        fallbackEmail ||
+        ""
+    );
+
+  markPromoActive(
+    email
+  );
+
+  const modal =
+    overlay.querySelector(
+      ".ajraz10-modal"
+    );
+
+  if (!modal) {
+    return;
+  }
+
+  modal.innerHTML = `
+    <button
+      class="ajraz10-close"
+      type="button"
+      aria-label="Cerrar"
+    >
+      ×
+    </button>
+
+    <div class="ajraz10-eyebrow">
+      ARCHIVO 066 · AUTORIZACIÓN COMPLETADA
+    </div>
+
+    <div class="ajraz10-code-mark">
+      CÓDIGO ENVIADO
+    </div>
+
+    <h2>
+      ACCESO CONCEDIDO
+    </h2>
+
+    <p class="ajraz10-lead">
+      El beneficio del 10% quedó asociado a
+      <strong>${email}</strong>.
+      Te enviamos el código y las instrucciones
+      a ese correo.
+    </p>
+
+    <button
+      class="ajraz10-go-buy"
+      type="button"
+    >
+      IR A COMPRAR
+    </button>
+  `;
+
+  bindPopupClose(
+    overlay,
+    false
+  );
+
+  modal
+    .querySelector(
+      ".ajraz10-go-buy"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+        closePopup(
+          false
+        );
+
+        document
+          .getElementById(
+            "compra-directa"
+          )
+          ?.scrollIntoView({
+            behavior:
+              "smooth",
+
+            block:
+              "start",
+          });
+      }
+    );
 }
 
 function showPopup() {
@@ -100,25 +451,31 @@ function showPopup() {
     return;
   }
 
-  const dismissed = Number(
-    localStorage.getItem(
-      STORAGE_DISMISSED
-    ) || 0
-  );
+  const dismissed =
+    Number(
+      localStorage.getItem(
+        STORAGE_DISMISSED
+      ) || 0
+    );
 
   if (
     !previewEnabled() &&
     dismissed &&
-    Date.now() - dismissed <
+    Date.now() -
+      dismissed <
       DISMISS_COOLDOWN_MS
   ) {
     return;
   }
 
   const overlay =
-    document.createElement("div");
+    document.createElement(
+      "div"
+    );
 
-  overlay.id = "ajraz10-overlay";
+  overlay.id =
+    "ajraz10-overlay";
+
   overlay.className =
     "ajraz10-overlay";
 
@@ -133,7 +490,9 @@ function showPopup() {
         class="ajraz10-close"
         type="button"
         aria-label="Cerrar"
-      >×</button>
+      >
+        ×
+      </button>
 
       <div class="ajraz10-eyebrow">
         ARCHIVO 066 · ACCESO ESPECIAL
@@ -148,10 +507,11 @@ function showPopup() {
       </h2>
 
       <p class="ajraz10-lead">
-        Regístrate en el Archivo 066 y recibe en tu
-        correo un código privado para la edición
-        impresa de
-        <strong>La Llave I: Ciudad Central</strong>.
+        Regístrate en el Archivo 066.
+        Para proteger el beneficio,
+        enviaremos un enlace a tu correo
+        para confirmar que la dirección
+        realmente te pertenece.
       </p>
 
       <form id="ajraz10-form">
@@ -166,7 +526,9 @@ function showPopup() {
         <label>
           <span>
             Nombre
-            <small>(opcional)</small>
+            <small>
+              (opcional)
+            </small>
           </span>
 
           <input
@@ -190,7 +552,9 @@ function showPopup() {
           >
         </label>
 
-        <label class="ajraz10-consent">
+        <label
+          class="ajraz10-consent"
+        >
           <input
             name="consent"
             type="checkbox"
@@ -199,12 +563,15 @@ function showPopup() {
 
           <span>
             Acepto recibir comunicaciones del
-            Archivo 066 y esta promoción por correo.
+            Archivo 066 y esta promoción por
+            correo.
           </span>
         </label>
 
-        <button type="submit">
-          DESBLOQUEAR 10%
+        <button
+          type="submit"
+        >
+          SOLICITAR MI 10%
         </button>
 
         <p
@@ -214,10 +581,11 @@ function showPopup() {
       </form>
 
       <p class="ajraz10-terms">
-        Válido desde el 24 de agosto de 2026 a las
-        00:00 hasta el 30 de septiembre de 2026.
-        10% sobre el precio del libro.
-        Despacho no incluido en el descuento.
+        El beneficio solo se activa después
+        de confirmar el correo.
+        Válido hasta el 30 de septiembre de
+        2026. Despacho no incluido en el
+        descuento.
       </p>
     </section>
   `;
@@ -226,23 +594,21 @@ function showPopup() {
     overlay
   );
 
-  overlay
-    .querySelector(
-      ".ajraz10-close"
-    )
-    .addEventListener(
-      "click",
-      () =>
-        closePopup(true)
-    );
+  bindPopupClose(
+    overlay,
+    true
+  );
 
   overlay.addEventListener(
     "click",
     (event) => {
       if (
-        event.target === overlay
+        event.target ===
+        overlay
       ) {
-        closePopup(true);
+        closePopup(
+          true
+        );
       }
     }
   );
@@ -251,6 +617,10 @@ function showPopup() {
     overlay.querySelector(
       "#ajraz10-form"
     );
+
+  if (!form) {
+    return;
+  }
 
   form.addEventListener(
     "submit",
@@ -268,150 +638,93 @@ function showPopup() {
         );
 
       const data =
-        new FormData(form);
+        new FormData(
+          form
+        );
 
-      button.disabled = true;
+      button.disabled =
+        true;
 
       status.className =
         "ajraz10-form-status";
 
       status.textContent =
-        "Autorizando acceso…";
+        "Enviando verificación…";
+
+      const submittedEmail =
+        String(
+          data.get(
+            "email"
+          ) || ""
+        )
+          .trim()
+          .toLowerCase();
 
       try {
-        const response =
-          await fetch(
-            "/api/ajraz10-subscribe",
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body: JSON.stringify({
-                name: String(
-                  data.get("name") ||
-                    ""
-                ),
-
-                email: String(
-                  data.get("email") ||
-                    ""
-                ),
-
-                consent:
-                  data.get(
-                    "consent"
-                  ) === "on",
-
-                website: String(
-                  data.get(
-                    "website"
-                  ) || ""
-                ),
-              }),
-            }
-          );
-
         const result =
-          await response
-            .json()
-            .catch(() => ({}));
+          await requestPromoAccess({
+            name:
+              String(
+                data.get(
+                  "name"
+                ) || ""
+              ),
 
-        if (!response.ok) {
-          throw new Error(
-            result?.error ||
-              "No pudimos habilitar el acceso."
+            email:
+              submittedEmail,
+
+            consent:
+              data.get(
+                "consent"
+              ) === "on",
+
+            website:
+              String(
+                data.get(
+                  "website"
+                ) || ""
+              ),
+          });
+
+        if (
+          isPendingVerification(
+            result
+          )
+        ) {
+          renderPendingPopup(
+            overlay,
+            result,
+            submittedEmail
           );
+
+          return;
         }
 
-        localStorage.setItem(
-          STORAGE_SUBSCRIBED,
-          result.email ||
-            String(
-              data.get("email") ||
-                ""
-            )
+        /*
+         * Compatibilidad temporal:
+         * mientras el backend antiguo siga
+         * desplegado, puede devolver una
+         * autorización inmediata.
+         *
+         * Cuando instalemos el backend de
+         * double opt-in, esta rama dejará
+         * de usarse para solicitudes nuevas.
+         */
+        renderGrantedPopup(
+          overlay,
+          result,
+          submittedEmail
         );
-
-        overlay.querySelector(
-          ".ajraz10-modal"
-        ).innerHTML = `
-          <button
-            class="ajraz10-close"
-            type="button"
-            aria-label="Cerrar"
-          >×</button>
-
-          <div class="ajraz10-eyebrow">
-            ARCHIVO 066 · AUTORIZACIÓN COMPLETADA
-          </div>
-
-          <div class="ajraz10-code-mark">
-            CÓDIGO ENVIADO
-          </div>
-
-          <h2>
-            ACCESO CONCEDIDO
-          </h2>
-
-          <p class="ajraz10-lead">
-            El beneficio del 10% quedó asociado a
-            <strong>${result.email}</strong>.
-            Te enviamos el código y las instrucciones
-            a ese correo.
-          </p>
-
-          <button
-            class="ajraz10-go-buy"
-            type="button"
-          >
-            IR A COMPRAR
-          </button>
-        `;
-
-        overlay
-          .querySelector(
-            ".ajraz10-close"
-          )
-          .addEventListener(
-            "click",
-            () =>
-              closePopup(false)
-          );
-
-        overlay
-          .querySelector(
-            ".ajraz10-go-buy"
-          )
-          .addEventListener(
-            "click",
-            () => {
-              closePopup(false);
-
-              document
-                .getElementById(
-                  "compra-directa"
-                )
-                ?.scrollIntoView({
-                  behavior:
-                    "smooth",
-                  block:
-                    "start",
-                });
-            }
-          );
       } catch (error) {
         status.className =
           "ajraz10-form-status is-error";
 
         status.textContent =
           error?.message ||
-          "No pudimos habilitar el acceso.";
+          "No pudimos solicitar el acceso.";
 
-        button.disabled = false;
+        button.disabled =
+          false;
       }
     }
   );
@@ -419,7 +732,8 @@ function showPopup() {
 
 function schedulePopupAfterIntro() {
   if (
-    window.location.pathname !== "/"
+    window.location.pathname !==
+    "/"
   ) {
     return;
   }
@@ -427,39 +741,42 @@ function schedulePopupAfterIntro() {
   let attempts = 0;
 
   const timer =
-    setInterval(() => {
-      attempts += 1;
+    setInterval(
+      () => {
+        attempts += 1;
 
-      const intro =
-        document.querySelector(
-          ".intro"
-        );
+        const intro =
+          document.querySelector(
+            ".intro"
+          );
 
-      const site =
-        document.querySelector(
-          ".site"
-        );
+        const site =
+          document.querySelector(
+            ".site"
+          );
 
-      if (
-        !intro &&
-        site
-      ) {
-        clearInterval(
-          timer
-        );
+        if (
+          !intro &&
+          site
+        ) {
+          clearInterval(
+            timer
+          );
 
-        setTimeout(
-          showPopup,
-          2800
-        );
-      } else if (
-        attempts > 120
-      ) {
-        clearInterval(
-          timer
-        );
-      }
-    }, 500);
+          setTimeout(
+            showPopup,
+            2800
+          );
+        } else if (
+          attempts > 120
+        ) {
+          clearInterval(
+            timer
+          );
+        }
+      },
+      500
+    );
 }
 
 function getCheckoutNameInput() {
@@ -495,17 +812,20 @@ async function validatePromoEntitlement(
             "application/json",
         },
 
-        body: JSON.stringify({
-          email,
-          code,
-        }),
+        body:
+          JSON.stringify({
+            email,
+            code,
+          }),
       }
     );
 
   const result =
     await response
       .json()
-      .catch(() => ({}));
+      .catch(
+        () => ({})
+      );
 
   if (
     !response.ok ||
@@ -525,7 +845,8 @@ function activatePromo(
   email
 ) {
   appliedPromo = {
-    code: result.code,
+    code:
+      result.code,
 
     email,
 
@@ -535,6 +856,10 @@ function activatePromo(
     discountedBookPrice:
       result.discountedBookPrice,
   };
+
+  markPromoActive(
+    email
+  );
 
   applyPromoToSummary();
 }
@@ -582,11 +907,15 @@ function injectCheckoutPromo() {
     "ajraz10-checkout";
 
   block.innerHTML = `
-    <div class="ajraz10-checkout-label">
+    <div
+      class="ajraz10-checkout-label"
+    >
       ¿Tienes un código de acceso?
     </div>
 
-    <div class="ajraz10-checkout-row">
+    <div
+      class="ajraz10-checkout-row"
+    >
       <input
         id="ajraz10-code-input"
         type="text"
@@ -608,35 +937,58 @@ function injectCheckoutPromo() {
       id="ajraz10-checkout-status"
       aria-live="polite"
     >
-      Los códigos privados se validan con el correo
-      utilizado en la compra.
+      Los códigos privados se validan con
+      el correo confirmado utilizado en
+      la compra.
     </p>
 
-    <div class="ajraz10-unlock">
-      <p class="ajraz10-unlock-copy">
-        <span class="ajraz10-unlock-title">
+    <div
+      class="ajraz10-unlock"
+    >
+      <p
+        class="ajraz10-unlock-copy"
+      >
+        <span
+          class="ajraz10-unlock-title"
+        >
           ¿AÚN NO TIENES UN CÓDIGO?
         </span>
 
-        <span class="ajraz10-unlock-text">
+        <span
+          class="ajraz10-unlock-text"
+        >
           Regístrate gratis en
-          <strong>Archivo 066</strong>
-          y obtén tu código privado de
-          <strong>10% de descuento</strong>
+          <strong>
+            Archivo 066
+          </strong>
+          y solicita tu
+          <strong>
+            10% de descuento
+          </strong>
           para esta compra.
         </span>
       </p>
 
-      <div class="ajraz10-inline-panel">
-        <p class="ajraz10-inline-note">
+      <div
+        class="ajraz10-inline-panel"
+      >
+        <p
+          class="ajraz10-inline-note"
+        >
           Usaremos el
-          <strong>nombre y correo</strong>
-          que ingresaste arriba. No tendrás que
-          salir de esta página para aplicar el
-          beneficio.
+          <strong>
+            nombre y correo
+          </strong>
+          que ingresaste arriba.
+          Te enviaremos un enlace de
+          confirmación. El descuento
+          solo se activa después de
+          confirmar tu correo.
         </p>
 
-        <label class="ajraz10-inline-consent">
+        <label
+          class="ajraz10-inline-consent"
+        >
           <input
             id="ajraz10-inline-consent"
             type="checkbox"
@@ -644,7 +996,8 @@ function injectCheckoutPromo() {
 
           <span>
             Acepto recibir comunicaciones del
-            Archivo 066 y esta promoción por correo.
+            Archivo 066 y esta promoción por
+            correo.
           </span>
         </label>
 
@@ -706,6 +1059,17 @@ function injectCheckoutPromo() {
   const nameInput =
     getCheckoutNameInput();
 
+  if (
+    !codeInput ||
+    !apply ||
+    !status ||
+    !consent ||
+    !unlockButton ||
+    !unlockStatus
+  ) {
+    return;
+  }
+
   codeInput.addEventListener(
     "input",
     () => {
@@ -717,19 +1081,14 @@ function injectCheckoutPromo() {
             ""
           );
 
-      appliedPromo = null;
+      appliedPromo =
+        null;
 
       status.className =
         "";
 
       status.textContent =
-        "Los códigos privados se validan con el correo utilizado en la compra.";
-
-      unlockStatus.className =
-        "ajraz10-inline-status";
-
-      unlockStatus.textContent =
-        "";
+        "Los códigos privados se validan con el correo confirmado utilizado en la compra.";
 
       restoreSummary();
     }
@@ -738,14 +1097,18 @@ function injectCheckoutPromo() {
   emailInput?.addEventListener(
     "input",
     () => {
-      if (
-        appliedPromo &&
+      const currentEmail =
         emailInput.value
           .trim()
-          .toLowerCase() !==
+          .toLowerCase();
+
+      if (
+        appliedPromo &&
+        currentEmail !==
           appliedPromo.email
       ) {
-        appliedPromo = null;
+        appliedPromo =
+          null;
 
         status.className =
           "is-error";
@@ -811,7 +1174,8 @@ function injectCheckoutPromo() {
         return;
       }
 
-      apply.disabled = true;
+      apply.disabled =
+        true;
 
       status.className =
         "";
@@ -835,9 +1199,16 @@ function injectCheckoutPromo() {
           "is-success";
 
         status.textContent =
-          "✓ ACCESO AUTORIZADO · 10% aplicado al precio del libro.";
+          "✓ CORREO CONFIRMADO · 10% aplicado al precio del libro.";
+
+        unlockStatus.className =
+          "ajraz10-inline-status is-success";
+
+        unlockStatus.textContent =
+          "✓ BENEFICIO ACTIVO. Puedes continuar con la compra.";
       } catch (error) {
-        appliedPromo = null;
+        appliedPromo =
+          null;
 
         status.className =
           "is-error";
@@ -848,7 +1219,8 @@ function injectCheckoutPromo() {
 
         restoreSummary();
       } finally {
-        apply.disabled = false;
+        apply.disabled =
+          false;
       }
     }
   );
@@ -902,7 +1274,7 @@ function injectCheckoutPromo() {
           "ajraz10-inline-status is-error";
 
         unlockStatus.textContent =
-          "Debes aceptar recibir las comunicaciones para obtener el código.";
+          "Debes aceptar recibir las comunicaciones para solicitar el beneficio.";
 
         consent.focus();
 
@@ -913,72 +1285,96 @@ function injectCheckoutPromo() {
         true;
 
       unlockButton.textContent =
-        "AUTORIZANDO…";
+        "ENVIANDO…";
 
       unlockStatus.className =
         "ajraz10-inline-status";
 
       unlockStatus.textContent =
-        "Solicitando acceso al Archivo 066…";
+        "Preparando la verificación de tu correo…";
 
       try {
-        const subscribeResponse =
-          await fetch(
-            "/api/ajraz10-subscribe",
-            {
-              method: "POST",
-
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-
-              body: JSON.stringify({
-                name,
-                email,
-                consent: true,
-                website: "",
-              }),
-            }
-          );
-
         const subscribeResult =
-          await subscribeResponse
-            .json()
-            .catch(() => ({}));
+          await requestPromoAccess({
+            name,
+            email,
+            consent: true,
+            website: "",
+          });
 
+        /*
+         * NUEVO FLUJO SEGURO:
+         * solicitud guardada como PENDING.
+         *
+         * No ponemos AJRAZ10 en el campo.
+         * No llamamos a validate.
+         * No mostramos descuento.
+         */
         if (
-          !subscribeResponse.ok
+          isPendingVerification(
+            subscribeResult
+          )
         ) {
-          throw new Error(
-            subscribeResult?.error ||
-              "No pudimos habilitar el acceso."
+          appliedPromo =
+            null;
+
+          restoreSummary();
+
+          codeInput.value =
+            "";
+
+          markPromoPending(
+            subscribeResult
+              ?.email ||
+              email
           );
+
+          status.className =
+            "";
+
+          status.textContent =
+            "El descuento aún no está activo. Confirma primero tu correo.";
+
+          unlockStatus.className =
+            "ajraz10-inline-status is-success";
+
+          unlockStatus.textContent =
+            "✓ CORREO ENVIADO. Abre el mensaje y pulsa “CONFIRMAR MI CORREO”. Recién entonces AJRAZ10 quedará habilitado.";
+
+          unlockButton.textContent =
+            "REVISA TU CORREO";
+
+          unlockButton.disabled =
+            true;
+
+          consent.disabled =
+            true;
+
+          return;
         }
 
+        /*
+         * COMPATIBILIDAD TEMPORAL:
+         * backend antiguo.
+         *
+         * Esta rama desaparecerá de uso
+         * para nuevas solicitudes apenas
+         * despleguemos double opt-in.
+         */
         const promoCode =
           String(
-            subscribeResult?.code ||
+            subscribeResult
+              ?.code ||
               "AJRAZ10"
           )
             .trim()
             .toUpperCase();
 
-        try {
-          localStorage.setItem(
-            STORAGE_SUBSCRIBED,
-            subscribeResult.email ||
-              email
-          );
-        } catch {
-          // El acceso puede continuar aunque localStorage esté bloqueado.
-        }
-
         codeInput.value =
           promoCode;
 
         unlockStatus.textContent =
-          "Código concedido. Aplicando el beneficio…";
+          "Código concedido. Validando beneficio…";
 
         const validationResult =
           await validatePromoEntitlement(
@@ -1001,7 +1397,7 @@ function injectCheckoutPromo() {
           "ajraz10-inline-status is-success";
 
         unlockStatus.textContent =
-          "✓ ACCESO CONCEDIDO · 10% APLICADO. Tu código también fue enviado a tu correo.";
+          "✓ ACCESO CONCEDIDO · 10% APLICADO.";
 
         unlockButton.textContent =
           "CÓDIGO ACTIVADO";
@@ -1012,7 +1408,8 @@ function injectCheckoutPromo() {
         unlockButton.disabled =
           true;
       } catch (error) {
-        appliedPromo = null;
+        appliedPromo =
+          null;
 
         restoreSummary();
 
@@ -1021,7 +1418,7 @@ function injectCheckoutPromo() {
 
         unlockStatus.textContent =
           error?.message ||
-          "No pudimos habilitar el beneficio en este momento.";
+          "No pudimos solicitar el beneficio en este momento.";
 
         unlockButton.disabled =
           false;
@@ -1059,9 +1456,11 @@ function restoreSummary() {
       "strong"
     )
   ) {
-    rows[0].querySelector(
-      "strong"
-    ).textContent =
+    rows[0]
+      .querySelector(
+        "strong"
+      )
+      .textContent =
       formatCLP(
         ORIGINAL_BOOK_PRICE
       );
@@ -1069,21 +1468,27 @@ function restoreSummary() {
 
   const region =
     getCheckoutRegionSelect()
-      ?.value || "RM";
+      ?.value ||
+    "RM";
 
   const shipping =
     region === "RM"
       ? 3000
       : 4500;
 
-  if (
-    rows[2]?.querySelector(
-      "strong"
-    )
-  ) {
-    rows[2].querySelector(
-      "strong"
-    ).textContent =
+  /*
+   * Estructura actual sin descuento:
+   * 0 Libro
+   * 1 Envío
+   * 2 Total
+   */
+  const total =
+    summary.querySelector(
+      ".sale-total strong"
+    );
+
+  if (total) {
+    total.textContent =
       formatCLP(
         ORIGINAL_BOOK_PRICE +
           shipping
@@ -1112,7 +1517,8 @@ function applyPromoToSummary() {
 
   const region =
     getCheckoutRegionSelect()
-      ?.value || "RM";
+      ?.value ||
+    "RM";
 
   const shipping =
     region === "RM"
@@ -1124,9 +1530,11 @@ function applyPromoToSummary() {
       "strong"
     )
   ) {
-    rows[0].querySelector(
-      "strong"
-    ).textContent =
+    rows[0]
+      .querySelector(
+        "strong"
+      )
+      .textContent =
       formatCLP(
         ORIGINAL_BOOK_PRICE
       );
@@ -1158,14 +1566,14 @@ function applyPromoToSummary() {
       </strong>
     `;
 
-    const total =
+    const totalRow =
       summary.querySelector(
         ".sale-total"
       );
 
     summary.insertBefore(
       discountRow,
-      total || null
+      totalRow || null
     );
   }
 
@@ -1202,7 +1610,8 @@ function installFetchInterceptor() {
         typeof input ===
         "string"
           ? input
-          : input?.url || "";
+          : input?.url ||
+            "";
 
       const isCheckout =
         rawUrl ===
@@ -1231,6 +1640,10 @@ function installFetchInterceptor() {
           .trim()
           .toUpperCase();
 
+      /*
+       * Sin código:
+       * checkout normal sin descuento.
+       */
       if (!code) {
         return originalFetch(
           input,
@@ -1241,11 +1654,12 @@ function installFetchInterceptor() {
       let body = {};
 
       try {
-        body = init?.body
-          ? JSON.parse(
-              init.body
-            )
-          : {};
+        body =
+          init?.body
+            ? JSON.parse(
+                init.body
+              )
+            : {};
       } catch {
         body = {};
       }
@@ -1253,6 +1667,15 @@ function installFetchInterceptor() {
       body.promoCode =
         code;
 
+      /*
+       * Con código:
+       * el servidor promocional será
+       * responsable de verificar también
+       * que el correo haya sido confirmado.
+       *
+       * Nunca confiamos únicamente en
+       * el descuento visual del navegador.
+       */
       return originalFetch(
         "/api/create-promo-preference",
         {
