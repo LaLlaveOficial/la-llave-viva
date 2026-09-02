@@ -1,5 +1,6 @@
 (() => {
-  const SCRIPT_FLAG = "__laLlaveFunnel066";
+  const SCRIPT_FLAG =
+    "__laLlaveFunnel066";
 
   const PRODUCT_ID =
     "la-llave-i-ciudad-central-physical";
@@ -16,6 +17,9 @@
   const ATTRIBUTION_STORAGE_KEY =
     "llave066_ga4_attribution_v1";
 
+  const VERIFIED_PROMO_LEAD_STORAGE_KEY =
+    "llave066_ajraz10_verified_lead_v1";
+
   if (window[SCRIPT_FLAG]) {
     return;
   }
@@ -28,6 +32,8 @@
     metaInitiateCheckoutSent: false,
     shippingInfoSent: false,
     gtagWrapped: false,
+    verifiedPromoLeadObserverInstalled:
+      false,
   };
 
   function safeJsonParse(value) {
@@ -199,10 +205,64 @@
     };
   }
 
+  function getCheckoutEmail() {
+    const emailInput =
+      document.querySelector(
+        '#compra-directa .sale-form input[type="email"]'
+      );
+
+    const email =
+      String(
+        emailInput?.value || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    if (
+      !email ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(
+        email
+      )
+    ) {
+      return "";
+    }
+
+    return email;
+  }
+
+  function readVerifiedPromoLeadEmail() {
+    try {
+      return String(
+        window.localStorage.getItem(
+          VERIFIED_PROMO_LEAD_STORAGE_KEY
+        ) || ""
+      )
+        .trim()
+        .toLowerCase();
+    } catch {
+      return "";
+    }
+  }
+
+  function writeVerifiedPromoLeadEmail(
+    email
+  ) {
+    try {
+      window.localStorage.setItem(
+        VERIFIED_PROMO_LEAD_STORAGE_KEY,
+        email
+      );
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function getRegion(form) {
     const regionSelect =
       form?.querySelector(
-        'select[required]'
+        "select[required]"
       );
 
     return String(
@@ -277,6 +337,53 @@
       const eventName =
         args[1];
 
+      const eventParams =
+        args[2] &&
+        typeof args[2] ===
+          "object"
+          ? args[2]
+          : {};
+
+      /*
+       * AJRAZ10 ahora usa
+       * DOUBLE OPT-IN.
+       *
+       * App.jsx conserva una
+       * llamada antigua a
+       * generate_lead cuando
+       * /api/ajraz10-subscribe
+       * responde OK.
+       *
+       * Hoy ese OK puede significar
+       * solamente:
+       *
+       * status = pending
+       *
+       * Por lo tanto NO corresponde
+       * contarlo como lead real.
+       *
+       * Bloqueamos SOLAMENTE ese
+       * evento antiguo.
+       *
+       * El lead verdadero se enviará
+       * cuando AJRAZ10 haya sido
+       * verificado y aplicado.
+       */
+      if (
+        command === "event" &&
+        eventName ===
+          "generate_lead" &&
+        eventParams.lead_type ===
+          "archivo_066_promo"
+      ) {
+        return;
+      }
+
+      /*
+       * Conservamos el guard existente
+       * contra duplicados de
+       * begin_checkout.
+       */
       if (
         command ===
           "event" &&
@@ -361,6 +468,77 @@
     );
 
     return true;
+  }
+
+  function trackVerifiedPromoLeadIfReady() {
+    const promo =
+      getPromoState();
+
+    /*
+     * La fila de descuento solo
+     * aparece después de una
+     * validación AJRAZ10 exitosa.
+     *
+     * Una solicitud PENDING nunca
+     * llega hasta aquí.
+     */
+    if (
+      !promo.applied ||
+      promo.code !== "AJRAZ10"
+    ) {
+      return false;
+    }
+
+    const email =
+      getCheckoutEmail();
+
+    if (!email) {
+      return false;
+    }
+
+    /*
+     * Evitamos volver a enviar
+     * generate_lead para el mismo
+     * correo desde este navegador.
+     */
+    if (
+      readVerifiedPromoLeadEmail() ===
+      email
+    ) {
+      return false;
+    }
+
+    const sent =
+      trackGA4(
+        "generate_lead",
+        {
+          lead_type:
+            "archivo_066_promo_verified",
+
+          form_name:
+            "ajraz10",
+
+          verification_status:
+            "verified",
+
+          coupon:
+            "AJRAZ10",
+
+          landing_variant:
+            getLandingVariant(),
+
+          language:
+            currentLanguage(),
+        }
+      );
+
+    if (sent) {
+      writeVerifiedPromoLeadEmail(
+        email
+      );
+    }
+
+    return sent;
   }
 
   function getCheckoutData(
@@ -720,8 +898,9 @@
          *
          * Si el usuario llegó al
          * botón con autofill y nunca
-         * enfocó un campo, garantizamos
-         * también begin_checkout.
+         * enfocó un campo,
+         * garantizamos también
+         * begin_checkout.
          */
         ensureCheckoutStarted(
           form
@@ -732,6 +911,53 @@
         );
       },
       true
+    );
+  }
+
+  function bindVerifiedPromoLeadObserver(
+    section
+  ) {
+    if (
+      !section ||
+      state
+        .verifiedPromoLeadObserverInstalled
+    ) {
+      return;
+    }
+
+    state
+      .verifiedPromoLeadObserverInstalled =
+      true;
+
+    /*
+     * Por si el descuento ya estaba
+     * aplicado cuando el observer
+     * se instaló.
+     */
+    trackVerifiedPromoLeadIfReady();
+
+    /*
+     * AJRAZ10 inserta dinámicamente
+     * la fila de descuento una vez
+     * validado.
+     *
+     * Observamos ese cambio y recién
+     * entonces contabilizamos el lead.
+     */
+    const observer =
+      new MutationObserver(
+        () => {
+          trackVerifiedPromoLeadIfReady();
+        }
+      );
+
+    observer.observe(
+      section,
+      {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      }
     );
   }
 
@@ -761,6 +987,11 @@
         ) ===
         "/comprar";
 
+    /*
+     * En /comprar el producto es
+     * visible desde el primer
+     * momento.
+     */
     if (
       directLanding
     ) {
@@ -856,6 +1087,10 @@
       bindProductObserver(
         section
       );
+
+      bindVerifiedPromoLeadObserver(
+        section
+      );
     }
 
     if (form) {
@@ -871,6 +1106,11 @@
   }
 
   function start() {
+    /*
+     * Primero instalamos el guard,
+     * antes de cualquier interacción
+     * del usuario con AJRAZ10.
+     */
     installGtagGuard();
 
     bindGlobalClicks();
