@@ -74,8 +74,6 @@
        * compactamos solamente la cabecera de compra
        * en móvil para que precio y formulario aparezcan
        * antes y requieran menos scroll.
-       *
-       * No altera la home ni el resto del sitio.
        */
       html.llave-dedicated-purchase
         .site > #compra-directa {
@@ -94,6 +92,17 @@
         min-height: 220px !important;
         margin-left: auto !important;
         margin-right: auto !important;
+      }
+
+      /*
+       * Oculta el "066" decorativo que queda detrás
+       * de la fotografía. Al compactar la imagen en móvil,
+       * uno de sus caracteres podía quedar visible.
+       */
+      html.llave-dedicated-purchase
+        #compra-directa .sale-photo-frame::before {
+        display: none !important;
+        content: none !important;
       }
 
       html.llave-dedicated-purchase
