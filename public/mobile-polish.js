@@ -5,10 +5,11 @@
 
   const style = document.createElement("style");
   style.id = STYLE_ID;
+
   style.textContent = `
     @media (max-width: 720px) {
       /*
-       * Pulido móvil:
+       * Pulido móvil general:
        * El control de atmósfera conserva toda su función,
        * pero deja de ocupar casi todo el ancho de la pantalla.
        * Los deslizadores siguen disponibles en escritorio.
@@ -67,6 +68,69 @@
       .site .audio-top button:active {
         transform: translateY(1px);
       }
+
+      /*
+       * Landing dedicada /comprar:
+       * compactamos solamente la cabecera de compra
+       * en móvil para que precio y formulario aparezcan
+       * antes y requieran menos scroll.
+       *
+       * No altera la home ni el resto del sitio.
+       */
+      html.llave-dedicated-purchase
+        .site > #compra-directa {
+        padding-top: 12px !important;
+        gap: 14px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-visual {
+        gap: 8px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-photo-frame {
+        width: min(100%, 340px) !important;
+        min-height: 220px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-photo-frame img {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 280px !important;
+        object-fit: contain !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-edition-tag {
+        margin-top: 6px !important;
+        margin-bottom: 10px !important;
+        font-size: 11px !important;
+        letter-spacing: 0.18em !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-content {
+        padding-top: 0 !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-content h2 {
+        margin-top: 10px !important;
+        margin-bottom: 16px !important;
+        font-size: clamp(36px, 11vw, 46px) !important;
+        line-height: 0.94 !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-lead {
+        margin-top: 0 !important;
+        font-size: 16px !important;
+        line-height: 1.55 !important;
+      }
     }
 
     @media (max-width: 390px) {
@@ -86,6 +150,22 @@
       .site .audio-top button::before {
         left: 13px;
         font-size: 14px;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-photo-frame {
+        width: min(100%, 310px) !important;
+        min-height: 205px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-photo-frame img {
+        max-height: 255px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa .sale-content h2 {
+        font-size: 36px !important;
       }
     }
   `;
