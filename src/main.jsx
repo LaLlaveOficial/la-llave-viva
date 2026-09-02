@@ -6,46 +6,231 @@ import "./ajraz10.css";
 import "./attribution.js";
 import "./ajraz10.js";
 
-const DIRECT_PURCHASE_HASH = "#compra-directa";
-const DIRECT_PURCHASE_CLASS = "llave-direct-purchase-entry";
-const DIRECT_PURCHASE_STYLE_ID = "llave-direct-purchase-entry-style";
+const DIRECT_PURCHASE_HASH =
+  "#compra-directa";
 
-function ensureDirectPurchaseStyle() {
-  if (document.getElementById(DIRECT_PURCHASE_STYLE_ID)) return;
+const DEDICATED_PURCHASE_PATH =
+  "/comprar";
 
-  const style = document.createElement("style");
-  style.id = DIRECT_PURCHASE_STYLE_ID;
+const DIRECT_PURCHASE_CLASS =
+  "llave-direct-purchase-entry";
+
+const DEDICATED_PURCHASE_CLASS =
+  "llave-dedicated-purchase";
+
+const PURCHASE_STYLE_ID =
+  "llave-purchase-entry-style";
+
+function normalizePath(pathname) {
+  const normalized =
+    String(pathname || "/")
+      .replace(/\/+$/, "");
+
+  return normalized || "/";
+}
+
+function ensurePurchaseStyle() {
+  if (
+    document.getElementById(
+      PURCHASE_STYLE_ID
+    )
+  ) {
+    return;
+  }
+
+  const style =
+    document.createElement(
+      "style"
+    );
+
+  style.id =
+    PURCHASE_STYLE_ID;
 
   style.textContent = `
+    /*
+     * Entrada directa antigua:
+     * /#compra-directa
+     *
+     * Conservamos el comportamiento
+     * existente: elimina solamente
+     * la pantalla inicial y baja al
+     * checkout.
+     */
     html.${DIRECT_PURCHASE_CLASS} .intro {
       display: none !important;
       pointer-events: none !important;
     }
+
+    /*
+     * Landing dedicada:
+     * /comprar
+     *
+     * Aquí eliminamos cualquier
+     * fricción y dejamos únicamente
+     * el checkout existente.
+     */
+    html.${DEDICATED_PURCHASE_CLASS},
+    html.${DEDICATED_PURCHASE_CLASS} body {
+      margin: 0 !important;
+      min-height: 100% !important;
+      background: #020303 !important;
+    }
+
+    html.${DEDICATED_PURCHASE_CLASS} {
+      scroll-behavior: auto !important;
+    }
+
+    html.${DEDICATED_PURCHASE_CLASS} body {
+      overflow-x: hidden !important;
+    }
+
+    html.${DEDICATED_PURCHASE_CLASS} .site {
+      min-height: 100svh !important;
+      background: #020303 !important;
+      overflow: visible !important;
+    }
+
+    /*
+     * Ocultamos todos los bloques
+     * principales de la experiencia
+     * narrativa.
+     *
+     * El checkout se vuelve a mostrar
+     * inmediatamente después.
+     */
+    html.${DEDICATED_PURCHASE_CLASS} .site > * {
+      display: none !important;
+    }
+
+    html.${DEDICATED_PURCHASE_CLASS}
+      .site > #compra-directa {
+      display: grid !important;
+      width: min(
+        1360px,
+        calc(100% - 48px)
+      ) !important;
+      min-height: 100svh !important;
+      margin: 0 auto !important;
+      scroll-margin-top: 0 !important;
+      position: relative !important;
+      z-index: 10 !important;
+    }
+
+    /*
+     * Conservamos el diseño responsive
+     * original del checkout.
+     */
+    @media (max-width: 1220px) {
+      html.${DEDICATED_PURCHASE_CLASS}
+        .site > #compra-directa {
+        grid-template-columns:
+          1fr !important;
+      }
+    }
+
+    @media (max-width: 720px) {
+      html.${DEDICATED_PURCHASE_CLASS}
+        .site > #compra-directa {
+        width:
+          calc(100% - 24px)
+          !important;
+
+        margin:
+          0 auto
+          !important;
+
+        min-height:
+          100svh
+          !important;
+      }
+    }
   `;
 
-  document.head.appendChild(style);
+  document.head.appendChild(
+    style
+  );
 }
 
-function captureDirectPurchaseIntent() {
-  if (window.location.hash !== DIRECT_PURCHASE_HASH) {
-    return false;
-  }
-
-  document.documentElement.classList.add(DIRECT_PURCHASE_CLASS);
-
-  return true;
+function isDedicatedPurchasePath() {
+  return (
+    normalizePath(
+      window.location.pathname
+    ) ===
+    DEDICATED_PURCHASE_PATH
+  );
 }
 
-function scrollToDirectPurchase() {
+function capturePurchaseIntent() {
+  const dedicated =
+    isDedicatedPurchasePath();
+
+  const hashEntry =
+    window.location.hash ===
+    DIRECT_PURCHASE_HASH;
+
+  document.documentElement
+    .classList.toggle(
+      DEDICATED_PURCHASE_CLASS,
+      dedicated
+    );
+
+  document.documentElement
+    .classList.toggle(
+      DIRECT_PURCHASE_CLASS,
+      !dedicated &&
+        hashEntry
+    );
+
+  return {
+    dedicated,
+    hashEntry,
+  };
+}
+
+function getPurchaseTarget() {
+  return document.getElementById(
+    "compra-directa"
+  );
+}
+
+function positionDedicatedPurchase() {
   if (
-    !document.documentElement.classList.contains(
-      DIRECT_PURCHASE_CLASS
-    )
+    !document.documentElement
+      .classList.contains(
+        DEDICATED_PURCHASE_CLASS
+      )
   ) {
     return false;
   }
 
-  const target = document.getElementById("compra-directa");
+  const target =
+    getPurchaseTarget();
+
+  if (!target) {
+    return false;
+  }
+
+  window.scrollTo({
+    top: 0,
+    left: 0,
+    behavior: "auto",
+  });
+
+  return true;
+}
+
+function scrollToHashPurchase() {
+  if (
+    !document.documentElement
+      .classList.contains(
+        DIRECT_PURCHASE_CLASS
+      )
+  ) {
+    return false;
+  }
+
+  const target =
+    getPurchaseTarget();
 
   if (!target) {
     return false;
@@ -59,33 +244,83 @@ function scrollToDirectPurchase() {
   return true;
 }
 
-function stabilizeDirectPurchaseLanding() {
-  const attempts = [0, 80, 220, 500, 900, 1500];
+function stabilizePurchaseLanding(
+  dedicated
+) {
+  const attempts = [
+    0,
+    80,
+    220,
+    500,
+    900,
+    1500,
+  ];
 
-  attempts.forEach((delay) => {
-    window.setTimeout(() => {
-      scrollToDirectPurchase();
-    }, delay);
-  });
+  attempts.forEach(
+    (delay) => {
+      window.setTimeout(
+        () => {
+          if (dedicated) {
+            positionDedicatedPurchase();
+          } else {
+            scrollToHashPurchase();
+          }
+        },
+        delay
+      );
+    }
+  );
 }
 
-ensureDirectPurchaseStyle();
+ensurePurchaseStyle();
 
-const isDirectPurchaseEntry =
-  captureDirectPurchaseIntent();
+const purchaseIntent =
+  capturePurchaseIntent();
 
-createRoot(document.getElementById("root")).render(
+createRoot(
+  document.getElementById("root")
+).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
 
-if (isDirectPurchaseEntry) {
-  stabilizeDirectPurchaseLanding();
+if (
+  purchaseIntent.dedicated
+) {
+  stabilizePurchaseLanding(
+    true
+  );
+} else if (
+  purchaseIntent.hashEntry
+) {
+  stabilizePurchaseLanding(
+    false
+  );
 }
 
-window.addEventListener("hashchange", () => {
-  if (captureDirectPurchaseIntent()) {
-    stabilizeDirectPurchaseLanding();
+window.addEventListener(
+  "hashchange",
+  () => {
+    const intent =
+      capturePurchaseIntent();
+
+    if (
+      intent.dedicated
+    ) {
+      stabilizePurchaseLanding(
+        true
+      );
+
+      return;
+    }
+
+    if (
+      intent.hashEntry
+    ) {
+      stabilizePurchaseLanding(
+        false
+      );
+    }
   }
-});
+);
