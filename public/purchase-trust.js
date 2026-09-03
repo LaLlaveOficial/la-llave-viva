@@ -357,6 +357,148 @@
       }
 
       /* =========================================================
+       * AJRAZ10 COMPACTO EN /COMPRAR
+       * Mantiene intacta toda la lógica de validación,
+       * double opt-in y descuento. Solo reduce fricción visual.
+       * ======================================================= */
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout {
+        padding: 14px 16px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-checkout-label {
+        margin-bottom: 8px !important;
+        font-size: 10px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        #ajraz10-checkout-status {
+        margin: 7px 0 0 !important;
+        font-size: 10px !important;
+        line-height: 1.45 !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock {
+        margin-top: 10px !important;
+        padding-top: 10px !important;
+        border-top: 1px solid rgba(241, 193, 90, 0.12) !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock-copy {
+        position: relative;
+        display: grid !important;
+        grid-template-columns: auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        margin: 0 !important;
+        padding: 8px 10px !important;
+        border: 1px solid rgba(241, 193, 90, 0.12);
+        background: rgba(255, 255, 255, 0.015);
+        cursor: pointer;
+        user-select: none;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock-copy:hover,
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock-copy:focus-visible {
+        border-color: rgba(241, 193, 90, 0.34);
+        background: rgba(217, 155, 36, 0.045);
+        outline: none;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock-title {
+        display: inline !important;
+        margin: 0 !important;
+        color: rgba(243, 239, 228, 0.72) !important;
+        font-size: 10px !important;
+        letter-spacing: 0.06em !important;
+        white-space: nowrap;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock-text {
+        display: inline !important;
+        margin: 0 !important;
+        color: #e0a846 !important;
+        font-size: 10px !important;
+        font-weight: 850 !important;
+        line-height: 1.4 !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock-toggle {
+        color: #e0a846;
+        font-size: 16px;
+        font-weight: 900;
+        line-height: 1;
+        transition: transform 160ms ease;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-inline-panel {
+        display: none !important;
+        margin-top: 10px !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock.is-open
+        .ajraz10-inline-panel {
+        display: block !important;
+      }
+
+      html.llave-dedicated-purchase
+        #compra-directa #ajraz10-checkout
+        .ajraz10-unlock.is-open
+        .ajraz10-unlock-toggle {
+        transform: rotate(45deg);
+      }
+
+      @media (max-width: 720px) {
+        html.llave-dedicated-purchase
+          #compra-directa #ajraz10-checkout
+          .ajraz10-unlock-copy {
+          grid-template-columns: 1fr auto;
+          gap: 4px 8px;
+        }
+
+        html.llave-dedicated-purchase
+          #compra-directa #ajraz10-checkout
+          .ajraz10-unlock-title {
+          grid-column: 1;
+          white-space: normal;
+        }
+
+        html.llave-dedicated-purchase
+          #compra-directa #ajraz10-checkout
+          .ajraz10-unlock-text {
+          grid-column: 1;
+        }
+
+        html.llave-dedicated-purchase
+          #compra-directa #ajraz10-checkout
+          .ajraz10-unlock-toggle {
+          grid-column: 2;
+          grid-row: 1 / span 2;
+        }
+      }
+
+      /* =========================================================
        * BLOQUE INDEPENDIENTE DE CONFIANZA
        * ======================================================= */
       #${TRUST_ID} {
@@ -905,9 +1047,53 @@
     return true;
   }
 
+  function compactPromoUI() {
+    if (!isDedicatedPurchase()) {
+      return;
+    }
+
+    const checkout = document.getElementById("ajraz10-checkout");
+    const unlock = checkout?.querySelector(".ajraz10-unlock");
+    const trigger = unlock?.querySelector(".ajraz10-unlock-copy");
+    const panel = unlock?.querySelector(".ajraz10-inline-panel");
+
+    if (!checkout || !unlock || !trigger || !panel) {
+      return;
+    }
+
+    if (trigger.dataset.compactAjraz10 !== "true") {
+      trigger.dataset.compactAjraz10 = "true";
+      trigger.setAttribute("role", "button");
+      trigger.setAttribute("tabindex", "0");
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.setAttribute("aria-controls", "ajraz10-inline-panel-compact");
+      panel.id = "ajraz10-inline-panel-compact";
+
+      trigger.innerHTML = `
+        <span class="ajraz10-unlock-title">¿NO TIENES CÓDIGO?</span>
+        <span class="ajraz10-unlock-text">Obtén 10% con Archivo 066</span>
+        <span class="ajraz10-unlock-toggle" aria-hidden="true">+</span>
+      `;
+
+      const toggle = () => {
+        const open = unlock.classList.toggle("is-open");
+        trigger.setAttribute("aria-expanded", String(open));
+      };
+
+      trigger.addEventListener("click", toggle);
+      trigger.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggle();
+        }
+      });
+    }
+  }
+
   function ensureAll() {
     ensureSalesLanding();
     ensureTrustBlock();
+    compactPromoUI();
     syncCheckoutCta();
   }
 
