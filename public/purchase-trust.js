@@ -627,25 +627,74 @@
         }
 
         #${SALES_ID} .ps-hero {
-          padding: 22px 17px 26px;
+          gap: 12px;
+          padding: 14px 14px 18px;
         }
 
         #${SALES_ID} .ps-book {
-          min-height: 225px;
+          min-height: 0;
         }
 
         #${SALES_ID} .ps-book img {
-          width: min(270px, 80vw);
-          max-height: 285px;
+          width: min(190px, 58vw);
+          max-height: 205px;
+        }
+
+        #${SALES_ID} .ps-eyebrow {
+          margin-bottom: 7px;
+          font-size: 9px;
+          line-height: 1.45;
+          letter-spacing: 0.16em;
+        }
+
+        #${SALES_ID} .ps-hook {
+          font-size: clamp(27px, 8.4vw, 34px);
+          line-height: 1;
+        }
+
+        #${SALES_ID} .ps-hook span {
+          margin-top: 4px;
         }
 
         #${SALES_ID} .ps-title {
-          margin-top: 20px;
+          margin-top: 14px;
+          font-size: 14px;
+        }
+
+        #${SALES_ID} .ps-subtitle {
+          margin-top: 5px;
+          font-size: 10.5px;
+          line-height: 1.45;
+        }
+
+        #${SALES_ID} .ps-lead {
+          display: none;
+        }
+
+        #${SALES_ID} .ps-price-row {
+          align-items: flex-start;
+          gap: 3px;
+          margin-top: 14px;
+        }
+
+        #${SALES_ID} .ps-price,
+        #${SALES_ID} .ps-shipping {
+          width: 100%;
+        }
+
+        #${SALES_ID} .ps-price {
+          font-size: 30px;
+        }
+
+        #${SALES_ID} .ps-shipping {
+          font-size: 10.5px;
         }
 
         #${SALES_ID} .ps-actions {
           display: grid;
           grid-template-columns: 1fr;
+          gap: 8px;
+          margin-top: 14px;
         }
 
         #${SALES_ID} .ps-primary,
@@ -653,6 +702,16 @@
           width: 100%;
           padding-left: 14px;
           padding-right: 14px;
+        }
+
+        #${SALES_ID} .ps-secondary {
+          min-height: 46px;
+        }
+
+        #${SALES_ID} .ps-microtrust {
+          margin-top: 8px;
+          font-size: 9.5px;
+          line-height: 1.5;
         }
 
         #${SALES_ID} .ps-fit-grid {
