@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
 import { neon } from "@neondatabase/serverless";
+import {
+  cancelCheckoutRecovery,
+  sendPurchaseConfirmation,
+} from "../lib/order-emails.js";
 
 const SHIPPING_RM = 3000;
 const SHIPPING_REGIONS = 4500;
@@ -813,6 +817,12 @@ export default async function handler(
               .DATABASE_URL
           ),
 
+        resend_configured:
+          Boolean(
+            process.env
+              .RESEND_API_KEY
+          ),
+
         ga4_measurement_id:
           process.env
             .GA4_MEASUREMENT_ID ||
@@ -868,6 +878,11 @@ export default async function handler(
   const databaseUrl =
     process.env
       .DATABASE_URL;
+
+  const resendApiKey =
+    process.env
+      .RESEND_API_KEY ||
+    "";
 
   const ga4ApiSecret =
     process.env
@@ -1161,8 +1176,14 @@ export default async function handler(
         SELECT
           id,
           external_reference,
+          buyer_name,
           buyer_email,
           buyer_phone,
+          region_name,
+          commune,
+          street,
+          street_number,
+          address_extra,
           book_price,
           shipping_amount,
           total_amount,
@@ -1357,10 +1378,101 @@ export default async function handler(
         "not_approved",
     };
 
+    let emailResult = {
+      confirmation: {
+        sent: false,
+        reason:
+          "not_approved",
+      },
+
+      recovery: {
+        canceled: false,
+        reason:
+          "not_approved",
+      },
+    };
+
     if (
       status ===
       "approved"
     ) {
+      try {
+        emailResult.recovery =
+          await cancelCheckoutRecovery({
+            apiKey:
+              resendApiKey,
+
+            sql,
+
+            externalReference,
+          });
+      } catch (
+        recoveryError
+      ) {
+        emailResult.recovery = {
+          canceled: false,
+          reason:
+            "cancel_failed",
+        };
+
+        console.error(
+          "Checkout recovery cancellation failed:",
+          {
+            externalReference,
+
+            message:
+              recoveryError
+                ?.message,
+          }
+        );
+      }
+
+      try {
+        emailResult.confirmation =
+          await sendPurchaseConfirmation({
+            apiKey:
+              resendApiKey,
+
+            sql,
+
+            order,
+          });
+      } catch (
+        confirmationError
+      ) {
+        emailResult.confirmation = {
+          sent: false,
+          reason:
+            "send_failed",
+        };
+
+        console.error(
+          "Purchase confirmation email failed:",
+          {
+            externalReference,
+
+            message:
+              confirmationError
+                ?.message,
+          }
+        );
+      }
+
+      console.info(
+        "ORDER_EMAIL_RESULT",
+        JSON.stringify({
+          externalReference,
+
+          confirmation:
+            emailResult
+              .confirmation,
+
+          recovery:
+            emailResult
+              .recovery,
+        })
+      );
+
       try {
         ga4Result =
           await sendGa4Purchase({
@@ -1584,6 +1696,34 @@ export default async function handler(
           events_received:
             metaResult.eventsReceived ||
             0,
+        },
+
+        email: {
+          confirmation_sent:
+            Boolean(
+              emailResult
+                .confirmation
+                .sent
+            ),
+
+          confirmation_reason:
+            emailResult
+              .confirmation
+              .reason ||
+            null,
+
+          recovery_canceled:
+            Boolean(
+              emailResult
+                .recovery
+                .canceled
+            ),
+
+          recovery_reason:
+            emailResult
+              .recovery
+              .reason ||
+            null,
         },
       });
   } catch (error) {

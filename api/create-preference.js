@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless";
+import { scheduleCheckoutRecovery } from "../lib/order-emails.js";
 
 const BOOK_PRICE = 15990;
 const SHIPPING_RM = 3000;
@@ -302,6 +303,34 @@ export default async function handler(req, res) {
       return res.status(500).json({
         error:
           "El pago fue preparado, pero no pudimos terminar de registrar el pedido. No continúes con el pago e intenta nuevamente.",
+      });
+    }
+
+    try {
+      const recoveryResult = await scheduleCheckoutRecovery({
+        apiKey: process.env.RESEND_API_KEY || "",
+        sql,
+        order: {
+          external_reference: externalReference,
+          buyer_name: fullName,
+          buyer_email: email,
+          book_price: BOOK_PRICE,
+          shipping_amount: shippingCost,
+          total_amount: totalAmount,
+        },
+        checkoutUrl: data.init_point,
+        siteUrl,
+      });
+
+      console.info("CHECKOUT_RECOVERY_RESULT", {
+        externalReference,
+        scheduled: Boolean(recoveryResult.scheduled),
+        reason: recoveryResult.reason || null,
+      });
+    } catch (error) {
+      console.error("Checkout recovery scheduling failed:", {
+        externalReference,
+        message: error?.message,
       });
     }
 
