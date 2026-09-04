@@ -3,8 +3,11 @@
   const TRUST_ID = "purchase-trust-066";
   const SALES_ID = "purchase-sales-066";
   const CHECKOUT_HEADING_ID = "purchase-checkout-heading-066";
+  const INTERNATIONAL_DIALOG_ID = "purchase-international-066";
+  const HOMEPAGE_INTERNATIONAL_ID = "homepage-international-066";
   const STYLE_ID = "purchase-trust-066-styles";
   const PURCHASE_PATH = "/comprar";
+  let internationalReturnFocus = null;
 
   if (window[SCRIPT_FLAG]) {
     return;
@@ -14,6 +17,9 @@
 
   const isDedicatedPurchase = () =>
     window.location.pathname.replace(/\/+$/, "") === PURCHASE_PATH;
+
+  const isHomepage = () =>
+    (window.location.pathname.replace(/\/+$/, "") || "/") === "/";
 
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) {
@@ -202,6 +208,185 @@
         color: rgba(243, 239, 228, 0.48);
         font-size: 11px;
         line-height: 1.6;
+      }
+
+      #${SALES_ID} .ps-international,
+      #${HOMEPAGE_INTERNATIONAL_ID} .ps-international {
+        display: grid;
+        justify-items: start;
+        gap: 6px;
+        margin-top: 12px;
+      }
+
+      #${SALES_ID} .ps-international-button,
+      #${HOMEPAGE_INTERNATIONAL_ID} .ps-international-button {
+        min-height: 44px;
+        padding: 0 18px;
+        border: 1px solid rgba(241, 193, 90, 0.42);
+        border-radius: 4px;
+        color: #f1c15a;
+        background: rgba(217, 155, 36, 0.055);
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      #${SALES_ID} .ps-international-button:hover,
+      #${SALES_ID} .ps-international-button:focus-visible,
+      #${HOMEPAGE_INTERNATIONAL_ID} .ps-international-button:hover,
+      #${HOMEPAGE_INTERNATIONAL_ID} .ps-international-button:focus-visible {
+        border-color: rgba(241, 193, 90, 0.82);
+        background: rgba(217, 155, 36, 0.11);
+        outline: none;
+      }
+
+      #${SALES_ID} .ps-international-note,
+      #${HOMEPAGE_INTERNATIONAL_ID} .ps-international-note {
+        color: rgba(243, 239, 228, 0.48);
+        font-size: 10px;
+        line-height: 1.5;
+      }
+
+      #${HOMEPAGE_INTERNATIONAL_ID} {
+        margin: 18px 0 22px;
+        padding: 16px;
+        border: 1px solid rgba(241, 193, 90, 0.18);
+        background: rgba(217, 155, 36, 0.035);
+      }
+
+      #${HOMEPAGE_INTERNATIONAL_ID} .ps-international {
+        margin-top: 0;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID}[hidden] {
+        display: none;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} {
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        background: rgba(0, 0, 0, 0.82);
+        backdrop-filter: blur(5px);
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-panel {
+        position: relative;
+        width: min(820px, 100%);
+        max-height: min(86vh, 820px);
+        overflow-y: auto;
+        padding: clamp(24px, 4vw, 38px);
+        border: 1px solid rgba(241, 193, 90, 0.34);
+        background:
+          radial-gradient(circle at 90% 0%, rgba(217, 155, 36, 0.12), transparent 34%),
+          #080908;
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.72);
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 40px;
+        height: 40px;
+        border: 1px solid rgba(243, 239, 228, 0.18);
+        border-radius: 50%;
+        color: #f3efe4;
+        background: rgba(255, 255, 255, 0.035);
+        font-size: 22px;
+        cursor: pointer;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} h2 {
+        margin: 0;
+        padding-right: 42px;
+        color: #f3efe4;
+        font: 800 clamp(26px, 4vw, 42px)/1.04 Georgia, "Times New Roman", serif;
+        text-transform: uppercase;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-eyebrow {
+        margin: 0 0 9px;
+        color: #e0a846;
+        font-size: 10px;
+        font-weight: 950;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-lead,
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-legal {
+        color: rgba(243, 239, 228, 0.60);
+        line-height: 1.6;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-lead {
+        margin: 10px 0 22px;
+        font-size: 14px;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-country {
+        padding: 16px;
+        border: 1px solid rgba(241, 193, 90, 0.16);
+        background: rgba(255, 255, 255, 0.018);
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-country h3 {
+        margin: 0 0 11px;
+        color: #f1c15a;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-links {
+        display: grid;
+        gap: 8px;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid rgba(243, 239, 228, 0.16);
+        color: #f3efe4;
+        background: rgba(255, 255, 255, 0.025);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.35;
+        text-decoration: none;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-link::after {
+        content: "↗";
+        color: #f1c15a;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-link:hover,
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-link:focus-visible {
+        border-color: rgba(241, 193, 90, 0.58);
+        background: rgba(217, 155, 36, 0.08);
+        outline: none;
+      }
+
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-legal {
+        margin: 18px 0 0;
+        font-size: 10px;
+        text-align: center;
       }
 
       #${SALES_ID} .ps-book {
@@ -708,6 +893,33 @@
           min-height: 46px;
         }
 
+        #${SALES_ID} .ps-international,
+        #${HOMEPAGE_INTERNATIONAL_ID} .ps-international {
+          justify-items: stretch;
+        }
+
+        #${SALES_ID} .ps-international-button,
+        #${HOMEPAGE_INTERNATIONAL_ID} .ps-international-button {
+          width: 100%;
+        }
+
+        #${INTERNATIONAL_DIALOG_ID} {
+          place-items: end center;
+          padding: 0;
+        }
+
+        #${INTERNATIONAL_DIALOG_ID} .ps-intl-panel {
+          width: 100%;
+          max-height: 91vh;
+          padding: 26px 16px 20px;
+          border-right: 0;
+          border-bottom: 0;
+          border-left: 0;
+        }
+
+        #${INTERNATIONAL_DIALOG_ID} .ps-intl-grid {
+          grid-template-columns: 1fr;
+        }
         #${SALES_ID} .ps-microtrust {
           margin-top: 8px;
           font-size: 9.5px;
@@ -791,6 +1003,14 @@
               LEER PRIMERAS PÁGINAS
             </button>
           </div>
+          <div class="ps-international">
+            <button class="ps-international-button" type="button" data-ps-international>
+              COMPRAR FUERA DE CHILE
+            </button>
+            <span class="ps-international-note">
+              Edición física y Kindle · selecciona tu país
+            </span>
+          </div>
           <p class="ps-microtrust">
             Pago seguro mediante Mercado Pago · Venta directa en Chile
           </p>
@@ -859,8 +1079,93 @@
           LEER MUESTRA
         </button>
       </section>
+
     `;
 
+    return block;
+  }
+
+  function createInternationalDialogMarkup() {
+    return `
+      <div id="${INTERNATIONAL_DIALOG_ID}" role="dialog" aria-modal="true" aria-labelledby="ps-intl-title" hidden>
+        <div class="ps-intl-panel">
+          <button class="ps-intl-close" type="button" aria-label="Cerrar compra internacional" data-ps-intl-close>×</button>
+          <p class="ps-eyebrow">COMPRA INTERNACIONAL</p>
+          <h2 id="ps-intl-title">¿DESDE QUÉ PAÍS COMPRAS?</h2>
+          <p class="ps-intl-lead">Elige tu país y el formato disponible. La compra se completa en la tienda indicada.</p>
+          <div class="ps-intl-grid">
+            ${createInternationalCountry("México", [
+              ["Libro físico · Buscalibre", "https://www.buscalibre.com.mx/libro-la-llave-i/9789564237244/p/67709800", "buscalibre", "physical"],
+              ["Kindle · Amazon México", "https://www.amazon.com.mx/Llave-I-Ciudad-Central-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
+            ])}
+            ${createInternationalCountry("Argentina", [
+              ["Libro físico · Mercado Libre", "https://www.mercadolibre.com.ar/la-llave-i-ciudad-central/up/MLAU4150165812", "mercado_libre", "physical"],
+            ])}
+            ${createInternationalCountry("Estados Unidos", [
+              ["Libro físico · Bookshop.org", "https://bookshop.org/p/books/la-llave-i-ciudad-central-enrique-g-santibanez/bd358ad71eed0bb7", "bookshop", "physical"],
+              ["Kindle · Amazon.com", "https://www.amazon.com/Llave-Ciudad-Central-Spanish-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
+            ])}
+            ${createInternationalCountry("Brasil", [
+              ["Libro físico · Amazon Brasil", "https://www.amazon.com.br/Llave-I-Ciudad-Central/dp/9564237246", "amazon", "physical"],
+              ["Kindle · Amazon Brasil", "https://www.amazon.com.br/Llave-Ciudad-Central-Spanish-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
+            ])}
+            ${createInternationalCountry("España", [
+              ["Libro físico · Amazon España", "https://www.amazon.es/-/en/Enrique-G-Santiba%C3%B1ez/dp/9564237246", "amazon", "physical"],
+              ["Kindle · Amazon España", "https://www.amazon.es/Llave-I-Ciudad-Central-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
+            ])}
+            ${createInternationalCountry("Suecia", [
+              ["Libro físico · Adlibris", "https://www.adlibris.com/sv/bok/la-llave-i-9789564237244", "adlibris", "physical"],
+            ])}
+            ${createInternationalCountry("Irlanda", [
+              ["Libro físico · Amazon Irlanda", "https://www.amazon.ie/Books-Enrique-Santib%C3%A1%C3%B1ez/s?rh=n%3A80926538031%2Cp_27%3AEnrique%2BSantib%25C3%25A1%25C3%25B1ez", "amazon", "physical"],
+            ])}
+            ${createInternationalCountry("Otros países", [
+              ["Libro físico · Buscalibre Internacional", "https://www.buscalibre.com/int-es/libro-la-llave-i/9789564237244/p/67709800", "buscalibre", "physical"],
+              ["Kindle · Amazon.com", "https://www.amazon.com/Llave-Ciudad-Central-Spanish-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
+            ])}
+          </div>
+          <p class="ps-intl-legal">Precios, impuestos, disponibilidad y plazos dependen de cada tienda y país.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  function createInternationalCountry(country, links) {
+    const countryKey = country
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+
+    const linkMarkup = links
+      .map(([label, href, store, format]) => `
+        <a class="ps-intl-link" href="${href}" target="_blank" rel="noopener noreferrer" data-ps-intl-link data-country="${countryKey}" data-store="${store}" data-format="${format}">
+          ${label}
+        </a>
+      `)
+      .join("");
+
+    return `
+      <section class="ps-intl-country" aria-label="Opciones para ${country}">
+        <h3>${country}</h3>
+        <div class="ps-intl-links">${linkMarkup}</div>
+      </section>
+    `;
+  }
+
+  function createHomepageInternationalCta() {
+    const block = document.createElement("div");
+    block.id = HOMEPAGE_INTERNATIONAL_ID;
+    block.innerHTML = `
+      <div class="ps-international">
+        <button class="ps-international-button" type="button" data-ps-international>
+          COMPRAR FUERA DE CHILE
+        </button>
+        <span class="ps-international-note">
+          Edición física y Kindle · selecciona tu país
+        </span>
+      </div>
+    `;
     return block;
   }
 
@@ -915,6 +1220,58 @@
     }, 520);
   }
 
+  function internationalPlacement(block) {
+    return block?.id === HOMEPAGE_INTERNATIONAL_ID
+      ? "homepage_purchase_section"
+      : "dedicated_purchase_hero";
+  }
+
+  function trackInternationalEvent(eventName, params = {}, placement) {
+    if (typeof window.gtag !== "function") {
+      return;
+    }
+
+    window.gtag("event", eventName, {
+      ...params,
+      placement: placement || "international_purchase",
+      page_path: window.location.pathname,
+    });
+  }
+
+  function openInternationalDialog(block) {
+    const dialog = document.getElementById(INTERNATIONAL_DIALOG_ID);
+
+    if (!(dialog instanceof HTMLElement)) {
+      return;
+    }
+
+    internationalReturnFocus = document.activeElement;
+    dialog.dataset.placement = internationalPlacement(block);
+    dialog.hidden = false;
+    document.body.style.overflow = "hidden";
+    dialog.querySelector("[data-ps-intl-close]")?.focus();
+    trackInternationalEvent(
+      "international_buy_open",
+      {},
+      internationalPlacement(block)
+    );
+  }
+
+  function closeInternationalDialog() {
+    const dialog = document.getElementById(INTERNATIONAL_DIALOG_ID);
+
+    if (!(dialog instanceof HTMLElement) || dialog.hidden) {
+      return;
+    }
+
+    dialog.hidden = true;
+    document.body.style.overflow = "";
+
+    if (internationalReturnFocus instanceof HTMLElement) {
+      internationalReturnFocus.focus();
+    }
+  }
+
   function bindSalesActions(block) {
     if (!block || block.dataset.psBound === "true") {
       return;
@@ -937,6 +1294,11 @@
         return;
       }
 
+      if (target.closest("[data-ps-international]")) {
+        openInternationalDialog(block);
+        return;
+      }
+
       if (target.closest("[data-ps-sample]")) {
         if (!openSampleReader()) {
           const checkout = document.querySelector(
@@ -950,6 +1312,64 @@
         }
       }
     });
+  }
+
+  function bindInternationalDialog(dialog) {
+    if (!dialog || dialog.dataset.psBound === "true") {
+      return;
+    }
+
+    dialog.dataset.psBound = "true";
+
+    dialog.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+
+      if (!target) {
+        return;
+      }
+
+      if (target.closest("[data-ps-intl-close]")) {
+        closeInternationalDialog();
+        return;
+      }
+
+      const internationalLink = target.closest("[data-ps-intl-link]");
+
+      if (internationalLink instanceof HTMLAnchorElement) {
+        trackInternationalEvent("international_buy_click", {
+          country: internationalLink.dataset.country || "unknown",
+          store: internationalLink.dataset.store || "unknown",
+          format: internationalLink.dataset.format || "unknown",
+          link_url: internationalLink.href,
+        }, dialog.dataset.placement || "international_purchase");
+        return;
+      }
+
+      if (target === dialog) {
+        closeInternationalDialog();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeInternationalDialog();
+      }
+    });
+  }
+
+  function ensureInternationalDialog() {
+    let dialog = document.getElementById(INTERNATIONAL_DIALOG_ID);
+
+    if (!dialog) {
+      document.body.insertAdjacentHTML(
+        "beforeend",
+        createInternationalDialogMarkup()
+      );
+      dialog = document.getElementById(INTERNATIONAL_DIALOG_ID);
+    }
+
+    bindInternationalDialog(dialog);
+    return Boolean(dialog);
   }
 
   function ensureSalesLanding() {
@@ -990,6 +1410,34 @@
       }
     }
 
+    return true;
+  }
+
+  function ensureHomepageInternationalCta() {
+    if (!isHomepage()) {
+      return false;
+    }
+
+    const saleContent = document.querySelector(
+      "#compra-directa .sale-content"
+    );
+    const saleForm = saleContent?.querySelector(".sale-form");
+
+    if (!saleContent || !saleForm) {
+      return false;
+    }
+
+    let block = document.getElementById(HOMEPAGE_INTERNATIONAL_ID);
+
+    if (!block) {
+      block = createHomepageInternationalCta();
+    }
+
+    if (saleForm.previousElementSibling !== block) {
+      saleContent.insertBefore(block, saleForm);
+    }
+
+    bindSalesActions(block);
     return true;
   }
 
@@ -1150,7 +1598,9 @@
   }
 
   function ensureAll() {
+    ensureInternationalDialog();
     ensureSalesLanding();
+    ensureHomepageInternationalCta();
     ensureTrustBlock();
     compactPromoUI();
     syncCheckoutCta();
