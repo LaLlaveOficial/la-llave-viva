@@ -482,6 +482,15 @@
         );
 
         if (!data?.alreadySubscribed) {
+          if (
+            window.ttq &&
+            typeof window.ttq.track === "function"
+          ) {
+            window.ttq.track("Subscribe", {
+              description: "Archivo 066",
+            });
+          }
+
           form.reset();
         }
       } catch (error) {

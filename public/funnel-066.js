@@ -30,6 +30,7 @@
     productViewed: false,
     ga4BeginCheckoutSent: false,
     metaInitiateCheckoutSent: false,
+    tiktokInitiateCheckoutSent: false,
     shippingInfoSent: false,
     gtagWrapped: false,
     verifiedPromoLeadObserverInstalled:
@@ -470,6 +471,26 @@
     return true;
   }
 
+  function trackTikTok(
+    eventName,
+    params = {}
+  ) {
+    if (
+      !window.ttq ||
+      typeof window.ttq.track !==
+        "function"
+    ) {
+      return false;
+    }
+
+    window.ttq.track(
+      eventName,
+      params
+    );
+
+    return true;
+  }
+
   function trackVerifiedPromoLeadIfReady() {
     const promo =
       getPromoState();
@@ -635,6 +656,29 @@
         num_items: 1,
       }
     );
+
+    trackTikTok(
+      "ViewContent",
+      {
+        content_ids: [
+          PRODUCT_ID,
+        ],
+
+        content_type:
+          "product",
+
+        description:
+          PRODUCT_NAME,
+
+        currency:
+          "CLP",
+
+        value:
+          bookPrice,
+
+        quantity: 1,
+      }
+    );
   }
 
   function getCtaVariant(
@@ -773,6 +817,41 @@
       if (sent) {
         state
           .metaInitiateCheckoutSent =
+          true;
+      }
+    }
+
+    if (
+      !state
+        .tiktokInitiateCheckoutSent
+    ) {
+      const sent =
+        trackTikTok(
+          "InitiateCheckout",
+          {
+            content_ids: [
+              PRODUCT_ID,
+            ],
+
+            content_type:
+              "product",
+
+            description:
+              PRODUCT_NAME,
+
+            currency:
+              "CLP",
+
+            value:
+              data.bookPrice,
+
+            quantity: 1,
+          }
+        );
+
+      if (sent) {
+        state
+          .tiktokInitiateCheckoutSent =
           true;
       }
     }

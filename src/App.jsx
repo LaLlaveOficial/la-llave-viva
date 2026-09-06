@@ -108,6 +108,7 @@ const GA4_ATTRIBUTION_STORAGE_KEY = "llave066_ga4_attribution_v1";
 const GA4_CHECKOUT_STORAGE_KEY = "llave066_ga4_checkout_v1";
 const GA4_PURCHASE_STORAGE_PREFIX = "llave066_ga4_purchase_";
 const META_PURCHASE_STORAGE_PREFIX = "llave066_meta_purchase_";
+const TIKTOK_PURCHASE_STORAGE_PREFIX = "llave066_tiktok_purchase_";
 
 function readStoredJson(storage, key) {
   try {
@@ -193,6 +194,21 @@ function trackMetaEvent(eventName, params = {}, options = {}) {
   }
 
   window.fbq("track", eventName, params, options);
+
+  return true;
+}
+
+function trackTikTokEvent(eventName, params = {}) {
+  if (
+    typeof window === "undefined" ||
+    !window.ttq ||
+    typeof window.ttq.track !== "function" ||
+    !eventName
+  ) {
+    return false;
+  }
+
+  window.ttq.track(eventName, params);
 
   return true;
 }
@@ -3085,6 +3101,159 @@ function PaymentStatusPage({
         }
       }
     }
+  }, [
+    type,
+    paymentStatus,
+    paymentId,
+    externalReference,
+  ]);
+
+  useEffect(() => {
+    if (
+      type !== "success" ||
+      paymentStatus !== "approved" ||
+      !paymentId ||
+      !externalReference
+    ) {
+      return undefined;
+    }
+
+    const controller =
+      new AbortController();
+
+    const dedupeKey =
+      `${TIKTOK_PURCHASE_STORAGE_PREFIX}${paymentId}`;
+
+    async function trackVerifiedTikTokPurchase() {
+      try {
+        if (
+          window.localStorage.getItem(
+            dedupeKey
+          )
+        ) {
+          return;
+        }
+      } catch {
+        // La verificación puede continuar aunque localStorage esté bloqueado.
+      }
+
+      const query =
+        new URLSearchParams({
+          external_reference:
+            externalReference,
+
+          payment_id:
+            paymentId,
+        });
+
+      for (
+        let attempt = 0;
+        attempt < 5;
+        attempt += 1
+      ) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        try {
+          const response =
+            await fetch(
+              `/api/order-payment-status?${query.toString()}`,
+              {
+                signal:
+                  controller.signal,
+              }
+            );
+
+          const data =
+            await response
+              .json()
+              .catch(() => ({}));
+
+          if (
+            response.ok &&
+            data?.approved === true
+          ) {
+            const snapshot =
+              readStoredJson(
+                window.sessionStorage,
+                GA4_CHECKOUT_STORAGE_KEY
+              );
+
+            const total =
+              Number(
+                snapshot?.total
+              );
+
+            if (
+              !Number.isFinite(
+                total
+              )
+            ) {
+              return;
+            }
+
+            const tracked =
+              trackTikTokEvent(
+                "Purchase",
+                {
+                  content_ids: [
+                    "la-llave-i-ciudad-central-physical",
+                  ],
+
+                  content_type:
+                    "product",
+
+                  description:
+                    "La Llave I: Ciudad Central",
+
+                  currency:
+                    "CLP",
+
+                  value:
+                    total,
+
+                  quantity: 1,
+                }
+              );
+
+            if (tracked) {
+              try {
+                window.localStorage.setItem(
+                  dedupeKey,
+                  new Date().toISOString()
+                );
+              } catch {
+                // No bloqueamos la página.
+              }
+            }
+
+            return;
+          }
+        } catch (error) {
+          if (
+            error?.name ===
+            "AbortError"
+          ) {
+            return;
+          }
+        }
+
+        await new Promise(
+          (resolve) =>
+            window.setTimeout(
+              resolve,
+              2000
+            )
+        );
+      }
+    }
+
+    void trackVerifiedTikTokPurchase();
+
+    return () => {
+      controller.abort();
+    };
   }, [
     type,
     paymentStatus,
