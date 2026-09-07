@@ -4,6 +4,7 @@ import App from "./App.jsx";
 import "./index.css";
 import "./ajraz10.css";
 import "./attribution.js";
+import "./payment-handoff-analytics.js";
 import "./ajraz10.js";
 
 const DIRECT_PURCHASE_HASH =
