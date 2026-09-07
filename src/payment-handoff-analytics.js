@@ -3,6 +3,10 @@ const CHECKOUT_STORAGE_KEY = "llave066_ga4_checkout_v1";
 const PRODUCT_ID = "la-llave-i-ciudad-central-physical";
 const PRODUCT_NAME = "La Llave I: Ciudad Central";
 const DEFAULT_BOOK_PRICE = 15990;
+const PAYMENT_ENDPOINTS = new Set([
+  "/api/create-preference",
+  "/api/create-promo-preference",
+]);
 
 if (typeof window !== "undefined" && !window[PAYMENT_TRACKER_FLAG]) {
   window[PAYMENT_TRACKER_FLAG] = true;
@@ -13,6 +17,19 @@ if (typeof window !== "undefined" && !window[PAYMENT_TRACKER_FLAG]) {
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
+    }
+  }
+
+  function endpointPath(input) {
+    try {
+      const rawUrl =
+        typeof input === "string"
+          ? input
+          : input?.url || "";
+
+      return new URL(rawUrl, window.location.origin).pathname;
+    } catch {
+      return "";
     }
   }
 
@@ -27,7 +44,7 @@ if (typeof window !== "undefined" && !window[PAYMENT_TRACKER_FLAG]) {
     };
   }
 
-  function sendPaymentInfoEvent() {
+  function sendPaymentInfoEvent(externalReference = "") {
     return new Promise((resolve) => {
       if (typeof window.gtag !== "function") {
         resolve(false);
@@ -58,6 +75,7 @@ if (typeof window !== "undefined" && !window[PAYMENT_TRACKER_FLAG]) {
         checkout_type: snapshot.checkoutType || "direct",
         region: snapshot.region || undefined,
         payment_stage: "mercadopago_handoff",
+        checkout_reference: externalReference || undefined,
         event_callback: finish,
         event_timeout: 800,
       });
@@ -69,23 +87,17 @@ if (typeof window !== "undefined" && !window[PAYMENT_TRACKER_FLAG]) {
   const previousFetch = window.fetch.bind(window);
 
   window.fetch = async function paymentAwareFetch(input, init) {
-    const rawUrl =
-      typeof input === "string"
-        ? input
-        : input?.url || "";
-
+    const path = endpointPath(input);
     const response = await previousFetch(input, init);
 
-    const isCreatePreference =
-      rawUrl === "/api/create-preference" ||
-      rawUrl.endsWith("/api/create-preference");
-
-    if (isCreatePreference && response?.ok) {
+    if (PAYMENT_ENDPOINTS.has(path) && response?.ok) {
       try {
         const data = await response.clone().json();
 
         if (data?.init_point) {
-          await sendPaymentInfoEvent();
+          await sendPaymentInfoEvent(
+            String(data?.external_reference || "").trim()
+          );
         }
       } catch {
         // Nunca bloqueamos el checkout por un fallo de analítica.
