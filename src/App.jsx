@@ -107,6 +107,10 @@ const SALE_COPY = {
 const GA4_ATTRIBUTION_STORAGE_KEY = "llave066_ga4_attribution_v1";
 const GA4_CHECKOUT_STORAGE_KEY = "llave066_ga4_checkout_v1";
 const GA4_PURCHASE_STORAGE_PREFIX = "llave066_ga4_purchase_";
+const GOOGLE_ADS_PURCHASE_STORAGE_PREFIX =
+  "llave066_google_ads_purchase_";
+const GOOGLE_ADS_PURCHASE_SEND_TO =
+  "AW-18437190125/1HhSCPbZ84EdEO3jxNdE";
 const META_PURCHASE_STORAGE_PREFIX = "llave066_meta_purchase_";
 const TIKTOK_PURCHASE_STORAGE_PREFIX = "llave066_tiktok_purchase_";
 
@@ -209,6 +213,51 @@ function trackTikTokEvent(eventName, params = {}) {
   }
 
   window.ttq.track(eventName, params);
+
+  return true;
+}
+
+function trackGoogleAdsPurchase({
+  transactionId,
+  value,
+}) {
+  if (
+    typeof window === "undefined" ||
+    typeof window.gtag !== "function" ||
+    !transactionId
+  ) {
+    return false;
+  }
+
+  const params = {
+    send_to:
+      GOOGLE_ADS_PURCHASE_SEND_TO,
+
+    transaction_id:
+      String(transactionId),
+  };
+
+  const numericValue =
+    Number(value);
+
+  if (
+    Number.isFinite(
+      numericValue
+    ) &&
+    numericValue > 0
+  ) {
+    params.value =
+      numericValue;
+
+    params.currency =
+      "CLP";
+  }
+
+  window.gtag(
+    "event",
+    "conversion",
+    params
+  );
 
   return true;
 }
@@ -3179,6 +3228,47 @@ function PaymentStatusPage({
                 window.sessionStorage,
                 GA4_CHECKOUT_STORAGE_KEY
               );
+
+            const googleAdsDedupeKey =
+              `${GOOGLE_ADS_PURCHASE_STORAGE_PREFIX}${paymentId}`;
+
+            let googleAdsAlreadyTracked =
+              false;
+
+            try {
+              googleAdsAlreadyTracked =
+                Boolean(
+                  window.localStorage.getItem(
+                    googleAdsDedupeKey
+                  )
+                );
+            } catch {
+              // Google Ads puede continuar aunque localStorage esté bloqueado.
+            }
+
+            if (
+              !googleAdsAlreadyTracked
+            ) {
+              const googleAdsTracked =
+                trackGoogleAdsPurchase({
+                  transactionId:
+                    paymentId,
+
+                  value:
+                    snapshot?.bookPrice,
+                });
+
+              if (googleAdsTracked) {
+                try {
+                  window.localStorage.setItem(
+                    googleAdsDedupeKey,
+                    new Date().toISOString()
+                  );
+                } catch {
+                  // No bloqueamos la página.
+                }
+              }
+            }
 
             const total =
               Number(
