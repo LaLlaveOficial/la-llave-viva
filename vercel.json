@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/comprar",
-      "destination": "/index.html"
+      "destination": "/comprar.html"
     },
     {
       "source": "/press-kit",
