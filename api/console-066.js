@@ -1,3 +1,5 @@
+import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
+import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonStatus} from '../lib/houston-status.js';
 import {houstonConnect} from '../lib/houston-connect.js';
@@ -39,9 +41,20 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
+      if(op==='metrics-import'&&req.method==='POST'){
+        const item=validateMetricImport(body);if(!item)return res.status(400).json({error:'Revisa la marca, periodo y columnas de Metricool.'});
+        await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('metrics',0,'import',${JSON.stringify(item)}::jsonb)`;
+        return res.status(200).json({ok:true,network:item.network,importedAt:item.importedAt});
+      }
       if (op === 'houston' && req.method === 'GET') return res.status(200).json(await houstonStatus(env));
       if (op === 'houston-mission' && req.method === 'POST') {
         if(!validateMission(body))return res.status(400).json({error:'Revisa la tarea y el agente.'});
+        if(body.action==='start'&&body.purpose){
+          const mission=MARKETING_MISSIONS[body.purpose];if(!mission||mission.slug!==body.slug)return res.status(400).json({error:'Tarea de marketing inválida.'});
+          const metrics=await privateMetrics(sql);const leads=await sql`SELECT name,status FROM console066_leads WHERE status IN ('Contactado','En conversación','No contactar') ORDER BY updated_at DESC LIMIT 30`;
+          body.text=marketingText(body.purpose,metrics,leads);
+        }
         try{return res.status(200).json(await houstonMission(body,env));}
         catch(e){return res.status(502).json({error:e.message});}
       }
