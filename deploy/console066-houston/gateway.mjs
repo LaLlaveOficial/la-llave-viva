@@ -54,6 +54,6 @@ async function start(){
   const stop=()=>{if(stopping)return;stopping=true;server.close();engine.kill('SIGTERM');setTimeout(()=>process.exit(0),10000).unref();};
   process.on('SIGTERM',stop);process.on('SIGINT',stop);
   engine.on('error',()=>{server.close();process.exitCode=1;});
-  engine.on('exit',code=>{server.close();process.exit(code||0);});
+  engine.on('exit',code=>{server.close();process.exit(stopping?0:(code||1));});
 }
 if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url))await start();

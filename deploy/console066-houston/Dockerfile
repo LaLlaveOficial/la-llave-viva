@@ -6,6 +6,8 @@ RUN corepack enable
 WORKDIR /houston
 RUN git clone --filter=blob:none https://github.com/gethouston/houston.git . && git checkout --detach 597cba982c0cb725edc92237d9be7a40db69a6ff
 RUN pnpm install --frozen-lockfile --filter houston-ai --filter houston-app... --filter houston-web... --filter @houston/runtime... --filter @houston/host...
+COPY deploy/console066-houston/patch-runtime-limits.mjs /tmp/patch-runtime-limits.mjs
+RUN node /tmp/patch-runtime-limits.mjs
 RUN node selfhost/bundle.mjs
 RUN VITE_NEW_ENGINE=1 pnpm --filter houston-web build
 # Keep source, built output and license; production dependencies install below.
@@ -20,7 +22,7 @@ RUN tar -xzf /tmp/houston-source.tgz && rm /tmp/houston-source.tgz && pnpm insta
 COPY deploy/console066-houston/gateway.mjs /houston/gateway.mjs
 COPY deploy/console066-houston/bootstrap.mjs /houston/bootstrap.mjs
 COPY agents/ /houston/llave-agents/
-ENV NODE_ENV=production HOUSTON_HOME=/data HOUSTON_HOST_BIND=127.0.0.1 HOUSTON_HOST_PORT=4318 HOUSTON_RUNTIME_COMMAND="node /houston/dist/runtime/main.mjs"
+ENV NODE_ENV=production HOUSTON_HOME=/data HOUSTON_HOST_BIND=127.0.0.1 HOUSTON_HOST_PORT=4318 HOUSTON_RUNTIME_COMMAND="node /houston/dist/runtime/main.mjs" HOUSTON_MAX_WARM_RUNTIMES=3
 # Startup owns the mounted directories, then drops to node before launching agents.
 EXPOSE 8080
 CMD ["node", "gateway.mjs"]
