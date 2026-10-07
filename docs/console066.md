@@ -15,7 +15,7 @@ Esta entrega incorpora CRM persistente, filtros, notas, mensajes por destinatari
 2. Configurar en Vercel, solo en el servidor:
    - `DATABASE_URL`: conexión de la rama escogida.
    - `CONSOLE_ORIGIN`: origen HTTPS exacto, sin slash final, por ejemplo `https://lallaveoficial.com`. Las vistas previas deben configurar su propio origen.
-   - `CONSOLE_PASSWORD_HASH`: scrypt, formato `saltHex:derivedKeyHex`, salt de 16 bytes y clave derivada de 64 bytes. Usar una contraseña aleatoria, única y de al menos 12 caracteres; no ponerla en el repositorio ni en este documento.
+   - `CONSOLE_PASSWORD`: clave elegida e introducida por Kike directamente en la variable cifrada de Vercel, mínimo 12 caracteres (recomendado 20 o más). Nunca usar prefijo VITE_ ni ponerla en código, chat o repositorio. Como alternativa técnica, `CONSOLE_PASSWORD_HASH`: scrypt, formato `saltHex:derivedKeyHex`, salt de 16 bytes y clave derivada de 64 bytes. Si existen ambos, se usa el hash.
    - `CONSOLE_SESSION_SECRET`: secreto aleatorio de al menos 32 caracteres para seudonimizar límites de acceso.
 3. Revisar el cambio y autorizar merge/despliegue en producción por separado. Comprobar login, logout, guardado y persistencia real antes de anunciar que está operativa.
 

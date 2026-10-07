@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import {configuration,sameOrigin,readToken,newToken,hashToken,cookie,rateKey,verifyPassword,validateLeadUpdate,validateNewLead,TASK_STATES} from '../lib/console-security.js';
+import {configuration,sameOrigin,readToken,newToken,hashToken,cookie,rateKey,verifyConfiguredPassword,validateLeadUpdate,validateNewLead,TASK_STATES} from '../lib/console-security.js';
 
 export function makeHandler(connect = neon, env = process.env) {
   return async function handler(req,res) {
@@ -27,7 +27,7 @@ export function makeHandler(connect = neon, env = process.env) {
           RETURNING bucket,attempts
         `;
         if (buckets.some(b=>b.attempts > (b.bucket === 'global' ? 100 : 10))) return res.status(429).json({error:'Demasiados intentos. Vuelve a intentar en la próxima hora.'});
-        if (!await verifyPassword(body.password,config.passwordHash)) return res.status(401).json({error:'Acceso incorrecto.'});
+        if (!await verifyConfiguredPassword(body.password,config)) return res.status(401).json({error:'Acceso incorrecto.'});
         const token = newToken();
         await sql`INSERT INTO console066_sessions(token_hash,expires_at) VALUES (${hashToken(token)},now()+interval '8 hours')`;
         res.setHeader('Set-Cookie',cookie(token)); return res.status(200).json({ok:true});

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {scryptSync} from 'node:crypto';
-import {configuration,cookie,readToken,verifyPassword,validateLeadUpdate} from '../lib/console-security.js';
+import {configuration,cookie,readToken,verifyPassword,verifyConfiguredPassword,validateLeadUpdate} from '../lib/console-security.js';
 import {makeHandler} from '../api/console-066.js';
 const salt='ab'.repeat(16),password='test-only-access-066';
 const env={CONSOLE_ORIGIN:'https://lallaveoficial.com',CONSOLE_PASSWORD_HASH:salt+':'+scryptSync(password,salt,64).toString('hex'),CONSOLE_SESSION_SECRET:'test-only-secret-'.repeat(3),DATABASE_URL:'postgresql://test-only'};
@@ -9,6 +9,7 @@ const req=(method='GET',op='data',body=null)=>({method,query:{op},body,headers:{
 const response=()=>({headers:{},code:null,data:null,setHeader(k,v){this.headers[k]=v;},status(c){this.code=c;return this;},json(d){this.data=d;return this;}});
 test('configuration fails closed for incomplete secrets or non HTTPS origins',()=>{assert.equal(configuration({}),null);assert.equal(configuration({...env,CONSOLE_ORIGIN:'http://lallaveoficial.com'}),null);assert.equal(configuration({...env,CONSOLE_SESSION_SECRET:'short'}),null);assert.ok(configuration(env));});
 test('passwords verify with scrypt and reject wrong values',async()=>{assert.equal(await verifyPassword(password,env.CONSOLE_PASSWORD_HASH),true);assert.equal(await verifyPassword('incorrect-password',env.CONSOLE_PASSWORD_HASH),false);});
+test('owner can configure password directly in the encrypted server environment',async()=>{const cfg=configuration({...env,CONSOLE_PASSWORD_HASH:undefined,CONSOLE_PASSWORD:password});assert.ok(cfg);assert.equal(await verifyConfiguredPassword(password,cfg),true);assert.equal(await verifyConfiguredPassword('incorrect-password',cfg),false);assert.equal(configuration({...env,CONSOLE_PASSWORD_HASH:undefined,CONSOLE_PASSWORD:'short'}),null);});
 test('session cookie is secure, HttpOnly and host scoped',()=>{const value=cookie('a'.repeat(43));assert.ok(value.includes('HttpOnly; Secure; SameSite=Strict'));assert.equal(readToken({headers:{cookie:value}}),'a'.repeat(43));assert.equal(readToken({headers:{cookie:'__Host-llave-console=forged'}}),null);});
 test('unauthenticated reads never query CRM',async()=>{let called=0;const handler=makeHandler(()=>async()=>{called++;return [];},env);const res=response();await handler(req(),res);assert.equal(res.code,401);assert.equal(called,0);});
 test('cross-origin writes are rejected before database access',async()=>{let called=0;const handler=makeHandler(()=>{called++;},env);const r=req('POST','login',{password});r.headers.origin='https://attacker.example';const res=response();await handler(r,res);assert.equal(res.code,403);assert.equal(called,0);});
