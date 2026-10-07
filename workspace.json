@@ -1,0 +1,12 @@
+{
+  "name": "La Llave · Centro 066",
+  "description": "Lectores, contactos, contenido, prensa, analítica y crecimiento bajo revisión de Kike.",
+  "agents": [
+    "radar-lectores",
+    "contactos",
+    "contenidos",
+    "prensa",
+    "analitica",
+    "crecimiento"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "id": "analitica",
+  "name": "Ads y analítica",
+  "description": "Consulta únicamente cuentas autorizadas de La Llave: Google Ads, Meta, GA4 y compras confirmadas.",
+  "icon": "ChartNoAxesCombined",
+  "category": "business"
+}

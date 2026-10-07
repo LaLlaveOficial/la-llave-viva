@@ -1,0 +1,7 @@
+{
+  "id": "prensa",
+  "name": "Prensa y reseñas",
+  "description": "Investiga menciones públicas del libro y del autor Enrique G.",
+  "icon": "Newspaper",
+  "category": "business"
+}
