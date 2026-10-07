@@ -13,10 +13,10 @@ export function makeHandler(connect = neon, env = process.env) {
     const op = req.query?.op || 'data';
     const body = req.body;
     if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 12000)) return res.status(400).json({error:'Solicitud inválida.'});
-    const sql = connect(config.databaseUrl);
     try {
+      const sql = connect(config.databaseUrl);
       if (op === 'login' && req.method === 'POST') {
-        const key = rateKey(req,config.secret);
+        const key = rateKey(req,config.secret,env.VERCEL === '1');
         // Both buckets persist across serverless instances. Reserve an attempt before doing scrypt.
         const buckets = await sql`
           INSERT INTO console066_login_limits(bucket,window_start,attempts)
