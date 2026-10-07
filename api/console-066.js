@@ -1,4 +1,5 @@
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
+import {houstonRoutines} from '../lib/houston-routines.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonStatus} from '../lib/houston-status.js';
@@ -42,6 +43,10 @@ export function makeHandler(connect = neon, env = process.env) {
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
+      if(op==='houston-routines'){
+        try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
       if(op==='metrics-import'&&req.method==='POST'){
         const item=validateMetricImport(body);if(!item)return res.status(400).json({error:'Revisa la marca, periodo y columnas de Metricool.'});
         await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('metrics',0,'import',${JSON.stringify(item)}::jsonb)`;
@@ -77,7 +82,7 @@ export function makeHandler(connect = neon, env = process.env) {
           {name:'Houston / agentes IA',status:'Por comprobar',description:'El estado del motor se consulta al abrir Herramientas y agentes.'},
           {name:'Instagram',status:'Pendiente',description:'Mensajes preparados para revisión; envío desde Work Mode.'},
           {name:'Radar 08:00',status:'Externo',description:'Programado en ChatGPT; los resultados aún no se importan solos.'},
-          {name:'Ads y analítica',status:'Pendiente',description:'La consola aún no consulta las cuentas publicitarias.'}
+          {name:'Ads y analítica',status:'Importaciones disponibles',description:'Métricas de Metricool con fuente y periodo en Métricas y ventas. Conexión directa y actualización automática pendientes.'}
         ]});
       }
       if (op === 'add' && req.method === 'POST') {
