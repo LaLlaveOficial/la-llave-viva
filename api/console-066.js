@@ -1,6 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import {houstonStatus} from '../lib/houston-status.js';
 import {houstonConnect} from '../lib/houston-connect.js';
+import {houstonMission,validateMission} from '../lib/houston-missions.js';
 import {configuration,sameOrigin,readToken,newToken,hashToken,cookie,rateKey,verifyConfiguredPassword,validateLeadUpdate,validateNewLead,TASK_STATES} from '../lib/console-security.js';
 
 export function makeHandler(connect = neon, env = process.env) {
@@ -39,6 +40,11 @@ export function makeHandler(connect = neon, env = process.env) {
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
       if (op === 'houston' && req.method === 'GET') return res.status(200).json(await houstonStatus(env));
+      if (op === 'houston-mission' && req.method === 'POST') {
+        if(!validateMission(body))return res.status(400).json({error:'Revisa la tarea y el agente.'});
+        try{return res.status(200).json(await houstonMission(body,env));}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
       if (op === 'houston-connect' && req.method === 'POST') {
         if (!['start','status','finish','cancel'].includes(body.action)) return res.status(400).json({error:'Acción de conexión inválida.'});
         try { return res.status(200).json(await houstonConnect(body.action,env)); }
