@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import {houstonStatus} from '../lib/houston-status.js';
 import {configuration,sameOrigin,readToken,newToken,hashToken,cookie,rateKey,verifyConfiguredPassword,validateLeadUpdate,validateNewLead,TASK_STATES} from '../lib/console-security.js';
 
 export function makeHandler(connect = neon, env = process.env) {
@@ -36,6 +37,7 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if (op === 'houston' && req.method === 'GET') return res.status(200).json(await houstonStatus(env));
       if (op === 'logout' && req.method === 'POST') {
         await sql`DELETE FROM console066_sessions WHERE token_hash=${hashToken(token)}`;
         res.setHeader('Set-Cookie',cookie('',0)); return res.status(200).json({ok:true});
@@ -47,7 +49,7 @@ export function makeHandler(connect = neon, env = process.env) {
         ]);
         return res.status(200).json({leads,tasks,integrations:[
           {name:'CRM',status:'Conectado',description:'Datos guardados en la base de La Llave.'},
-          {name:'Houston / agentes IA',status:'Pendiente',description:'El motor de agentes todavía no está conectado.'},
+          {name:'Houston / agentes IA',status:'Por comprobar',description:'El estado del motor se consulta al abrir Herramientas y agentes.'},
           {name:'Instagram',status:'Pendiente',description:'Mensajes preparados para revisión; envío desde Work Mode.'},
           {name:'Radar 08:00',status:'Externo',description:'Programado en ChatGPT; los resultados aún no se importan solos.'},
           {name:'Ads y analítica',status:'Pendiente',description:'La consola aún no consulta las cuentas publicitarias.'}

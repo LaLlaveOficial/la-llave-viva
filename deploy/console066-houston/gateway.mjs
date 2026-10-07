@@ -3,6 +3,7 @@ import {spawn} from 'node:child_process';
 import {mkdir,chown,stat,readFile} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {bootstrapAgents} from './bootstrap.mjs';
 
 const root=resolve(process.env.HOUSTON_WEB_ROOT || '/houston/packages/web/dist');
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.ico':'image/x-icon'};
@@ -48,6 +49,7 @@ async function start(){
   if(process.getuid?.()===0){process.setgid(1000);process.setuid(1000);}
   const engine=spawn(process.execPath,['/houston/dist/host/main.mjs'],{stdio:'inherit',env:process.env});
   const server=createGateway();server.listen(Number(process.env.PORT||8080),'0.0.0.0');
+  void bootstrapAgents();
   let stopping=false;
   const stop=()=>{if(stopping)return;stopping=true;server.close();engine.kill('SIGTERM');setTimeout(()=>process.exit(0),10000).unref();};
   process.on('SIGTERM',stop);process.on('SIGINT',stop);

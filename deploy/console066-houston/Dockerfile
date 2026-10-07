@@ -18,6 +18,8 @@ WORKDIR /houston
 COPY --from=build /houston-source.tgz /tmp/houston-source.tgz
 RUN tar -xzf /tmp/houston-source.tgz && rm /tmp/houston-source.tgz && pnpm install --frozen-lockfile --prod --filter @houston/runtime... --filter @houston/host... && ln -s /houston/node_modules/.pnpm/node_modules /houston/dist/host/node_modules && ln -s /houston/node_modules/.pnpm/node_modules /houston/dist/runtime/node_modules
 COPY deploy/console066-houston/gateway.mjs /houston/gateway.mjs
+COPY deploy/console066-houston/bootstrap.mjs /houston/bootstrap.mjs
+COPY agents/ /houston/llave-agents/
 ENV NODE_ENV=production HOUSTON_HOME=/data HOUSTON_HOST_BIND=127.0.0.1 HOUSTON_HOST_PORT=4318 HOUSTON_RUNTIME_COMMAND="node /houston/dist/runtime/main.mjs"
 # Startup owns the mounted directories, then drops to node before launching agents.
 EXPOSE 8080
