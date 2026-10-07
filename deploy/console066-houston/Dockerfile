@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
 RUN corepack enable
 WORKDIR /houston
 RUN git clone --filter=blob:none https://github.com/gethouston/houston.git . && git checkout --detach 597cba982c0cb725edc92237d9be7a40db69a6ff
-RUN pnpm install --frozen-lockfile --filter houston-ai --filter houston-web... --filter @houston/runtime... --filter @houston/host...
+RUN pnpm install --frozen-lockfile --filter houston-ai --filter houston-app... --filter houston-web... --filter @houston/runtime... --filter @houston/host...
 RUN node selfhost/bundle.mjs
 RUN VITE_NEW_ENGINE=1 pnpm --filter houston-web build
 # Keep source, built output and license; production dependencies install below.
