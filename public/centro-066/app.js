@@ -25,7 +25,40 @@ async function refreshAgents(){
   try{const result=await request('houston');if(view!=='agents'||!data)return;
     document.querySelector('#houston-state').innerHTML=`<span class="pill">${escape(result.status)}</span><h2>Houston / agentes IA</h2><p>${escape(result.description)}</p>${result.modelStatus?`<p><strong>Proveedor de IA:</strong> ${escape(result.modelStatus)}</p>`:''}`;
     document.querySelector('#agent-checked').textContent='Consulta: '+new Date(result.checkedAt).toLocaleString('es-CL',{timeZone:'America/Santiago'});
+    if(result.status==='Conectado'&&result.modelStatus!=='Conectado'){
+      const b=document.createElement('button');b.className='subtle';b.textContent='Conectar ChatGPT / Codex';b.onclick=connectAI;document.querySelector('#houston-state').append(b);
+    }
     document.querySelector('#agent-cards').innerHTML=result.agents.map(a=>`<article class="card"><span class="pill">${escape(a.status)}</span><h2>${escape(a.name)}</h2><p>${escape(a.description)}</p><p><strong>Tarea actual:</strong> ${escape(a.task||'Sin tarea en ejecución confirmada.')}</p><p><strong>Último resultado:</strong> ${escape(a.result||(a.activityUnavailable?'Actividad no disponible.':'Sin resultados registrados.'))}</p>${a.updatedAt?`<p class="note">Última actividad: ${escape(new Date(a.updatedAt).toLocaleString('es-CL',{timeZone:'America/Santiago'}))}</p>`:''}</article>`).join('');
   }catch(e){if(view==='agents'&&data){document.querySelector('#agent-checked').textContent='No se pudo actualizar. Los estados anteriores no están confirmados.';document.querySelector('#agent-cards').innerHTML='';document.querySelector('#houston-state').innerHTML='<h2>Houston / agentes IA</h2><p>No se pudo verificar la conexión. Vuelve a actualizar.</p>';}}
   finally{agentChecking=false;const b=document.querySelector('#refresh-agents');if(b)b.disabled=false;}
+}
+
+function connectAI(){
+  const d=document.createElement('dialog');
+  d.innerHTML='<div class="eyebrow">AUTORIZACIÓN PERSONAL</div><h2>Conectar ChatGPT / Codex</h2><p>Autoriza directamente en OpenAI el uso de tu cuenta por los seis agentes de La Llave. La conexión se guarda de forma privada en Houston. No se inicia ninguna misión ni se compra un plan al conectar.</p><p>Las condiciones y límites corresponden a tu cuenta de OpenAI.</p><div id="ai-connect-flow"><button id="begin-ai-connect">Iniciar autorización</button></div><p class="error" role="alert"></p><div class="actions"><button class="subtle" id="close-ai-connect">Cerrar</button></div>';
+  document.body.append(d);d.showModal();let timer=null,pending=false,polling=false,closed=false;
+  const error=m=>{if(!closed)d.querySelector('[role=alert]').textContent=m;};
+  d.querySelector('#close-ai-connect').onclick=()=>d.close();
+  d.onclose=()=>{closed=true;clearInterval(timer);d.remove();if(pending)request('houston-connect',{action:'cancel'}).catch(()=>{});};
+  const poll=async()=>{
+    if(polling||closed)return;polling=true;
+    try{
+      const state=await request('houston-connect',{action:'status'});if(closed)return;
+      if(state.status==='error'){clearInterval(timer);pending=false;error('OpenAI no completó la autorización. Cierra y vuelve a iniciar.');return;}
+      if(state.status==='connected'){
+        clearInterval(timer);await request('houston-connect',{action:'finish'});pending=false;if(closed)return;
+        d.querySelector('#ai-connect-flow').innerHTML='<p><strong>Cuenta conectada para los seis agentes.</strong></p><p>Ya puedes cerrar esta ventana. Conectar la cuenta no inicia tareas automáticamente.</p>';error('');refreshAgents();
+      }
+    }catch(e){error(e.message);}finally{polling=false;}
+  };
+  d.querySelector('#begin-ai-connect').onclick=async e=>{
+    e.target.disabled=true;error('');
+    try{
+      const info=await request('houston-connect',{action:'start'});
+      if(closed){request('houston-connect',{action:'cancel'}).catch(()=>{});return;}
+      pending=true;
+      d.querySelector('#ai-connect-flow').innerHTML=`<p>Abre OpenAI, inicia sesión y escribe este código de autorización. No lo compartas por chat.</p><p><strong>${escape(info.userCode)}</strong></p><p><a href="${escape(info.verificationUri)}" target="_blank" rel="noopener noreferrer">Autorizar en OpenAI</a></p><p class="note">Esperando tu autorización. Esta ventana comprobará el resultado y guardará la conexión para los agentes.</p>`;
+      timer=setInterval(poll,5000);poll();
+    }catch(err){error(err.message);if(!closed)e.target.disabled=false;}
+  };
 }
