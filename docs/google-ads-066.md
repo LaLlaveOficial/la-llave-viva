@@ -1,52 +1,42 @@
 # Google Ads directo — La Llave
 
-Preparación del 8 de octubre de 2026. Cuenta fijada: `3149885754`.
-**La conexión no está activada ni verificada contra la cuenta real.**
+Verificado el 8 de octubre de 2026 a las 16:53 de Santiago. Cuenta `3149885754`,
+La Llave Oficial, moneda CLP y zona horaria America/Santiago.
 
-El cliente privado consulta exclusivamente el servidor oficial de Google Ads,
-valida los metadatos antes de consultar, comprueba la identidad de la cuenta y
-guarda observaciones con moneda, zona horaria y fecha. No acepta GAQL del cliente
-ni expone herramientas que modifiquen campañas. Los permisos OAuth de Google
-Ads incluyen el scope `adwords`; la limitación de lectura la imponen el servidor
-oficial y el cliente, no un scope Google de solo lectura.
+La autorización de la consola, el servidor oficial y la consulta de la cuenta real
+funcionaron. Se guardaron métricas del 2 al 8 de octubre y cinco recomendaciones.
+El bloqueo inicial de acceso Test dejó de impedir la consulta después del trámite
+realizado por el propietario en Google Cloud. No se aplicaron cambios en campañas.
 
-## Bloqueos observados
+## Conexión
 
-- Google Cloud muestra `Site Unavailable` en el navegador remoto, también tras
-  recargar. No demuestra que Google Cloud esté caído ni que el PC del usuario falle.
-- Vercel MCP devuelve 403 en el equipo `team_z4kBjgTzE68bW5vnitnmGZEi`
-  (`la-llave-oficial-s-projects`); proyecto `prj_ZPjGSkXIoNQL9Bffl737UVQZ5363`.
-- No hay variables Google en el servicio Houston de Railway. No modificar ese
-  servicio para instalar este servidor, que necesita un proceso independiente.
+- Proyecto Google Cloud: `la-llave-operaciones-066`.
+- Servicio independiente de Railway: Google Ads MCP 066.
+- MCP: `https://google-ads-mcp-066-production.up.railway.app/mcp`.
+- UID Vercel Connect: `google-ads-mcp-066-production.up.railway.app/google-ads-la-llave-066`.
+- Sujeto de la consola: `console066-owner`.
+- Callback OAuth: `https://google-ads-mcp-066-production.up.railway.app/auth/callback`.
+- Fuente oficial fijada a `8efbd2e2b56da755cd0b3e642149ed8ad96b44b5`.
+- Volumen persistente cifrado y claves privadas estables. No guardar secretos en Git.
 
-## Activación pendiente
+La rama `google-ads-mcp-runtime-066` contiene únicamente el servicio de Railway.
+No debe fusionarse con main: su árbol sustituiría el sitio.
 
-1. Crear o seleccionar el proyecto propio en Google Cloud, habilitar Google Ads
-   API y verificar que tiene Explorer, Basic o Standard para consultar producción.
-   No usar el proyecto OAuth de terceros, Gmail ni Windsor como sustituto.
-2. Configurar consentimiento y cliente OAuth web para la cuenta
-   `santibanez.luisenrique@gmail.com`. Registrar el callback que indique el
-   servidor oficial (`/auth/callback` de su origen). Si Google exige aprobación,
-   completar ese paso antes de afirmar acceso a producción. No poner secretos en
-   el chat, Git ni el navegador cliente de La Llave.
-3. Desplegar `deploy/google-ads-066/` en un servicio separado, con volumen
-   persistente y las variables exigidas por `start.py`. El arranque falla si
-   falta OAuth; no hay servidor público sin autenticación. JWT y clave de
-   cifrado estables, privadas y generadas de forma aleatoria. OAuth se guarda en
-   el volumen cifrado; no usar almacenamiento efímero.
-4. Registrar su URL MCP en Vercel Connect, recuperar el UID **real** devuelto y
-   adjuntarlo solo a producción del proyecto de La Llave. Configurar variables
-   servidor `GOOGLE_ADS_MCP_URL=https://ORIGEN_REAL/mcp` y
-   `GOOGLE_ADS_CONNECTOR_UID=UID_REAL`. No inventar el UID ni instalar Windsor.
-5. En la consola: Google Ads directo → Autorizar Google Ads → Consulta ahora.
-   Verificar customer, moneda, campañas y fechas devueltas. Si la cuenta no
-   coincide, el cliente rechaza la consulta y no la guarda.
+## Lectura y verificación
 
-La vista muestra una observación anterior como anterior, nunca como estado vivo.
-Cada consulta explícita va al servidor oficial, sin caché de dos horas. Google
-mantiene sus propios retrasos de procesamiento; esto no promete datos instantáneos.
+La consola valida metadatos, comprueba la cuenta fijada y consulta campañas y
+recomendaciones. No acepta GAQL arbitrario ni expone modificaciones de campañas.
+OAuth usa el scope adwords; la restricción de lectura la impone la implementación.
+
+Las observaciones guardadas incluyen fecha, periodo, moneda y zona horaria. No
+representan un estado vivo. Consultar ahora realiza una nueva consulta directa;
+Google mantiene sus propios retrasos de procesamiento. El último día es parcial.
+
+Si Google devuelve la restricción de cuentas de prueba, se explica la solicitud
+Explorer sin guardar una observación ni mostrar detalles internos del proveedor.
 
 Fuentes oficiales:
 - https://developers.google.com/google-ads/api/docs/developer-toolkit/mcp-server
-- https://github.com/googleads/google-ads-mcp (commit revisado arriba)
+- https://developers.google.com/google-ads/api/docs/oauth/cloud-project
+- https://github.com/googleads/google-ads-mcp
 - https://vercel.com/docs/connect
