@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ADS_CUSTOMER,adsConfiguration,adsCredential,googleAdsSync,googleAdsStatus} from '../lib/google-ads-connect.js';
 const env={GOOGLE_ADS_MCP_URL:'https://ads.example.com/mcp',GOOGLE_ADS_CONNECTOR_UID:'oauth/llave-ads',VERCEL_OIDC_TOKEN:'private-oidc'};
-function fixture({wrongAccount=false,failMetadata=false,failRecommendations=false}={}){
+function fixture({wrongAccount=false,failMetadata=false,failRecommendations=false,testAccountsOnly=false}={}){
  const calls=[],saved=[];
  const sql=async(strings,...params)=>{saved.push(params);return [];};
  const fetcher=async(url,options)=>{
@@ -16,7 +16,10 @@ function fixture({wrongAccount=false,failMetadata=false,failRecommendations=fals
   if(name==='metadata_get_resource_metadata'){
    const fields={customer:['customer.id','customer.descriptive_name','customer.currency_code','customer.time_zone'],campaign:['campaign.id','campaign.name','campaign.status','metrics.impressions','metrics.clicks','metrics.cost_micros','metrics.conversions','metrics.conversions_value'],recommendation:['recommendation.resource_name','recommendation.type']};
    value={selectable:failMetadata?[]:fields[args.resource_name]};
-  }else if(args.resource==='customer')value=[{'customer.id':wrongAccount?'1234567890':ADS_CUSTOMER,'customer.descriptive_name':'La Llave','customer.currency_code':'CLP','customer.time_zone':'America/Santiago'}];
+  }else if(args.resource==='customer'){
+   if(testAccountsOnly)return Response.json({result:{isError:true,content:[{type:'text',text:'The Google Cloud project is only approved for use with test accounts. private-stacktrace'}]}});
+   value=[{'customer.id':wrongAccount?'1234567890':ADS_CUSTOMER,'customer.descriptive_name':'La Llave','customer.currency_code':'CLP','customer.time_zone':'America/Santiago'}];
+  }
   else if(args.resource==='campaign')value=[{'campaign.id':'8','campaign.name':'Search La Llave','campaign.status':'ENABLED','metrics.impressions':'15','metrics.clicks':'2','metrics.cost_micros':'125000000','metrics.conversions':0,'metrics.conversions_value':0}];
   else if(failRecommendations)return Response.json({result:{isError:true,content:[{type:'text',text:'secret stacktrace'}]}});
   else value=[{'recommendation.resource_name':'customers/3149885754/recommendations/1','recommendation.type':'KEYWORD'}];
@@ -53,4 +56,10 @@ test('wrong account or unavailable fields prevent saving and further queries',as
 test('failed recommendations retain verified metrics and expose no provider error text',async()=>{
  const f=fixture({failRecommendations:true}),result=await googleAdsSync(f.sql,env,f.fetcher);
  assert.equal(result.campaigns.length,1);assert.equal(result.recommendations.length,0);assert.ok(result.recommendationsError);assert.equal(JSON.stringify(result).includes('secret stacktrace'),false);
+});
+test('production access restriction explains Explorer and saves no observation',async()=>{
+ const f=fixture({testAccountsOnly:true});
+ await assert.rejects(googleAdsSync(f.sql,env,f.fetcher),e=>e.message.includes('solicita Explorer')&&!e.message.includes('private-stacktrace'));
+ assert.equal(f.saved.length,0);
+ assert.equal(f.calls.some(c=>c.body.params?.arguments?.resource==='campaign'),false);
 });
