@@ -93,3 +93,19 @@ específica del propietario y después verificar validate_only sin escritura.
 
 Verificación local: 59 pruebas Node aprobadas y una omisión existente; seis pruebas
 Python del ejecutor aprobadas; build de producción correcto.
+
+## Activación verificada el 8 de octubre, 19:24 Santiago
+
+El propietario autorizó específicamente el despliegue del ejecutor a las 17:37.
+Railway tiene activo el runtime 1ab7cfc, despliegue 738f5923-4de0-4e6b-a09e-366537e25ecd.
+La consola verifica llave_approved_change y muestra ejecutor disponible.
+Google confirmó validate_only para estado de campaña, negativa exacta y estado
+del anuncio Marca. Las tres propuestas de prueba se descartaron sin ejecución.
+No se modificaron campañas, anuncios, presupuestos ni palabras negativas.
+
+La consulta real de presupuesto devuelve CUSTOM_PERIOD: Marca 32.500 CLP,
+Género 28.000 CLP y Demand Gen 210.000 CLP, totales hasta el 31 de octubre.
+El ejecutor rechaza ajustes diarios si el periodo no es DAILY; modificar estos
+totales queda fuera de la autorización de presupuesto diario.
+El selector de anuncios se alimenta del informe real y filtra por campaña.
+Verificación local: siete pruebas Python aprobadas y build de producción correcto.
