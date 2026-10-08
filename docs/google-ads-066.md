@@ -40,3 +40,35 @@ Fuentes oficiales:
 - https://developers.google.com/google-ads/api/docs/oauth/cloud-project
 - https://github.com/googleads/google-ads-mcp
 - https://vercel.com/docs/connect
+
+## Ampliación del centro Google Ads
+
+Informes separados por campaña y periodo: campañas/presupuestos, evolución diaria,
+palabras clave, términos de búsqueda, negativas, anuncios, catálogo de recursos,
+recursos por campaña, conversiones por acción, configuración de conversiones,
+recomendaciones detalladas, dispositivos/redes, ubicaciones, segmentación y cambios.
+Cada informe valida campos con Google, conserva fechas y muestra campos omitidos
+y límites de filas. Los informes no se combinan como si fueran el mismo periodo.
+
+El análisis numérico calcula CTR/CPC/CPA/ROAS con denominadores válidos; el agente
+Houston recibe un resumen limitado con fechas, cobertura y reglas de atribución.
+CSV usa escape contra fórmulas. No se incluyen compradores privados ni credenciales.
+
+### Extensión propia de cambios aprobados
+
+`llave_changes.py` es código de La Llave, separado de las herramientas oficiales
+de Google que son de lectura. Admite estado de campaña/anuncio, presupuesto diario
+no compartido en CLP y negativa de campaña. No admite operaciones arbitrarias.
+
+Valida el token OIDC firmado de Vercel, proyecto, equipo, audiencia y ambiente
+producción. La propuesta se valida con Google `validate_only`, conserva estado
+anterior, motivo y caduca en 30 minutos. La sesión privada y el origen de la
+consola son obligatorios. Aprobar reclama atómicamente la propuesta; el estado
+actual debe coincidir. SQLite persistente impide repetir un intento incierto.
+La ejecución se confirma leyendo de nuevo el estado en Google. Ante pérdida de
+respuesta, se registra resultado incierto y se exige revisar, sin reintento.
+No se ejecutan campañas ni se genera gasto al instalar o probar validaciones.
+
+La capacidad de ejecutar requiere también que Google autorice mutaciones para
+la cuenta y ese usuario. La comprobación inicial usa únicamente validaciones
+sin escritura; no se cambia una campaña real para probar.

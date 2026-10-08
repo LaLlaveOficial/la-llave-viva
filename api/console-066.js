@@ -1,5 +1,7 @@
 import {apolloCredential,apolloQuery,matchApolloCandidates,validateApolloSearch} from '../lib/apollo-connect.js';
 import {adsCredential,googleAdsStatus,googleAdsSync} from '../lib/google-ads-connect.js';
+import {googleAdsReport,googleAdsReports,googleAdsResources,adsAnalysisMission} from '../lib/google-ads-reports.js';
+import {proposeAdsChange,approveAdsChange,adsChangeHistory} from '../lib/google-ads-changes.js';
 import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
@@ -46,6 +48,27 @@ export function makeHandler(connect = neon, env = process.env) {
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
       if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
+      if(op==='google-ads-reports'&&req.method==='GET')return res.status(200).json({...await googleAdsReports(sql),changes:await adsChangeHistory(sql),missions:await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-analysis' ORDER BY id DESC LIMIT 5`});
+      if(op==='google-ads-discard'&&req.method==='POST'){
+        if(!Number.isSafeInteger(body.id)||body.id<1)return res.status(400).json({error:'Propuesta inválida.'});
+        const rows=await sql`UPDATE console066_audit SET detail=detail||jsonb_build_object('status','discarded','discardedAt',now()) WHERE id=${body.id} AND entity='google-ads-change' AND detail->>'status'='validated' RETURNING id`;
+        return res.status(rows.length===1?200:409).json(rows.length===1?{ok:true}:{error:'La propuesta ya fue procesada.'});
+      }
+      if(['google-ads-report','google-ads-resources','google-ads-propose','google-ads-approve','google-ads-analysis'].includes(op)&&req.method==='POST'){
+        const adsEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};
+        try{
+          if(op==='google-ads-report')return res.status(200).json(await googleAdsReport(sql,adsEnv,body));
+          if(op==='google-ads-resources')return res.status(200).json(await googleAdsResources(adsEnv,body));
+          if(op==='google-ads-propose')return res.status(200).json(await proposeAdsChange(sql,adsEnv,body));
+          if(op==='google-ads-approve')return res.status(200).json(await approveAdsChange(sql,adsEnv,body));
+          const mission={action:body.action,slug:'analitica',id:body.id,text:'Análisis Google Ads'};
+          if(!validateMission(mission))return res.status(400).json({error:'Tarea de análisis inválida.'});
+          if(body.action==='start'){mission.text=adsAnalysisMission((await googleAdsReports(sql)).reports);}
+          const result=await houstonMission(mission,env);
+          if(body.action==='start')await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('google-ads-analysis',0,'start',${JSON.stringify({id:body.id,startedAt:new Date().toISOString()})}::jsonb)`;
+          return res.status(200).json(result);
+        }catch(e){return res.status(502).json({error:e.message});}
+      }
       if(['google-ads-authorize','google-ads-sync'].includes(op)&&req.method==='POST'){
         try{const adsEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};return res.status(200).json(op==='google-ads-authorize'?await adsCredential('authorize',adsEnv):await googleAdsSync(sql,adsEnv));}
         catch(e){return res.status(502).json({error:e.message});}
@@ -116,7 +139,8 @@ export function makeHandler(connect = neon, env = process.env) {
           {name:'Houston / agentes IA',status:'Por comprobar',description:'El estado del motor se consulta al abrir Herramientas y agentes.'},
           {name:'Instagram',status:'Pendiente',description:'Mensajes preparados para revisión; envío desde Work Mode.'},
           {name:'Radar 08:00',status:'Externo',description:'Programado en ChatGPT; los resultados aún no se importan solos.'},
-          {name:'Ads y analítica',status:'Importaciones disponibles',description:'Métricas de Metricool con fuente y periodo en Métricas y ventas. Conexión directa y actualización automática pendientes.'}
+          {name:'Google Ads',status:'Ver Google Ads directo',description:'Consulta directa por campaña, informes, recomendaciones y propuestas de cambios para aprobación. El estado se verifica en Google Ads directo.'},
+          {name:'Ads y analítica',status:'Metricool disponible',description:'Métricas de Instagram y Meta Ads con fecha y cobertura. Su conexión directa y mensajería siguen pendientes.'}
         ]});
       }
       if (op === 'add' && req.method === 'POST') {

@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {"api/console-066.js": {"maxDuration": 120}},
   "rewrites": [
     {
       "source": "/operaciones-066",

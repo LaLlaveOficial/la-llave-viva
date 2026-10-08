@@ -24,4 +24,7 @@ if os.geteuid() == 0:
     os.setgroups([])
     os.setgid(user.pw_gid)
     os.setuid(user.pw_uid)
-os.execvp("google-ads-mcp", ["google-ads-mcp"])
+from ads_mcp.server import run_server
+from llave_changes import register
+register()
+run_server()
