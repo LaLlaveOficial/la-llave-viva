@@ -44,10 +44,10 @@ export function makeHandler(connect = neon, env = process.env) {
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
       if(op==='metricool-authorize'&&req.method==='POST'){
-        try{return res.status(200).json(await connectRequest('authorize',env));}catch(e){return res.status(502).json({error:e.message});}
+        try{return res.status(200).json(await connectRequest('authorize',{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN}));}catch(e){return res.status(502).json({error:e.message});}
       }
       if(op==='metricool-sync'&&req.method==='POST'){
-        try{return res.status(200).json(await metricoolSync(sql,env));}catch(e){return res.status(502).json({error:e.message});}
+        try{return res.status(200).json(await metricoolSync(sql,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN}));}catch(e){return res.status(502).json({error:e.message});}
       }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
       if(op==='houston-routines'){
