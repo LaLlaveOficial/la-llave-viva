@@ -2,6 +2,8 @@ import importlib.util
 import os
 from pathlib import Path
 import tempfile
+import sys
+import types
 import unittest
 from unittest.mock import patch
 
@@ -47,6 +49,12 @@ class ExecutorTests(unittest.TestCase):
             module.execute(self.change, self.before, '9', 'execute')
             with self.assertRaisesRegex(ValueError, 'cambiar una propuesta'):
                 module.execute({**self.change,'value':'ENABLED'}, self.before, '9', 'execute')
+    def test_lifetime_budget_is_not_changed_as_daily_budget(self):
+        fake = types.ModuleType('ads_mcp.tools.search')
+        fake.search = lambda customer, fields, resource, *args, **kwargs: ([{'campaign.resource_name':'customers/3149885754/campaigns/7','campaign.name':'La Llave','campaign.status':'ENABLED','campaign.campaign_budget':'customers/3149885754/campaignBudgets/8'}] if resource=='campaign' else [{'customer.currency_code':'CLP'}] if resource=='customer' else [{'campaign_budget.resource_name':'customers/3149885754/campaignBudgets/8','campaign_budget.amount_micros':0,'campaign_budget.explicitly_shared':False,'campaign_budget.period':'CUSTOM'}])
+        with patch.dict(sys.modules, {'ads_mcp.tools.search':fake}):
+            with self.assertRaisesRegex(ValueError, 'presupuesto total'):
+                module.current({'action':'campaign_budget','campaignId':'7','value':2000})
     def test_rejects_foreign_account_and_unknown_payload_fields(self):
         with self.assertRaises(ValueError):
             module.normalize({'action':'ad_status','campaignId':'7','value':'PAUSED','resource':'customers/123/adGroupAds/1~2'})

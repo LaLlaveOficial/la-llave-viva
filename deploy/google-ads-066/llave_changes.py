@@ -82,9 +82,11 @@ def current(change):
         currency = search(CUSTOMER, ["customer.currency_code"], "customer", limit=1)
         if not currency or currency[0]["customer.currency_code"] != "CLP":
             raise ValueError("La cuenta no confirmó CLP.")
-        budget = search(CUSTOMER, ["campaign_budget.resource_name", "campaign_budget.amount_micros", "campaign_budget.explicitly_shared"], "campaign_budget", [f"campaign_budget.resource_name = {quoted(row['campaign.campaign_budget'])}"], limit=1)
+        budget = search(CUSTOMER, ["campaign_budget.resource_name", "campaign_budget.amount_micros", "campaign_budget.explicitly_shared", "campaign_budget.period"], "campaign_budget", [f"campaign_budget.resource_name = {quoted(row['campaign.campaign_budget'])}"], limit=1)
         if len(budget) != 1 or budget[0]["campaign_budget.explicitly_shared"]:
             raise ValueError("No se modifican presupuestos compartidos desde esta consola.")
+        if budget[0].get("campaign_budget.period") != "DAILY":
+            raise ValueError("Esta campaña usa presupuesto total; el ajuste diario no aplica. No se cambió el presupuesto.")
         result.update(resource=budget[0]["campaign_budget.resource_name"], value=int(budget[0]["campaign_budget.amount_micros"]), currency="CLP")
     elif change["action"] == "ad_status":
         ads = search(CUSTOMER, ["campaign.id", "ad_group_ad.resource_name", "ad_group_ad.status"], "ad_group_ad", [f"ad_group_ad.resource_name = {quoted(change['resource'])}"], limit=1)
@@ -189,7 +191,12 @@ def register():
             return execute(change, expected, proposal_id, mode)
         except Exception as exc:
             from google.ads.googleads.errors import GoogleAdsException
+            from ads_mcp import utils
+            if isinstance(exc, ToolError):
+                utils.logger.warning("La Llave Google query validation: %s", str(exc))
+                raise ToolError("Google no pudo validar los datos previos de esta propuesta.") from None
             if isinstance(exc, GoogleAdsException):
+                utils.logger.warning("La Llave Google mutation validation: %s", "; ".join(error.message for error in exc.failure.errors))
                 raise ToolError("Google Ads rechazó la validación o ejecución. Revisa permisos, tipo de campaña y políticas; no se confirma un cambio.") from None
             if isinstance(exc, ValueError):
                 raise ToolError(str(exc)) from None
