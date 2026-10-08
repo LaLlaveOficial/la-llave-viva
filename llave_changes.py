@@ -189,7 +189,12 @@ def register():
             return execute(change, expected, proposal_id, mode)
         except Exception as exc:
             from google.ads.googleads.errors import GoogleAdsException
+            from ads_mcp import utils
+            if isinstance(exc, ToolError):
+                utils.logger.warning("La Llave Google query validation: %s", str(exc))
+                raise ToolError("Google no pudo validar los datos previos de esta propuesta.") from None
             if isinstance(exc, GoogleAdsException):
+                utils.logger.warning("La Llave Google mutation validation: %s", "; ".join(error.message for error in exc.failure.errors))
                 raise ToolError("Google Ads rechazó la validación o ejecución. Revisa permisos, tipo de campaña y políticas; no se confirma un cambio.") from None
             if isinstance(exc, ValueError):
                 raise ToolError(str(exc)) from None
