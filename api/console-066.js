@@ -1,4 +1,5 @@
 import {apolloCredential,apolloQuery,matchApolloCandidates,validateApolloSearch} from '../lib/apollo-connect.js';
+import {adsCredential,googleAdsStatus,googleAdsSync} from '../lib/google-ads-connect.js';
 import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
@@ -44,6 +45,11 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
+      if(['google-ads-authorize','google-ads-sync'].includes(op)&&req.method==='POST'){
+        try{const adsEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};return res.status(200).json(op==='google-ads-authorize'?await adsCredential('authorize',adsEnv):await googleAdsSync(sql,adsEnv));}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
       if(op==='apollo-authorize'&&req.method==='POST')return res.status(200).json(await apolloCredential('authorize',{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN}));
       if(op==='apollo'&&req.method==='GET'){
         const rows=await sql`SELECT detail FROM console066_audit WHERE entity='apollo' ORDER BY id DESC LIMIT 1`;
