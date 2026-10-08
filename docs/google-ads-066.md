@@ -72,3 +72,24 @@ No se ejecutan campañas ni se genera gasto al instalar o probar validaciones.
 La capacidad de ejecutar requiere también que Google autorice mutaciones para
 la cuenta y ese usuario. La comprobación inicial usa únicamente validaciones
 sin escritura; no se cambia una campaña real para probar.
+
+## Estado operativo del 8 de octubre, 17:26 Santiago
+
+Los 15 informes se consultaron y guardaron contra la cuenta real. Un timeout de
+la evolución diaria se recuperó con una nueva consulta explícita. Las fechas
+confirmadas por metadatos usan campaign.start_date_time y end_date_time.
+La exportación CSV de campañas se descargó con tres filas de datos. Houston
+confirmó el primer análisis; el contexto siguiente conserva muestras de seis
+informes adicionales y fechas del periodo comparativo dentro de su límite.
+
+El ejecutor propio NO está desplegado en Railway. La revisión automática rechazó
+el cambio de fuente por ampliar lectura a modificaciones de campañas reales sin
+autorización específica. La consola comprobó que llave_approved_change no existe
+entre las herramientas activas, muestra pendiente de autorización y deshabilita
+validación y aprobación de cambios. No se aplicaron mutaciones ni validaciones
+Google de propuestas en producción. Las pruebas de ese ejecutor son simuladas.
+La rama del runtime tiene el código preparado; activarlo requiere autorización
+específica del propietario y después verificar validate_only sin escritura.
+
+Verificación local: 59 pruebas Node aprobadas y una omisión existente; seis pruebas
+Python del ejecutor aprobadas; build de producción correcto.
