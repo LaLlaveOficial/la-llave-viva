@@ -1,3 +1,4 @@
+import {metaAdsSync} from '../lib/meta-ads-connect.js';
 import {apolloCredential,apolloQuery,matchApolloCandidates,validateApolloSearch} from '../lib/apollo-connect.js';
 import {adsCredential,googleAdsStatus,googleAdsSync} from '../lib/google-ads-connect.js';
 import {googleAdsReport,googleAdsReports,googleAdsResources,adsAnalysisMission} from '../lib/google-ads-reports.js';
@@ -96,6 +97,14 @@ export function makeHandler(connect = neon, env = process.env) {
       }
       if(op==='metricool-sync'&&req.method==='POST'){
         try{return res.status(200).json(await metricoolSync(sql,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN}));}catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(op==='meta-ads'&&req.method==='GET'){
+        const rows=await sql`SELECT detail FROM console066_audit WHERE entity='meta-ads' AND action='read' ORDER BY id DESC LIMIT 1`;
+        return res.status(200).json(rows[0]?.detail||{status:'Sin consulta directa guardada'});
+      }
+      if(op==='meta-ads-sync'&&req.method==='POST'){
+        try{return res.status(200).json(await metaAdsSync(sql,body,env));}
+        catch(e){return res.status(502).json({error:e.message});}
       }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
       if(op==='houston-routines'){
