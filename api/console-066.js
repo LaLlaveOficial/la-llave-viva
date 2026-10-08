@@ -48,7 +48,7 @@ export function makeHandler(connect = neon, env = process.env) {
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
       if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
-      if(op==='google-ads-reports'&&req.method==='GET')return res.status(200).json({...await googleAdsReports(sql),changes:await adsChangeHistory(sql),missions:await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-analysis' ORDER BY id DESC LIMIT 5`});
+      if(op==='google-ads-reports'&&req.method==='GET')return res.status(200).json({...await googleAdsReports(sql),changes:await adsChangeHistory(sql),missions:await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-analysis' ORDER BY id DESC LIMIT 5`,capabilities:(await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-capabilities' ORDER BY id DESC LIMIT 1`)[0]?.detail||{approvedChanges:false}});
       if(op==='google-ads-discard'&&req.method==='POST'){
         if(!Number.isSafeInteger(body.id)||body.id<1)return res.status(400).json({error:'Propuesta inválida.'});
         const rows=await sql`UPDATE console066_audit SET detail=detail||jsonb_build_object('status','discarded','discardedAt',now()) WHERE id=${body.id} AND entity='google-ads-change' AND detail->>'status'='validated' RETURNING id`;
@@ -58,7 +58,11 @@ export function makeHandler(connect = neon, env = process.env) {
         const adsEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};
         try{
           if(op==='google-ads-report')return res.status(200).json(await googleAdsReport(sql,adsEnv,body));
-          if(op==='google-ads-resources')return res.status(200).json(await googleAdsResources(adsEnv,body));
+          if(op==='google-ads-resources'){
+            const resources=await googleAdsResources(adsEnv,body);
+            if(!body.resource){resources.capabilities={approvedChanges:resources.tools.some(t=>t.name==='llave_approved_change'),checkedAt:new Date().toISOString()};await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('google-ads-capabilities',0,'check',${JSON.stringify(resources.capabilities)}::jsonb)`;}
+            return res.status(200).json(resources);
+          }
           if(op==='google-ads-propose')return res.status(200).json(await proposeAdsChange(sql,adsEnv,body));
           if(op==='google-ads-approve')return res.status(200).json(await approveAdsChange(sql,adsEnv,body));
           const mission={action:body.action,slug:'analitica',id:body.id,text:'Análisis Google Ads'};
