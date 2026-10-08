@@ -1,3 +1,4 @@
+import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
@@ -42,6 +43,12 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(op==='metricool-authorize'&&req.method==='POST'){
+        try{return res.status(200).json(await connectRequest('authorize',env));}catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(op==='metricool-sync'&&req.method==='POST'){
+        try{return res.status(200).json(await metricoolSync(sql,env));}catch(e){return res.status(502).json({error:e.message});}
+      }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
       if(op==='houston-routines'){
         try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
