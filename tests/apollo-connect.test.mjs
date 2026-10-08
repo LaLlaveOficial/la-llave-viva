@@ -33,6 +33,6 @@ test('profile accepts Apollo data envelope and still rejects another owner or mi
   };
   const promise=apolloQuery('check',{}, {VERCEL_OIDC_TOKEN:'oidc-secret'},fetcher);
   if(email==='contacto@lallaveoficial.com')assert.equal((await promise).status,'Conectado');
-  else await assert.rejects(promise,email?/no corresponde/:/verificable/);
+  else await assert.rejects(promise,email?/other@example.com; se requiere/:/verificable/);
  }
 });
