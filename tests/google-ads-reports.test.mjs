@@ -29,5 +29,5 @@ test('bounded analysis keeps campaign dates and samples from every evidence repo
  const campaigns={...period,section:'campaigns',previousFrom:'2026-09-25',previousTo:'2026-10-01',currency:'CLP',checkedAt:'2026-10-08T20:00:00Z',analysis:Array.from({length:3},(_,i)=>({campaignId:String(i+1),name:'Campaña '+i,impressions:100,clicks:10,cost:1000,conversions:0,allConversions:1,conversionValue:0,previous:{clicks:20,cost:2000,conversions:0}}))};
  const reports=['recommendations','conversionSetup','conversions','keywords','searchTerms','ads'].map(section=>({...period,section,rows:Array.from({length:20},()=>Object.fromEntries(REPORTS[section].fields.map(f=>[f,'Texto extenso '.repeat(200)]))),truncated:false}));
  const text=adsAnalysisMission([campaigns,...reports]);assert.ok(text.length<=3900);
- const context=JSON.parse(text.slice(text.indexOf('\n')+1));assert.equal(context.previousFrom,'2026-09-25');assert.equal(context.campaigns.length,3);assert.equal(context.evidence.length,6);assert.ok(context.evidence.every(e=>e.sample.length>=1));
+ const context=JSON.parse(text.slice(text.indexOf('\n')+1));assert.equal(context.previousFrom,'2026-09-25');assert.equal(context.campaigns.length,3);assert.equal(context.totals.clicks,30);assert.equal(context.totals.cost,3000);assert.equal(context.evidence.length,6);assert.ok(context.evidence.every(e=>e.sample.length>=1));
 });
