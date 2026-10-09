@@ -146,6 +146,8 @@ export function makeHandler(connect = neon, env = process.env) {
           sql`SELECT * FROM console066_leads ORDER BY country,name LIMIT 1000`,
           sql`SELECT * FROM console066_tasks ORDER BY id`
         ]);
+        let metaCheckedAt=null;
+        try{const rows=await sql`SELECT detail->>'checkedAt' AS checked_at FROM console066_audit WHERE entity='meta-ads' AND action='read' ORDER BY id DESC LIMIT 1`;metaCheckedAt=rows[0]?.checked_at||null;}catch{/* Optional integration status. */}
         return res.status(200).json({leads,tasks,integrations:[
           {name:'CRM',status:'Conectado',description:'Datos guardados en la base de La Llave.'},
           {name:'Apollo',status:'Ver en Prospección Apollo',description:'Búsqueda de organizaciones, revisión de duplicados y consulta de cuenta. No identifica lectores de Instagram.'},
@@ -153,7 +155,8 @@ export function makeHandler(connect = neon, env = process.env) {
           {name:'Instagram',status:'Pendiente',description:'Mensajes preparados para revisión; envío desde Work Mode.'},
           {name:'Radar 08:00',status:'Externo',description:'Programado en ChatGPT; los resultados aún no se importan solos.'},
           {name:'Google Ads',status:'Ver Google Ads directo',description:'Consulta directa por campaña, informes, recomendaciones y propuestas de cambios para aprobación. El estado se verifica en Google Ads directo.'},
-          {name:'Ads y analítica',status:'Metricool disponible',description:'Métricas de Instagram y Meta Ads con fecha y cobertura. Su conexión directa y mensajería siguen pendientes.'}
+          {name:'Meta Ads directo',status:metaCheckedAt?'Consulta verificada':'Ver Métricas y ventas',description:metaCheckedAt?'Lectura por campaña guardada el '+metaCheckedAt+'. Actualiza desde Métricas y ventas; permiso de solo lectura.':'Consulta directa por campaña desde Métricas y ventas; el estado se confirma al consultar.'},
+          {name:'Ads y analítica',status:'Metricool disponible',description:'Instagram mediante Metricool; Google Ads y Meta Ads tienen vistas de consulta directa. La mensajería sigue pendiente.'}
         ]});
       }
       if (op === 'add' && req.method === 'POST') {
