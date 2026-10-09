@@ -22,7 +22,7 @@ test('only analytics for the fixed brand can be invoked; tokens never persist',a
   const date=b.params.arguments.to.slice(0,10).replaceAll('-','');
   return Response.json({result:{content:[{type:'text',text:JSON.stringify({rows:[[...b.params.arguments.metrics.map(()=>null),date]]})}]}});
  };
- const result=await metricoolSync(sql,{VERCEL_OIDC_TOKEN:'oidc'},fetcher);assert.equal(result.networks.length,3);
+ const result=await metricoolSync(sql,{VERCEL_OIDC_TOKEN:'oidc'},fetcher);assert.equal(result.networks.length,4);assert.ok(result.networks.includes('tiktok'));
  for(const c of calls.filter(c=>c.b.method==='tools/call')){assert.equal(c.b.params.arguments.brandId,'6252950');assert.equal(c.b.params.name,'get_analytics_data_by_metrics');}
  assert.equal(JSON.stringify(saved).includes('secret'),false);
 });
