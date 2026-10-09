@@ -24,3 +24,8 @@ test('Large context remains whole JSON within 4000 characters for every preset',
   assert.deepEqual(JSON.parse(text.slice(text.indexOf('{'))).limits,metrics.directConnections);
  }
 });
+test('analysis retains direct Meta and Google evidence when imported context exceeds the limit',()=>{
+ const rich={...metrics,googleAds:{source:'Google Ads directo',currency:'CLP',campaigns:[{id:'g1',name:'Marca',cost:4200,impressions:123,clicks:8}]},metaAds:{source:'Meta Marketing API',account:{currency:'CLP'},period:{since:'2026-10-01',until:'2026-10-08'},rows:[{id:'m0',name:'Antigua',hasInsights:false},{id:'m1',name:'CASO 066 continúa',hasInsights:true,spend:6167,impressions:1616,clicks:107,purchases:null}],note:'Atribución con posible retraso'},snapshots:metrics.snapshots.map(s=>({...s,metrics:s.metrics.map(m=>({...m,label:'L'.repeat(160)}))}))};
+ const text=marketingText('analitica',rich,[]),context=JSON.parse(text.slice(text.indexOf('{')));
+ assert.ok(text.length<=4000);assert.equal(context.metaAds.campaigns[0].spend,6167);assert.equal(context.metaAds.campaigns[0].clicks,107);assert.equal(context.metaAds.totalSelectedCampaigns,2);assert.equal(context.googleAds.campaigns[0].cost,4200);
+});
