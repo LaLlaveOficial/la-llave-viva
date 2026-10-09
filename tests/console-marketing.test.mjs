@@ -29,3 +29,13 @@ test('analysis retains direct Meta and Google evidence when imported context exc
  const text=marketingText('analitica',rich,[]),context=JSON.parse(text.slice(text.indexOf('{')));
  assert.ok(text.length<=4000);assert.equal(context.metaAds.campaigns[0].spend,6167);assert.equal(context.metaAds.campaigns[0].clicks,107);assert.equal(context.metaAds.totalSelectedCampaigns,2);assert.equal(context.googleAds.campaigns[0].cost,4200);
 });
+test('GA4 purchase attribution survives compaction and trimmed reports are identified',()=>{
+ const rich={...metrics,ga4:{source:'Google Analytics Data API',propertyId:'551476480',period:{since:'2026-10-03',until:'2026-10-09'},currency:'CLP',overview:{rows:[{activeUsers:134,sessions:150,ecommercePurchases:1,purchaseRevenue:15990}]},events:{rows:[{eventName:'purchase',eventCount:1}]},sources:{rows:[{sessionSourceMedium:'google / cpc',sessions:99,ecommercePurchases:0,purchaseRevenue:0},{sessionSourceMedium:'tagassistant.google.com / referral',sessions:1,ecommercePurchases:1,purchaseRevenue:15990}]}},snapshots:metrics.snapshots.map(s=>({...s,metrics:s.metrics.map(m=>({...m,label:'L'.repeat(500)}))}))};
+ const text=marketingText('analitica',rich,[]),context=JSON.parse(text.slice(text.indexOf('{')));
+ assert.ok(text.length<=4000);
+ assert.equal(context.ga4.purchaseSources[0].source,'tagassistant.google.com / referral');
+ assert.equal(context.ga4.purchaseSources[0].purchases,1);
+ assert.equal(context.ga4.sourcesOmitted,true);
+ assert.ok(context.snapshots.some(s=>s.omitted));
+ assert.match(text,/no implican ausencia/);
+});
