@@ -7,3 +7,5 @@
 .shell>aside,.shell>main,nav,.topbar>div,.hero-copy,.legend{min-width:0;max-width:100%}
 nav{width:100%}.topbar h1,.intro,.hero-copy h2,.card h3{overflow-wrap:anywhere}
 @media(max-width:600px){.pipeline-visual{gap:14px}.ring{width:120px}.legend{min-width:0}.legend>div{flex-wrap:wrap}.bar-row{grid-template-columns:65px minmax(0,1fr) 22px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.section-heading>div{min-width:0}}
+
+.shell{align-content:start}
