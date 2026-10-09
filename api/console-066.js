@@ -1,3 +1,4 @@
+import {ga4Credential,ga4Sync} from '../lib/ga4-connect.js';
 import {metaAdsSync} from '../lib/meta-ads-connect.js';
 import {apolloCredential,apolloQuery,matchApolloCandidates,validateApolloSearch} from '../lib/apollo-connect.js';
 import {adsCredential,googleAdsStatus,googleAdsSync} from '../lib/google-ads-connect.js';
@@ -106,6 +107,14 @@ export function makeHandler(connect = neon, env = process.env) {
         try{return res.status(200).json(await metaAdsSync(sql,body,env));}
         catch(e){return res.status(502).json({error:e.message});}
       }
+      if(op==='ga4'&&req.method==='GET'){
+        const rows=await sql`SELECT detail FROM console066_audit WHERE entity='ga4' AND action='read' ORDER BY id DESC LIMIT 1`;
+        return res.status(200).json(rows[0]?.detail||{status:'Lectura GA4 pendiente'});
+      }
+      if(['ga4-sync','ga4-authorize'].includes(op)&&req.method==='POST'){
+        try{const gaEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};return res.status(200).json(op==='ga4-authorize'?await ga4Credential('authorize',gaEnv):await ga4Sync(sql,body,gaEnv));}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
       if(op==='houston-routines'){
         try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
@@ -156,6 +165,7 @@ export function makeHandler(connect = neon, env = process.env) {
           {name:'Radar 08:00',status:'Externo',description:'Programado en ChatGPT; los resultados aún no se importan solos.'},
           {name:'Google Ads',status:'Ver Google Ads directo',description:'Consulta directa por campaña, informes, recomendaciones y propuestas de cambios para aprobación. El estado se verifica en Google Ads directo.'},
           {name:'Meta Ads directo',status:metaCheckedAt?'Consulta verificada':'Ver Métricas y ventas',description:metaCheckedAt?'Lectura por campaña guardada el '+metaCheckedAt+'. Actualiza desde Métricas y ventas; permiso de solo lectura.':'Consulta directa por campaña desde Métricas y ventas; el estado se confirma al consultar.'},
+          {name:'GA4 directo',status:'Ver Métricas y ventas',description:'Tráfico, fuentes y eventos agregados de La Llave Oficial; permiso de solo lectura. El estado se confirma al consultar.'},
           {name:'Ads y analítica',status:'Metricool disponible',description:'Instagram mediante Metricool; Google Ads y Meta Ads tienen vistas de consulta directa. La mensajería sigue pendiente.'}
         ]});
       }
