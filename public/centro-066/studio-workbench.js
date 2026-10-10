@@ -1,6 +1,7 @@
 import {mediaDB,listMedia,readMedia,addMedia,deleteMedia,workspaceKey,defaultWorkspace,parseWorkspace,timelineDuration,addTimelineClip} from './studio-media.js';
 import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
 import {mountStudioCloud} from './studio-cloud066.js';
+import {exportCanvasWebM} from './studio-recording.js';
 // Editor en navegador, sin llamadas a proveedores ni consumo de créditos.
 const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const number=(n,lo,hi)=>Math.min(hi,Math.max(lo,Number(n)||0));
@@ -73,7 +74,7 @@ export function studioWorkbenchView(root,notice,project=null){
   const {w,h}=dimensions();if(cvs.width!==w)cvs.width=w;if(cvs.height!==h)cvs.height=h;
   const ctx=cvs.getContext('2d');if(!ctx)return;
   ctx.fillStyle='#101417';ctx.fillRect(0,0,w,h);
-  const t=workspace.playhead;
+  const t=Math.min(workspace.playhead,Math.max(0,timelineDuration(workspace.clips)-1/Math.max(24,workspace.fps)));
   for(const c of workspace.clips.filter(c=>c.kind==='video'||c.kind==='image').sort((a,b)=>tracks.indexOf(b.track)-tracks.indexOf(a.track))){
    if(!activeClip(c,t))continue;
    const source=c.kind==='image'?cache.get(c.assetId):media.get(c.id)?.element;
@@ -115,32 +116,48 @@ export function studioWorkbenchView(root,notice,project=null){
  }
  async function saveExport(){
   if(rendering)return;
-  if(!window.MediaRecorder||!canvas()?.captureStream){notice('Tu navegador no admite exportación mediante MediaRecorder.');return;}
   if(workspace.clips.length===0){notice('Agrega al menos un clip al timeline.');return;}
-  if(timelineDuration(workspace.clips)>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
-  const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(x=>MediaRecorder.isTypeSupported(x));
-  if(!mime){notice('Este navegador no permite exportar WebM.');return;}
+  const duration=timelineDuration(workspace.clips);
+  if(duration>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
+  const before=workspace.playhead;
   rendering=true;
-  const button=root.querySelector('#studiowb-export');if(button){button.disabled=true;button.textContent='Renderizando en tiempo real…';}
+  exportAbort=new AbortController();
+  const button=root.querySelector('#studiowb-export'),seekBar=root.querySelector('#studiowb-seek'),playBtn=root.querySelector('#studiowb-play');
+  if(button){button.disabled=true;button.textContent='Renderizando WebM…';}
+  if(seekBar)seekBar.disabled=true;
+  if(playBtn)playBtn.disabled=true;
   try{
-   pause();workspace.playhead=0;await prime();audioGraph();await audioCtx?.resume();connectSources();syncPlayback(true);paint();
-   const stream=canvas().captureStream(workspace.fps);
-   const tracksToRecord=[...stream.getVideoTracks(),...(mix?mix.stream.getAudioTracks():[])];
-   const recordingStream=new MediaStream(tracksToRecord),parts=[];
-   recorder=new MediaRecorder(recordingStream,{mimeType:mime,videoBitsPerSecond:workspace.quality==='1080p'?8000000:4000000});
-   const finished=new Promise((resolve,reject)=>{recorder.ondataavailable=ev=>{if(ev.data.size)parts.push(ev.data);};recorder.onerror=()=>reject(new Error('Falló MediaRecorder.'));recorder.onstop=()=>resolve();});
-   recorder.start(250);
-   movieStop=()=>{if(recorder?.state==='recording')recorder.stop();};
-   await play();
-   await finished;
-   const blob=new Blob(parts,{type:mime});
-   if(blob.size<1000)throw new Error('El navegador no produjo un video válido.');
+   pause();workspace.playhead=0;
+   await prime();
+   if(exportAbort.signal.aborted)throw new Error('Exportación cancelada.');
+   const useAudio=workspace.clips.some(c=>c.kind==='audio'||c.kind==='video');
+   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();}
+   isPlaying=true;syncPlayback(true);paint();
+   const blob=await exportCanvasWebM({
+    canvas:canvas(),seconds:duration,fps:workspace.fps,
+    audioTracks:useAudio&&mix?mix.stream.getAudioTracks():[],
+    bitrate:workspace.quality==='1080p'?8000000:4000000,
+    signal:exportAbort.signal,
+    onFrame:async elapsed=>{
+     workspace.playhead=Math.min(elapsed,Math.max(0,duration-1/(workspace.fps*4)));
+     syncPlayback();paint();drawTime();
+    }
+   });
+   if(exportAbort.signal.aborted)return;
    const url=URL.createObjectURL(blob),a=document.createElement('a');
-   a.href=url;a.download='estudio066-'+workspace.aspect.replace(':','x')+'-'+workspace.quality+'.webm';a.click();
+   a.href=url;a.download='estudio066-'+workspace.aspect.replace(':','x')+'-'+workspace.quality+'.webm';
+   a.click();
    setTimeout(()=>URL.revokeObjectURL(url),30000);
-   notice('Video WebM exportado. Verifica audio, fotogramas y calidad antes de publicarlo.');
-  }catch(error){notice('No se pudo exportar: '+error.message);}
-  finally{pause();rendering=false;movieStop=null;if(button){button.disabled=false;button.textContent='Exportar WebM';}if(recorder?.state==='recording')recorder.stop();}
+   notice('WebM exportado. Revisa su reproducción, duración, audio y calidad antes de publicarlo.');
+  }catch(error){
+   if(!exportAbort?.signal.aborted)notice('No se pudo exportar: '+error.message);
+  }finally{
+   pause();workspace.playhead=before;syncPlayback(true);paint();drawTime();
+   rendering=false;exportAbort=null;
+   if(button){button.disabled=false;button.textContent='Exportar WebM';}
+   if(seekBar)seekBar.disabled=false;
+   if(playBtn)playBtn.disabled=false;
+  }
  }
  function mediaCard(a){
   return '<div class="wb-media-item"><div><b>'+e(a.name)+'</b><small>'+e(a.kind.toUpperCase())+' · '+(a.size/1048576).toFixed(1)+' MB · Solo este navegador</small></div><div class="wb-row"><button type="button" class="subtle" data-add-asset="'+e(a.id)+'">+ Timeline</button><button type="button" class="subtle" data-remove-asset="'+e(a.id)+'" aria-label="Quitar archivo">✕</button></div></div>';
@@ -299,6 +316,7 @@ export function studioWorkbenchView(root,notice,project=null){
  root.innerHTML='<div class="studio-pane"><p>Preparando biblioteca multimedia local…</p></div>';
  init();
  return ()=>{
+  if(exportAbort)exportAbort.abort();
   if(cloudDispose){cloudDispose();cloudDispose=null;}
   pause();for(const m of media.values()){m.element.pause();m.element.removeAttribute('src');m.element.load();}
   media.clear();for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();cache.clear();

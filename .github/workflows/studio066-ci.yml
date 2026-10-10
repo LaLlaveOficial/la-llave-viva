@@ -36,6 +36,7 @@ jobs:
       - name: Validar editor multimedia e interfaz
         run: |
           node --check public/centro-066/studio-workbench.js
+          node --check public/centro-066/studio-recording.js
           node --check public/centro-066/studio-media.js
           node --check public/centro-066/studio.js
           node --check public/centro-066/app.js
@@ -43,6 +44,6 @@ jobs:
           node --check public/centro-066/studio-portable.js
           node --check public/centro-066/studio-cloud066.js
           node --check lib/studio-cloud066.js
-          node --test tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs
+          node --test tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build

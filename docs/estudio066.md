@@ -121,3 +121,10 @@ Límites de seguridad de pruebas: 50 MiB por archivo, 256 MiB y 80 originales po
 El navegador utiliza solicitudes autenticadas a la consola para crear intenciones, recibe URLs firmadas de corta duración, ejecuta subida PUT directa al storage, confirma mediante HEAD al servidor, y descarga sobre demanda con verificación de SHA-256 antes de almacenar una copia local. No se borran originales automáticamente. La API se niega a funcionar sin proveedor y credenciales completos.
 
 **Requiere validación manual adicional antes de encender el servicio:** compatibilidad de Neon Storage con `x-amz-checksum-sha256`, CORS del bucket para la URL de Preview, correcta firma y verificación HEAD de la plataforma, aislamiento real entre ramas y costo de almacenamiento/transferencia de acuerdo al plan. No activar gastos ni crear buckets hasta obtener aprobación presupuestaria. El CSP en la rama de desarrollo permite solo el endpoint de almacenamiento de esta rama preview; al publicar otra rama ese host debe ajustarse, no copiarlo a producción.
+
+
+## Corrección de exportación WebM (octubre 2026)
+
+La exportación inicial falló en una prueba real de Chrome con un único PNG en V1: `El navegador no produjo un video válido`. Se reemplaza la captura automática por grabación WebM con fotogramas explícitos (`CanvasCaptureMediaStreamTrack.requestFrame`), `MediaRecorder`, finalización controlada e inspección del encabezado EBML. Para proyectos solo de imágenes y títulos, no se agrega una pista de audio vacía; con clips de audio o video, se mantiene la mezcla si existe. Se conserva la posición original del editor después de exportar y se aborta la captura al cerrar el módulo. Se corrige el visor para mostrar el último fotograma al llegar exactamente al final del clip.
+
+Se ha comprobado el método en Chromium real con un lienzo estático generado para test (2 segundos, WebM válido). **Todavía falta repetir la exportación real con `rosa4.png` desde la vista previa del usuario**, verificar con reproductor externo su duración y códec, y probar A1/A2 antes de declarar estable el exportador. No afecta Neon ni la biblioteca original.
