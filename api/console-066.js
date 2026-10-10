@@ -9,6 +9,7 @@ import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import {validateStudioProject,validateStudioShot} from '../lib/studio066.js';
+import {studioGenerationApi} from '../lib/studio-generation-api.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonStatus} from '../lib/houston-status.js';
 import {houstonConnect} from '../lib/houston-connect.js';
@@ -150,6 +151,10 @@ export function makeHandler(connect = neon, env = process.env) {
       if (op === 'logout' && req.method === 'POST') {
         await sql`DELETE FROM console066_sessions WHERE token_hash=${hashToken(token)}`;
         res.setHeader('Set-Cookie',cookie('',0)); return res.status(200).json({ok:true});
+      }
+      if(['studio-generations','studio-video-capabilities','studio-generation'].includes(op)) {
+        const reply=await studioGenerationApi(sql,op,req);
+        return res.status(reply.status).json(reply.data);
       }
       // Estudio Creativo 066: authenticated metadata only. Never invokes a generative provider.
       if (op === 'studio' && req.method === 'GET') {
