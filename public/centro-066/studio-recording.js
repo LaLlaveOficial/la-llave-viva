@@ -56,7 +56,7 @@ export async function exportCanvasRecording({
  const mime=supportedRecordingMime(Recorder,format,{audio:liveAudio.length>0});
  if(!mime)throw new Error(format==='mp4'
   ?'Tu navegador no admite codificar MP4 H.264'+(liveAudio.length?' con AAC':'')+'. Utiliza WebM o espera el render remoto.'
-  :'Tu navegador no admite codificar WebM con esta configuración.');
+  :'Tu navegador no admite WebM con esta configuración de codificación.');
  const capture=canvas.captureStream(0);
  const video=capture.getVideoTracks()[0];
  if(!video){capture.getTracks().forEach(t=>t.stop());throw new Error('El navegador no creó la pista de video.');}
