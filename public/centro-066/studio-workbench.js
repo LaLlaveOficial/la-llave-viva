@@ -1,5 +1,6 @@
 import {mediaDB,listMedia,readMedia,addMedia,deleteMedia,workspaceKey,defaultWorkspace,parseWorkspace,timelineDuration,addTimelineClip} from './studio-media.js';
 import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
+import {mountStudioCloud} from './studio-cloud066.js';
 // Editor en navegador, sin llamadas a proveedores ni consumo de créditos.
 const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const number=(n,lo,hi)=>Math.min(hi,Math.max(lo,Number(n)||0));
@@ -12,6 +13,7 @@ const ctrl=(name,label,value,min,max,step)=>'<label>'+label+'<input data-propert
 export function studioWorkbenchView(root,notice,project=null){
  let db,assets=[],workspace=defaultWorkspace(),selected=null,isPlaying=false,rendering=false,startTick=0,startTime=0;
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
+ let cloudDispose=null;
  const history=[],future=[];
  const checkpoint=()=>{history.push(JSON.stringify(workspace));if(history.length>30)history.shift();future.length=0;};
  const restoreFrom=(source,dest)=>{if(!source.length)return;dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();selected=null;save();render();};
@@ -173,12 +175,14 @@ export function studioWorkbenchView(root,notice,project=null){
   return '<div class="wb-root"><div class="wb-top"><div><span class="studio-caption">MONTAJE · EDITOR LOCAL NO DESTRUCTIVO</span><h3>Estudio de montaje 066</h3><p class="studio-help">'+e(project?.name||'Montaje libre')+' · Guardado en este navegador</p></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-undo">↶ Deshacer</button><button type="button" class="subtle" id="studiowb-redo">↷ Rehacer</button><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label><button type="button" class="subtle" id="studiowb-portable-export"'+(!project?.id?' disabled':'')+'>Respaldo completo con medios</button><label class="wb-file-label">Restaurar respaldo completo<input id="studiowb-portable-import" type="file" accept=".json,application/json" '+(!project?.id?'disabled':'')+'></label></div></div>'+
    '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Formato<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Exportación<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label></div>'+
    '<div class="wb-workarea"><aside class="wb-library"><h3>Biblioteca de medios</h3><p class="studio-help">Archivos locales guardados en tu navegador (IndexedDB), no en Neon ni en la nube. Haz copias de los originales.</p><label class="wb-file-label">+ Importar video, imagen o audio<input type="file" id="studiowb-upload" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/*"></label>'+
-   '<div class="wb-media-list">'+(assets.length?assets.map(mediaCard).join(''):'<p class="studio-help">Importa un archivo para comenzar.</p>')+'</div><button type="button" class="subtle" id="studiowb-title">+ Añadir título</button></aside>'+
+   '<div class="wb-media-list">'+(assets.length?assets.map(mediaCard).join(''):'<p class="studio-help">Importa un archivo para comenzar.</p>')+'</div><button type="button" class="subtle" id="studiowb-title">+ Añadir título</button><div id="studiowb-cloud" class="wb-cloud-wrap"></div></aside>'+
    '<div class="wb-stage"><div class="wb-preview-box"><canvas id="studiowb-canvas" aria-label="Vista previa de composición"></canvas></div><div class="wb-controls"><button type="button" class="subtle" id="studiowb-play">▶ Reproducir</button><button type="button" class="subtle" id="studiowb-stop">■ Inicio</button><strong id="studiowb-time"></strong><button type="button" id="studiowb-export">Exportar WebM</button></div><input id="studiowb-seek" type="range" min="0" max="5" step=".05" value="'+workspace.playhead+'" aria-label="Posición en montaje"><p class="studio-help">La exportación usa el navegador en tiempo real, máximo 120 s. WebM, no MP4. 2K/4K y edición avanzada se implementarán con render remoto.</p></div>'+
    propertyPanel()+'</div>'+timeline()+'<p class="studio-help">Selecciona un clip para modificarlo desde el Inspector. Puedes moverlo de pista, cambiar duración, entrada del archivo, filtros, guion y duplicarlo. Los audios van en A1/A2.</p></div>';
  }
  function render(){
-  pause();root.innerHTML=page();wire();paint();drawTime();
+  pause();if(cloudDispose){cloudDispose();cloudDispose=null;}
+  root.innerHTML=page();wire();paint();drawTime();
+  if(project?.id&&db)cloudDispose=mountStudioCloud(root.querySelector('#studiowb-cloud'),{projectId:Number(project.id),db,workspace,notice,onMediaAdded:async()=>{assets=await listMedia(db);render();}});
  }
  function wire(){
   const el=(id)=>root.querySelector('#'+id);
@@ -295,6 +299,7 @@ export function studioWorkbenchView(root,notice,project=null){
  root.innerHTML='<div class="studio-pane"><p>Preparando biblioteca multimedia local…</p></div>';
  init();
  return ()=>{
+  if(cloudDispose){cloudDispose();cloudDispose=null;}
   pause();for(const m of media.values()){m.element.pause();m.element.removeAttribute('src');m.element.load();}
   media.clear();for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();cache.clear();
   try{db?.close();}catch{}

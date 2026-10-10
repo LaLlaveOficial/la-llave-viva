@@ -17,6 +17,8 @@ try {
   await db.exec(migration); // Idempotence on dedicated empty test database.
   const genMigration=await fs.readFile(base+'/migrations/20261010_studio066_generations.sql','utf8');
   await db.exec(genMigration);
+  await db.exec(await fs.readFile(base+'/migrations/20261010_studio066_media.sql','utf8'));
+  await db.exec(await fs.readFile(base+'/migrations/20261010_studio066_media.sql','utf8'));
   await db.exec(genMigration);
   const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
   const salt='ab'.repeat(16);
@@ -69,6 +71,10 @@ try {
   assert.equal(enriched.data.shot.resolution,'4k');
   assert.equal(enriched.data.shot.variants,4);
   assert.equal((await call('studio-shot',{...shot,action:'update',id:shotId,version:0})).code,409);
+  const cloudAnonymous=await call('studio-cloud');
+  assert.equal(cloudAnonymous.code,200);
+  assert.equal(cloudAnonymous.data.enabled,false);
+  assert.equal((await call('studio-cloud-upload',{projectId:id,id:'507d3aca-8f20-43cb-9469-5a15252bc075',kind:'image',mime:'image/png',size:123,name:'ref.png',sha256:'a'.repeat(64)})).code,503);
   const capabilities=await call('studio-video-capabilities');
   assert.equal(capabilities.code,200);
   assert.equal(capabilities.data.canGenerate,false);

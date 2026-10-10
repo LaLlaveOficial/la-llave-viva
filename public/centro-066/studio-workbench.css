@@ -70,3 +70,13 @@
 .wb-top .wb-row{justify-content:flex-end}
 .wb-top .wb-row>button,.wb-top .wb-row>.wb-file-label{font-size:10px!important;padding:8px 10px;min-height:32px}
 @media(max-width:760px){.wb-top .wb-row{justify-content:flex-start}}
+
+/* Manual private-cloud controls. Remain informative while connector is disabled. */
+.wb-cloud-wrap{margin-top:14px;padding-top:12px;border-top:1px solid #ffffff28;display:grid;gap:7px}
+.wb-cloud-title{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap;align-items:center}
+.wb-cloud-title b{font-size:12px;color:#e2cd9b}
+.wb-cloud-title small{font-size:9px;color:#adb5b4}
+.wb-cloud-files{max-height:205px;overflow:auto;display:grid;gap:7px}
+.wb-cloud-entry{border:1px solid #ffffff24;border-radius:7px;padding:9px;display:grid;gap:7px;overflow-wrap:anywhere}
+.wb-cloud-entry span{font-size:10px;color:#ddd}
+.wb-cloud-wrap button{padding:8px 10px;font-size:10px;min-height:32px}
