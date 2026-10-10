@@ -1,0 +1,49 @@
+.studio-root{display:grid;gap:22px;max-width:1240px}
+.studio-banner{background:linear-gradient(115deg,#1b2022,#101416 58%,#282217);border:1px solid #d8b36a24;border-radius:17px;padding:26px 28px}
+.studio-banner h2{font-size:clamp(24px,3vw,33px);margin:6px 0;color:#fff4d8}
+.studio-banner p{font-size:13px;color:#cbc9c0;max-width:650px;line-height:1.6}
+.studio-caption{color:#aaa99f;font-size:11px;line-height:1.6}
+.studio-readiness{display:inline-block;font-size:11px;padding:7px 11px;margin-top:9px;background:#eabb5420;border:1px solid #eabb5440;border-radius:99px;color:#efd69b}
+.studio-tabs{display:flex;flex-wrap:wrap;gap:8px}
+.studio-tab{background:#16191b;border:1px solid #ffffff18;color:#c2c5c0;padding:9px 13px}
+.studio-tab.current{background:#eabb5420;color:#f3cb75;border-color:#f1c15a88}
+.studio-layout{display:grid;grid-template-columns:minmax(260px,1fr) minmax(320px,1fr);gap:18px;align-items:start}
+.studio-layout-shots{grid-template-columns:minmax(210px,.85fr) minmax(340px,1.55fr)}
+.studio-pane{background:#15191b;border:1px solid #ffffff18;border-radius:14px;padding:22px;min-width:0}
+.studio-pane h3{font-size:18px;margin:0 0 12px}
+.studio-pane h4{font-size:14px;font-weight:650;margin:12px 0}
+.studio-pane p{font-size:13px;line-height:1.7;color:#b8b7ae}
+.studio-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}
+.studio-head h3,.studio-head h4{margin:0}
+.studio-project-list{display:grid;gap:9px}
+.studio-project-card,.studio-shot-card{display:grid;gap:6px;background:#0f1213;border:1px solid #ffffff19;color:#eae8e1;border-radius:10px;padding:14px;text-align:left;min-width:0}
+.studio-project-card strong,.studio-shot-card strong{font-size:13px}
+.studio-project-card span,.studio-shot-card span{font-size:11px;color:#aaa99f;overflow-wrap:anywhere}
+.studio-project-card.active,.studio-shot-card.active{border-color:#f1c15a88;background:#f1c15a10}
+.studio-form{display:grid;gap:13px}
+.studio-form label,.studio-pane>label{display:grid;gap:6px;color:#d8d6cc;font-size:12px;font-weight:600}
+.studio-form input,.studio-form select,.studio-form textarea,.studio-pane>label select,.studio-pane>label textarea{border:1px solid #ffffff24;border-radius:8px;background:#0c0f10;color:#eee;padding:11px;width:100%;min-width:0}
+.studio-form textarea,.studio-pane textarea{resize:vertical;line-height:1.5}
+.studio-form input:focus-visible,.studio-form select:focus-visible,.studio-form textarea:focus-visible{outline:2px solid #f1c15a;outline-offset:2px}
+.studio-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.studio-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.studio-help{font-size:11px!important;color:#a7ada7!important}
+.studio-empty{font-size:12px;color:#b9bab4;padding:20px;border:1px dashed #ffffff24;border-radius:9px;line-height:1.6}
+.studio-tags{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0}
+.studio-tags span{background:#ffffff0b;border:1px solid #ffffff1d;border-radius:7px;padding:7px 10px;font-size:11px;color:#d2d4cf}
+.studio-timeline{display:grid;gap:5px;padding:14px;background:#0d1011;border:1px solid #ffffff18;border-radius:10px}
+.studio-timeline>div{display:flex;min-height:40px;align-items:center;gap:12px;border-bottom:1px solid #ffffff10}
+.studio-timeline>div:last-child{border-bottom:0}
+.studio-timeline b{color:#f1c15a;font-size:12px;width:30px}
+.studio-timeline span{display:block;color:#d9d7d0;background:#ffffff0d;flex:1;border-radius:6px;padding:8px 12px;font-size:11px}
+.studio-formats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:25px 0}
+.studio-formats>div{min-height:132px;background:#0e1112;border:1px solid #ffffff20;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:5px;flex-direction:column}
+.studio-formats b{font-size:14px;color:#eee}
+.studio-formats small{font-size:10px;color:#aeb0ab}
+.studio-ratio{display:block;background:#eabb5429;border:2px solid #eabb5488;border-radius:3px;margin:5px}
+.studio-ratio.portrait{width:25px;height:44px}
+.studio-ratio.landscape{width:48px;height:27px}
+.studio-ratio.square{width:34px;height:34px}
+.studio-ratio.wide{width:50px;height:26px}
+@media(max-width:960px){.studio-layout,.studio-layout-shots{grid-template-columns:1fr}}
+@media(max-width:600px){.studio-pane{padding:16px}.studio-fields{grid-template-columns:1fr}.studio-formats{grid-template-columns:repeat(2,minmax(0,1fr))}.studio-banner{padding:20px}.studio-tab{flex:1 1 130px}.studio-head{align-items:flex-start;flex-direction:column}}
