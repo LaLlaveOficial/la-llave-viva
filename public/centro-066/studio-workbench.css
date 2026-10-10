@@ -53,3 +53,5 @@
 .wb-cursor{position:absolute;height:100%;top:0;border-left:2px solid #ff6448;z-index:2;pointer-events:none}
 @media(max-width:1320px){.wb-workarea{grid-template-columns:minmax(185px,220px) minmax(300px,1fr)}.wb-inspector{grid-column:1/-1;max-height:unset}.wb-settings{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.shell.studio-mode{grid-template-columns:1fr}.wb-workarea{grid-template-columns:1fr}.wb-settings{grid-template-columns:1fr 1fr}.wb-library,.wb-stage,.wb-inspector{grid-column:1/-1}.wb-ruler,.wb-track{grid-template-columns:96px minmax(440px,1fr)}.wb-root{padding:10px}}
+
+.wb-block{touch-action:none}.wb-trim-right{position:absolute;right:0;top:0;bottom:0;width:9px;border-left:2px solid #ffe9ab80;cursor:ew-resize;background:#ffffffe8}
