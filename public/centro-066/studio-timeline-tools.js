@@ -23,7 +23,7 @@ export function snapToEdges(time,clips,ignoreId,{enabled=true,tolerance=.18}={})
   if(clip.id===ignoreId)continue;
   edges.push(clip.start,clip.start+clip.duration);
  }
- const nearest=edges.reduce((acc,x)=>Math.abs(x-time)<Math.abs(acc-time)?x:acc,time);
+ const nearest=edges.reduce((acc,x)=>Math.abs(x-time)<Math.abs(acc-time)?x:acc,edges[0]);
  return Math.abs(nearest-time)<=tolerance?round(nearest):round(time);
 }
 export function trackPosition(clientX,left,width,duration){
