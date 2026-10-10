@@ -47,3 +47,12 @@
 .studio-ratio.wide{width:50px;height:26px}
 @media(max-width:960px){.studio-layout,.studio-layout-shots{grid-template-columns:1fr}}
 @media(max-width:600px){.studio-pane{padding:16px}.studio-fields{grid-template-columns:1fr}.studio-formats{grid-template-columns:repeat(2,minmax(0,1fr))}.studio-banner{padding:20px}.studio-tab{flex:1 1 130px}.studio-head{align-items:flex-start;flex-direction:column}}
+
+/* Studio review — compact duplicate heading, retain visible safety state. */
+.studio-root{gap:13px}
+.studio-banner-compact{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:11px 18px}
+.studio-banner-compact .studio-banner-copy{display:grid;gap:3px}
+.studio-banner-compact .studio-caption{color:#dfc58a;font-size:10px;letter-spacing:.08em}
+.studio-banner-compact p{margin:0;color:#bdc2bc;font-size:11px;max-width:none}
+.studio-banner-compact .studio-readiness{margin:0;white-space:normal;text-align:center}
+@media(max-width:600px){.studio-banner-compact{padding:12px;gap:9px}.studio-banner-compact .studio-readiness{font-size:10px}}
