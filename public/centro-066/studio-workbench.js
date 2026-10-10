@@ -31,7 +31,8 @@ export function studioWorkbenchView(root,notice,project=null){
   const url=await getUrl(c.assetId);if(!url)return null;
   const el=document.createElement(c.kind==='audio'?'audio':'video');el.src=url;el.preload='auto';el.playsInline=true;el.crossOrigin='anonymous';
   el.muted=false;el.volume=1;media.set(c.id,{element:el,gain:null,source:null});
-  await new Promise(resolve=>{if(el.readyState>=1){resolve();return;}el.addEventListener('loadedmetadata',resolve,{once:true});el.addEventListener('error',resolve,{once:true});});
+  await new Promise(resolve=>{if(el.readyState>=1){resolve();return;}let timer;const done=()=>{clearTimeout(timer);el.removeEventListener('loadedmetadata',done);el.removeEventListener('error',done);resolve();};el.addEventListener('loadedmetadata',done,{once:true});el.addEventListener('error',done,{once:true});timer=setTimeout(done,8000);});
+  el.addEventListener('seeked',paint);el.addEventListener('loadeddata',paint);
   return media.get(c.id);
  }
  async function getPicture(c){if(cache.has(c.assetId))return cache.get(c.assetId);const u=await getUrl(c.assetId);if(!u)return null;const img=new Image();img.src=u;await img.decode().catch(()=>{});cache.set(c.assetId,img);return img;}
