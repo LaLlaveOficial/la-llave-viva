@@ -71,3 +71,34 @@ Ruta: `/operaciones-066` en la vista previa de `feature/estudio-creativo-066-fas
 - Confirmar que se recupera un timeline tras recargar sin perder archivos locales.
 - Confirmar explícitamente si se acepta temporalmente biblioteca local o es obligatorio almacenamiento remoto y backups antes del lanzamiento.
 - Publicación a `main`, cambios de producción y proveedores IA solo con autorización nueva.
+
+
+## Generación IA — preparación visual (octubre 2026, fase experimental)
+
+Se incorpora la pestaña **Generación IA** al menú del Estudio Creativo 066. Su layout sigue el flujo visual de Firefly pero no incorpora ni imita sus APIs.
+
+Funciones efectivamente programadas:
+- Panel izquierdo: historial de solicitudes **preparadas** y clips **importados**, por proyecto y navegador.
+- Visor central: previsualización local de imágenes de referencia y videos importados.
+- Panel derecho: prompt positivo/negativo, notas de continuidad, formato, motor previsto, 720p/1080p/2K/4K solicitados, FPS, duración, audio, seed y 1–4 variantes.
+- Referencias: modo **Frames** con fotograma de inicio obligatorio y final opcional, o modo **Images** con 1–3 imágenes y roles por imagen (personaje, escenario, composición, estilo o vestuario). Subida directa a IndexedDB local.
+- **Guardar preparación** verifica todos los parámetros y guarda un registro local, sin simular video generado ni generar cobros.
+- La ficha admite importar 1–4 videos creados fuera de OP 066, asociarlos al registro y previsualizarlos. Un resultado seleccionado se puede enviar a la pista V1 del timeline del mismo proyecto, junto a sus prompts de dirección.
+- Exportar ficha JSON y reutilizar parámetros para nueva solicitud. Los registros no incluyen datos binarios.
+
+**Limitaciones críticas antes de producción:**
+- El botón **Generar clip** permanece deshabilitado porque no hay API de video configurada/autorizada. No existen jobs remotos, colas reales ni promesa de resultado gratuito equivalente a Kling Omni.
+- Los medios y el historial permanecen localmente en el navegador, sin backup central ni sincronización entre computadoras. El usuario debe mantener copia de los originales; limpiar datos del sitio puede borrarlos.
+- La resolución, FPS, seed, número de variantes, referencias o audio son la configuración **deseada**, no capacidades garantizadas de un proveedor. El futuro backend debe negociar capacidades y costo verificables antes de ejecutar una solicitud.
+- Importar un clip no significa que OP 066 lo generó. Los registros usan estados "Preparado" y "Clips importados", nunca estados engañosos de generación.
+- Persistencia en el equipo y render WebM local pueden utilizar CPU/GPU del computador. Para trabajos pesados en la nube se necesita almacenamiento protegido y procesador remoto.
+- Faltan prueba real en Chrome de importación, selección de referencias, recarga, selección de variantes y colocación en timeline. Las pruebas automatizadas son necesarias, pero no sustituyen prueba visual real.
+
+**Requisitos del siguiente gate:**
+1. Revisar cuentas/API de Firefly, Kling, Veo u otro proveedor con autorización y documentación real de imagen-a-video/referencias. No asumir que la suscripción de Firefly incluye API.
+2. Presupuesto, autorización explícita de créditos, colas asíncronas, control de concurrencia y cancelaciones.
+3. Biblioteca de archivos y resultados cifrada/privada con URLs firmadas y copias de seguridad.
+4. Procesamiento remoto de exportaciones MP4 y 2K/4K con calidad controlada.
+5. Tests end-to-end reales de Chrome, aislamiento multicuenta, controles de acceso, conservación de identidad de personajes y regresiones en la consola existente.
+
+La rama `main` y los servicios productivos deben mantenerse intactos hasta un consentimiento separado para merge y migraciones.
