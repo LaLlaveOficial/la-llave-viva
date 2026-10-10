@@ -17,7 +17,7 @@ export function studioWorkbenchView(root,notice){
  function activeClip(c,t){return t>=c.start&&t<c.start+c.duration;}
  function clipSource(c,t){return c.sourceStart+(t-c.start);}
  function seek(t){workspace.playhead=number(t,0,timelineDuration(workspace.clips));save();syncPlayback(true);paint();drawTime();}
- function dimensions(){const r=workspace.aspect==='9:16'?[9,16]:workspace.aspect==='16:9'?[16,9]:workspace.aspect==='1.91:1'?[191,100]:[1,1];const h=workspace.quality==='1080p'?1080:720;const w=Math.round(h*r[0]/r[1]/2)*2;return {w,h};}
+ function dimensions(){const r=workspace.aspect==='9:16'?[9,16]:workspace.aspect==='16:9'?[16,9]:workspace.aspect==='1.91:1'?[191,100]:[1,1];const short=workspace.quality==='1080p'?1080:720;const landscape=r[0]>=r[1];const w=landscape?Math.round(short*r[0]/r[1]/2)*2:short;const h=landscape?short:Math.round(short*r[1]/r[0]/2)*2;return {w,h};}
  function findAsset(id){return assets.find(a=>a.id===id);}
  async function getUrl(id){if(urls.has(id))return urls.get(id);const data=await readMedia(db,id);if(!data)return null;const url=URL.createObjectURL(data.blob);urls.set(id,url);return url;}
  async function getMedia(c){
