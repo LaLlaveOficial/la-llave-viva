@@ -113,7 +113,7 @@ export function studioView(root,request,notice) {
       (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='generate'?'<div id="studio-generation-host"></div>':state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
       '</section>';
     if(state.tab==='editor')stopWorkbench=studioWorkbenchView(root.querySelector('#studio-workbench-host'),notice,currentProject());
-    if(state.tab==='generate')stopGenerator=studioGenerationView(root.querySelector('#studio-generation-host'),notice,currentProject(),()=>{state.tab='editor';lastTab='editor';render();});
+    if(state.tab==='generate')stopGenerator=studioGenerationView(root.querySelector('#studio-generation-host'),notice,currentProject(),()=>{state.tab='editor';lastTab='editor';render();},request);
     root.querySelectorAll('[data-studio-tab]').forEach(button=>button.onclick=()=>{state.tab=button.dataset.studioTab;lastTab=state.tab;state.editProject=false;render();});
     root.querySelectorAll('[data-project-id]').forEach(button=>button.onclick=()=>{state.projectId=Number(button.dataset.projectId);state.shotId=null;state.editProject=false;render();});
     root.querySelectorAll('[data-shot-id]').forEach(button=>button.onclick=()=>{state.shotId=Number(button.dataset.shotId);render();});
