@@ -87,6 +87,7 @@ export function studioWorkbenchView(root,notice){
  function drawTime(){const label=root.querySelector('#studiowb-time');if(label)label.textContent=fmt(workspace.playhead)+' / '+fmt(timelineDuration(workspace.clips));const seekEl=root.querySelector('#studiowb-seek');if(seekEl){seekEl.max=String(timelineDuration(workspace.clips));seekEl.value=String(workspace.playhead);}}
  function tick(){
   if(!isPlaying)return;
+  if(!root.isConnected){pause();return;}
   workspace.playhead=Math.min(timelineDuration(workspace.clips),startTime+(performance.now()-startTick)/1000);
   syncPlayback();paint();drawTime();
   if(workspace.playhead>=timelineDuration(workspace.clips)){pause();if(rendering&&movieStop)movieStop();return;}
@@ -215,7 +216,7 @@ export function studioWorkbenchView(root,notice){
   if(selectedClip){
    el('studiowb-delete').onclick=()=>{workspace.clips=workspace.clips.filter(c=>c.id!==selected);media.get(selected)?.element.pause();media.delete(selected);selected=null;save();render();};
    el('studiowb-duplicate').onclick=()=>{const copy={...selectedClip,id:crypto.randomUUID(),start:selectedClip.start+selectedClip.duration};workspace.clips.push(copy);selected=copy.id;save();render();};
-   el('studiowb-copy').onclick=()=>{const text=selectedClip.prompt||'';if(!text){notice('Escribe primero el prompt.');return;}navigator.clipboard?.writeText(text).then(()=>notice('Prompt copiado.'),()=>notice('No se pudo copiar. Selecciona el texto del campo.'));};
+   el('studiowb-copy').onclick=()=>{const text=selectedClip.prompt||'';if(!text){notice('Escribe primero el prompt.');return;}if(!navigator.clipboard?.writeText){notice('Selecciona y copia el prompt manualmente.');return;}navigator.clipboard.writeText(text).then(()=>notice('Prompt copiado.'),()=>notice('No se pudo copiar. Selecciona el texto del campo.'));};
   }
   el('studiowb-backup').onclick=()=>{const blob=new Blob([JSON.stringify(workspace,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='estudio066-timeline.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);notice('Proyecto JSON exportado. Los archivos multimedia originales NO se incluyen.');};
   el('studiowb-restore').onchange=async ev=>{
@@ -233,4 +234,10 @@ export function studioWorkbenchView(root,notice){
  }
  root.innerHTML='<div class="studio-pane"><p>Preparando biblioteca multimedia local…</p></div>';
  init();
+ return ()=>{
+  pause();for(const m of media.values()){m.element.pause();m.element.removeAttribute('src');m.element.load();}
+  media.clear();for(const url of urls.values())URL.revokeObjectURL(url);urls.clear();cache.clear();
+  try{db?.close();}catch{}
+  try{audioCtx?.close();}catch{}
+ };
 }
