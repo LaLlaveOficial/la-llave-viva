@@ -80,3 +80,8 @@
 .wb-cloud-entry{border:1px solid #ffffff24;border-radius:7px;padding:9px;display:grid;gap:7px;overflow-wrap:anywhere}
 .wb-cloud-entry span{font-size:10px;color:#ddd}
 .wb-cloud-wrap button{padding:8px 10px;font-size:10px;min-height:32px}
+
+/* Export format controls: compact on desktop, readable on mobile. */
+.wb-settings{grid-template-columns:minmax(170px,2fr) repeat(5,minmax(95px,1fr));gap:10px}
+@media(max-width:1350px){.wb-settings{grid-template-columns:repeat(3,minmax(0,1fr))}.wb-settings>label:first-child{grid-column:span 3}}
+@media(max-width:760px){.wb-settings{grid-template-columns:repeat(2,minmax(0,1fr))}.wb-settings>label:first-child{grid-column:span 2}}

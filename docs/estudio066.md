@@ -128,3 +128,11 @@ El navegador utiliza solicitudes autenticadas a la consola para crear intencione
 La exportación inicial falló en una prueba real de Chrome con un único PNG en V1: `El navegador no produjo un video válido`. Se reemplaza la captura automática por grabación WebM con fotogramas explícitos (`CanvasCaptureMediaStreamTrack.requestFrame`), `MediaRecorder`, finalización controlada e inspección del encabezado EBML. Para proyectos solo de imágenes y títulos, no se agrega una pista de audio vacía; con clips de audio o video, se mantiene la mezcla si existe. Se conserva la posición original del editor después de exportar y se aborta la captura al cerrar el módulo. Se corrige el visor para mostrar el último fotograma al llegar exactamente al final del clip.
 
 Se ha comprobado el método en Chromium real con un lienzo estático generado para test (2 segundos, WebM válido). **Todavía falta repetir la exportación real con `rosa4.png` desde la vista previa del usuario**, verificar con reproductor externo su duración y códec, y probar A1/A2 antes de declarar estable el exportador. No afecta Neon ni la biblioteca original.
+
+## Formato y calidad de exportación (Preview, octubre 2026)
+
+WebM y MP4 nativo del navegador, SOLO cuando MediaRecorder.isTypeSupported confirma el códec correspondiente (H.264, y AAC cuando hay sonido). El sistema verifica firma EBML de WebM o ftyp de MP4 antes de descargar. Nunca se cambia simplemente la extensión. Cuando MP4 no esté disponible, se informa al usuario y permanece WebM.
+
+720p/1080p y calidad Estándar / Alta / Máster, respectivamente 3/6/10 Mbps para 720p y 6/12/20 Mbps para 1080p: son bitrates solicitados al codificador, el valor efectivo podría variar. Proyectos anteriores reciben WebM/Alta sin perder datos. Los renders de Máster cargan CPU/GPU del navegador, 4K y codificación universal deben ir a render remoto.
+
+Pendiente: prueba manual del MP4 con Chrome Windows, audio AAC, VLC, precisión de duración y calidad real antes de declarar el módulo listo para producción.

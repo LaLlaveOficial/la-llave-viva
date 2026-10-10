@@ -1,7 +1,7 @@
 import {mediaDB,listMedia,readMedia,addMedia,deleteMedia,workspaceKey,defaultWorkspace,parseWorkspace,timelineDuration,addTimelineClip} from './studio-media.js';
 import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
 import {mountStudioCloud} from './studio-cloud066.js';
-import {exportCanvasWebM} from './studio-recording.js';
+import {exportCanvasRecording,exportFormatCapabilities,recordingBitrate} from './studio-recording.js';
 // Editor en navegador, sin llamadas a proveedores ni consumo de créditos.
 const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const number=(n,lo,hi)=>Math.min(hi,Math.max(lo,Number(n)||0));
@@ -120,10 +120,12 @@ export function studioWorkbenchView(root,notice,project=null){
   const duration=timelineDuration(workspace.clips);
   if(duration>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
   const before=workspace.playhead;
+  const outputFormat=workspace.exportFormat||'webm';
+  if(outputFormat==='mp4'&&!exportFormatCapabilities(window.MediaRecorder).mp4){notice('Este navegador no ofrece MP4 H.264. Selecciona WebM o espera el render remoto.');return;}
   rendering=true;
   exportAbort=new AbortController();
   const button=root.querySelector('#studiowb-export'),seekBar=root.querySelector('#studiowb-seek'),playBtn=root.querySelector('#studiowb-play');
-  if(button){button.disabled=true;button.textContent='Renderizando WebM…';}
+  if(button){button.disabled=true;button.textContent='Renderizando '+outputFormat.toUpperCase()+'…';}
   if(seekBar)seekBar.disabled=true;
   if(playBtn)playBtn.disabled=true;
   try{
@@ -133,10 +135,10 @@ export function studioWorkbenchView(root,notice,project=null){
    const useAudio=workspace.clips.some(c=>c.kind==='audio'||c.kind==='video');
    if(useAudio){audioGraph();await audioCtx?.resume();connectSources();}
    isPlaying=true;syncPlayback(true);paint();
-   const blob=await exportCanvasWebM({
-    canvas:canvas(),seconds:duration,fps:workspace.fps,
+   const {blob,format}=await exportCanvasRecording({
+    canvas:canvas(),seconds:duration,fps:workspace.fps,format:outputFormat,
     audioTracks:useAudio&&mix?mix.stream.getAudioTracks():[],
-    bitrate:workspace.quality==='1080p'?8000000:4000000,
+    bitrate:recordingBitrate(workspace.quality,workspace.encodingQuality||'high'),
     signal:exportAbort.signal,
     onFrame:async elapsed=>{
      workspace.playhead=Math.min(elapsed,Math.max(0,duration-1/(workspace.fps*4)));
@@ -145,16 +147,16 @@ export function studioWorkbenchView(root,notice,project=null){
    });
    if(exportAbort.signal.aborted)return;
    const url=URL.createObjectURL(blob),a=document.createElement('a');
-   a.href=url;a.download='estudio066-'+workspace.aspect.replace(':','x')+'-'+workspace.quality+'.webm';
+   a.href=url;a.download='estudio066-'+workspace.aspect.replace(':','x')+'-'+workspace.quality+'-'+(workspace.encodingQuality||'high')+'.'+format;
    a.click();
    setTimeout(()=>URL.revokeObjectURL(url),30000);
-   notice('WebM exportado. Revisa su reproducción, duración, audio y calidad antes de publicarlo.');
+   notice(format.toUpperCase()+' exportado ('+(blob.size/1048576).toFixed(2)+' MB). Revisa duración, audio y calidad antes de publicar.');
   }catch(error){
    if(!exportAbort?.signal.aborted)notice('No se pudo exportar: '+error.message);
   }finally{
    pause();workspace.playhead=before;syncPlayback(true);paint();drawTime();
    rendering=false;exportAbort=null;
-   if(button){button.disabled=false;button.textContent='Exportar WebM';}
+   if(button){button.disabled=false;button.textContent='Exportar '+outputFormat.toUpperCase();}
    if(seekBar)seekBar.disabled=false;
    if(playBtn)playBtn.disabled=false;
   }
@@ -190,10 +192,10 @@ export function studioWorkbenchView(root,notice,project=null){
  }
  function page(){
   return '<div class="wb-root"><div class="wb-top"><div><span class="studio-caption">MONTAJE · EDITOR LOCAL NO DESTRUCTIVO</span><h3>Estudio de montaje 066</h3><p class="studio-help">'+e(project?.name||'Montaje libre')+' · Guardado en este navegador</p></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-undo">↶ Deshacer</button><button type="button" class="subtle" id="studiowb-redo">↷ Rehacer</button><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label><button type="button" class="subtle" id="studiowb-portable-export"'+(!project?.id?' disabled':'')+'>Respaldo completo con medios</button><label class="wb-file-label">Restaurar respaldo completo<input id="studiowb-portable-import" type="file" accept=".json,application/json" '+(!project?.id?'disabled':'')+'></label></div></div>'+
-   '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Formato<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Exportación<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label></div>'+
+   '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Orientación<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Resolución<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label><label>Archivo<select id="studiowb-format">'+option('webm',workspace.exportFormat||'webm','WebM · VP9/VP8')+option('mp4',workspace.exportFormat||'webm','MP4 · H.264'+(exportFormatCapabilities(window.MediaRecorder).mp4?'':' · no disponible')).replace('<option','<option'+(exportFormatCapabilities(window.MediaRecorder).mp4?'':' disabled'))+'</select></label><label>Calidad<select id="studiowb-encode-quality">'+[['standard','Estándar'],['high','Alta'],['master','Máster']].map(([v,l])=>option(v,workspace.encodingQuality||'high',l)).join('')+'</select></label></div>'+
    '<div class="wb-workarea"><aside class="wb-library"><h3>Biblioteca de medios</h3><p class="studio-help">Archivos locales guardados en tu navegador (IndexedDB), no en Neon ni en la nube. Haz copias de los originales.</p><label class="wb-file-label">+ Importar video, imagen o audio<input type="file" id="studiowb-upload" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/*"></label>'+
    '<div class="wb-media-list">'+(assets.length?assets.map(mediaCard).join(''):'<p class="studio-help">Importa un archivo para comenzar.</p>')+'</div><button type="button" class="subtle" id="studiowb-title">+ Añadir título</button><div id="studiowb-cloud" class="wb-cloud-wrap"></div></aside>'+
-   '<div class="wb-stage"><div class="wb-preview-box"><canvas id="studiowb-canvas" aria-label="Vista previa de composición"></canvas></div><div class="wb-controls"><button type="button" class="subtle" id="studiowb-play">▶ Reproducir</button><button type="button" class="subtle" id="studiowb-stop">■ Inicio</button><strong id="studiowb-time"></strong><button type="button" id="studiowb-export">Exportar WebM</button></div><input id="studiowb-seek" type="range" min="0" max="5" step=".05" value="'+workspace.playhead+'" aria-label="Posición en montaje"><p class="studio-help">La exportación usa el navegador en tiempo real, máximo 120 s. WebM, no MP4. 2K/4K y edición avanzada se implementarán con render remoto.</p></div>'+
+   '<div class="wb-stage"><div class="wb-preview-box"><canvas id="studiowb-canvas" aria-label="Vista previa de composición"></canvas></div><div class="wb-controls"><button type="button" class="subtle" id="studiowb-play">▶ Reproducir</button><button type="button" class="subtle" id="studiowb-stop">■ Inicio</button><strong id="studiowb-time"></strong><button type="button" id="studiowb-export">Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button></div><input id="studiowb-seek" type="range" min="0" max="5" step=".05" value="'+workspace.playhead+'" aria-label="Posición en montaje"><p class="studio-help">1080p y calidad Máster son opciones reales de codificación del navegador, pero no garantizan detalle extra del original. MP4 solo si Chrome permite H.264; el audio MP4 requiere AAC. 2K/4K y MP4 profesional universal requerirán render remoto.</p></div>'+
    propertyPanel()+'</div>'+timeline()+'<p class="studio-help">Selecciona un clip para modificarlo desde el Inspector. Puedes moverlo de pista, cambiar duración, entrada del archivo, filtros, guion y duplicarlo. Los audios van en A1/A2.</p></div>';
  }
  function render(){
@@ -209,6 +211,8 @@ export function studioWorkbenchView(root,notice,project=null){
   el('studiowb-aspect').onchange=ev=>{checkpoint();workspace.aspect=ev.target.value;save();paint();};
   el('studiowb-quality').onchange=ev=>{checkpoint();workspace.quality=ev.target.value;save();paint();};
   el('studiowb-fps').onchange=ev=>{checkpoint();workspace.fps=Number(ev.target.value);save();};
+  el('studiowb-format').onchange=ev=>{checkpoint();workspace.exportFormat=ev.target.value;save();render();};
+  el('studiowb-encode-quality').onchange=ev=>{checkpoint();workspace.encodingQuality=ev.target.value;save();};
   el('studiowb-play').onclick=()=>play();
   el('studiowb-stop').onclick=()=>{pause();seek(0);};
   el('studiowb-seek').oninput=ev=>{pause();seek(Number(ev.target.value));};

@@ -33,10 +33,12 @@ export const addMedia=async(db,file)=>{
 };
 export const deleteMedia=async(db,id)=>transaction(db,'readwrite',store=>store.delete(id));
 export const workspaceKey='llave-studio066-workspace-v1';
-export const defaultWorkspace=()=>({version:1,name:'Caso 066 · Proyecto de montaje',aspect:'9:16',quality:'720p',fps:24,clips:[],playhead:0});
+export const defaultWorkspace=()=>({version:1,name:'Caso 066 · Proyecto de montaje',aspect:'9:16',quality:'720p',fps:24,exportFormat:'webm',encodingQuality:'high',clips:[],playhead:0});
 export function parseWorkspace(value){
  if(!value||typeof value!=='object'||!Array.isArray(value.clips)||value.clips.length>120)return null;
  if(!['9:16','16:9','1:1','1.91:1'].includes(value.aspect)||!['720p','1080p'].includes(value.quality)||![24,30].includes(value.fps))return null;
+ if(value.exportFormat!==undefined&&!['webm','mp4'].includes(value.exportFormat))return null;
+ if(value.encodingQuality!==undefined&&!['standard','high','master'].includes(value.encodingQuality))return null;
  const items=[];
  for(const c of value.clips){
   if(typeof c!=='object'||!['video','image','audio','text'].includes(c.kind)||!['V1','V2','A1','A2'].includes(c.track))return null;
@@ -48,7 +50,7 @@ export function parseWorkspace(value){
   if(!id||(!assetId&&c.kind!=='text'))return null;
   items.push({...c,id,assetId,start:c.start,duration:c.duration,text:String(c.text||'').slice(0,500),sourceStart:Math.max(0,Number(c.sourceStart)||0),volume:Math.min(2,Math.max(0,Number(c.volume??1))),opacity:Math.min(1,Math.max(0,Number(c.opacity??1))),brightness:Math.min(200,Math.max(0,Number(c.brightness??100))),contrast:Math.min(200,Math.max(0,Number(c.contrast??100))),saturation:Math.min(200,Math.max(0,Number(c.saturation??100))),blur:Math.min(20,Math.max(0,Number(c.blur)||0))});
  }
- return {version:1,name:String(value.name||'Montaje').slice(0,160),aspect:value.aspect,quality:value.quality,fps:value.fps,clips:items,playhead:Math.min(600,Math.max(0,Number(value.playhead)||0))};
+ return {version:1,name:String(value.name||'Montaje').slice(0,160),aspect:value.aspect,quality:value.quality,fps:value.fps,exportFormat:value.exportFormat||'webm',encodingQuality:value.encodingQuality||'high',clips:items,playhead:Math.min(600,Math.max(0,Number(value.playhead)||0))};
 }
 export function timelineDuration(clips){return Math.max(5,...clips.map(c=>c.start+c.duration));}
 export function addTimelineClip(asset,clips){
