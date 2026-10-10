@@ -91,10 +91,10 @@ export function studioWorkbenchView(root,notice){
   workspace.playhead=Math.min(timelineDuration(workspace.clips),startTime+(performance.now()-startTick)/1000);
   syncPlayback();paint();drawTime();
   if(workspace.playhead>=timelineDuration(workspace.clips)){pause();if(rendering&&movieStop)movieStop();return;}
-  raf=requestAnimationFrame(tick);
+  raf=window.requestAnimationFrame(tick);
  }
  function pause(){
-  isPlaying=false;cancelAnimationFrame(raf);for(const m of media.values())m.element.pause();
+  isPlaying=false;window.cancelAnimationFrame?.(raf);for(const m of media.values())m.element.pause();
   const b=root.querySelector('#studiowb-play');if(b)b.textContent='▶ Reproducir';save();
  }
  async function play(){
