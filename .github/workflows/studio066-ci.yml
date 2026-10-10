@@ -1,0 +1,28 @@
+name: Estudio 066 - tests de rama
+on:
+  push:
+    branches:
+      - feature/estudio-creativo-066-fase1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Test seguridad + estudio y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout de la rama
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias sin ejecutar scripts de instalación
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validar editor y seguridad de Centro 066
+        run: node --test tests/studio066.test.mjs tests/console066.test.mjs
+      - name: Compilar la web sin publicar
+        run: npm run build
