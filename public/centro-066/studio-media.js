@@ -40,7 +40,10 @@ export function parseWorkspace(value){
  const items=[];
  for(const c of value.clips){
   if(typeof c!=='object'||!['video','image','audio','text'].includes(c.kind)||!['V1','V2','A1','A2'].includes(c.track))return null;
+  const permitted=c.kind==='audio'?['A1','A2']:c.kind==='text'?['V2']:['V1','V2'];
+  if(!permitted.includes(c.track))return null;
   if(!Number.isFinite(c.start)||!Number.isFinite(c.duration)||c.start<0||c.duration<.1||c.start+c.duration>600)return null;
+  if(c.prompt!==undefined&&String(c.prompt).length>3000)return null;
   const id=String(c.id||'').slice(0,100),assetId=String(c.assetId||'').slice(0,100);
   if(!id||(!assetId&&c.kind!=='text'))return null;
   items.push({...c,id,assetId,start:c.start,duration:c.duration,text:String(c.text||'').slice(0,500),sourceStart:Math.max(0,Number(c.sourceStart)||0),volume:Math.min(2,Math.max(0,Number(c.volume??1))),opacity:Math.min(1,Math.max(0,Number(c.opacity??1))),brightness:Math.min(200,Math.max(0,Number(c.brightness??100))),contrast:Math.min(200,Math.max(0,Number(c.contrast??100))),saturation:Math.min(200,Math.max(0,Number(c.saturation??100))),blur:Math.min(20,Math.max(0,Number(c.blur)||0))});
