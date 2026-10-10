@@ -58,9 +58,17 @@ export function parseGenerationHistory(input){
 export function makeGenerationRecord(id,data){
  return {id,request:data,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),status:'prepared',results:[]};
 }
-export function studioGenerationView(root,notice,project,openTimeline){
+export function studioGenerationView(root,notice,project,openTimeline,request){
  let db=null,assets=[],history=[],draft=newGenerationDraft(),selected=null,ready=false;
  let busy=false,active=true,previewURLs=new Map(),activePreview=null;
+ const projectId=Number(project?.id)||null;
+ const remoteOK=Boolean(projectId&&typeof request==='function');
+ const upsertRemote=async(record,action)=>{
+  if(!remoteOK)return null;
+  const res=await request('studio-generation',{action,projectId,id:record.id,version:record.version??0,request:record.request,results:record.results});
+  record.version=res.record.version;
+  return res.record;
+ };
  const key=keyFor(project);
  const selectedRecord=()=>history.find(x=>x.id===selected)||null;
  const media=()=>assets.filter(x=>x.kind==='image');
@@ -219,13 +227,17 @@ export function studioGenerationView(root,notice,project,openTimeline){
    if(ev.target.name==='mode'&&draft.mode!==before){draft.refs=[];keep();refreshImages();}
    else keep();
   };
-  form.onsubmit=ev=>{
+  form.onsubmit=async ev=>{
    ev.preventDefault();captureForm();
    const validated=validateGeneration(draft,assets);
    if(validated.error){notice(validated.error);return;}
    const saved=makeGenerationRecord(crypto.randomUUID(),validated.value);
+   busy=true;const btn=one('gen-save');if(btn)btn.disabled=true;
+   try{await upsertRemote(saved,'create');}
+   catch(error){notice('Ficha solo local: '+error.message);}
+   finally{busy=false;}
    history.unshift(saved);history=history.slice(0,MAX_RECORDS);selected=saved.id;keep();render();
-   notice('Solicitud preparada y guardada. Ningún motor fue ejecutado ni cobrado.');
+   notice('Solicitud preparada. Los medios siguen en tu navegador; no se ejecutó ningún motor.');
   };
   wireRefs();
   const upload=one('gen-upload-result');
@@ -240,7 +252,9 @@ export function studioGenerationView(root,notice,project,openTimeline){
     try{const a=await addMedia(db,file);record.results.push({assetId:a.id,addedAt:new Date().toISOString()});added++;}
     catch(error){notice(error.message);}
    }
-   if(added){record.status='imported';record.updatedAt=new Date().toISOString();assets=await listMedia(db);activePreview=record.results.at(-1)?.assetId||null;keep();render();notice(added+' clip(s) importados. No fueron generados por OP 066.');}
+   if(added){record.status='imported';record.updatedAt=new Date().toISOString();assets=await listMedia(db);activePreview=record.results.at(-1)?.assetId||null;
+    try{await upsertRemote(record,Number.isSafeInteger(record.version)?'update':'create');}catch(error){notice('Clips importados localmente; ficha remota sin confirmar: '+error.message);}
+    keep();render();notice(added+' clip(s) importados. No fueron generados por OP 066.');}
   };
   const send=one('gen-to-timeline');
   if(send)send.onclick=()=>{
@@ -270,7 +284,14 @@ export function studioGenerationView(root,notice,project,openTimeline){
  root.innerHTML='<div class="studio-pane"><p>Preparando generador y referencias locales…</p></div>';
  (async()=>{
   try{db=await mediaDB();assets=await listMedia(db);restore();
-   if(!active||!root.isConnected)return;ready=true;render();
+   if(!active||!root.isConnected)return;
+   if(remoteOK){try{
+    const response=await request('studio-generations?projectId='+projectId);
+    const remote=parseGenerationHistory(response.records.map(row=>({...row,id:row.id,createdAt:row.created_at,updatedAt:row.updated_at})));
+    const known=new Set(remote.map(x=>x.id));history=[...remote,...history.filter(x=>!known.has(x.id))].slice(0,MAX_RECORDS);
+    keep();
+   }catch(error){notice('Sin sincronización remota: '+error.message+'. Se conservarán los datos locales.');}}
+   ready=true;render();
   }catch(error){if(active&&root.isConnected)root.innerHTML='<div class="studio-pane"><h3>Biblioteca multimedia no disponible</h3><p>'+esc(error.message)+'</p></div>';}
  })();
  return ()=>{active=false;for(const u of previewURLs.values())URL.revokeObjectURL(u);previewURLs.clear();try{db?.close();}catch{}};
