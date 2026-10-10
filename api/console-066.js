@@ -1,3 +1,4 @@
+import {studioList,studioSave} from '../lib/multimedia-studio.js';
 import {ga4Credential,ga4Sync} from '../lib/ga4-connect.js';
 import {metaAdsSync} from '../lib/meta-ads-connect.js';
 import {apolloCredential,apolloQuery,matchApolloCandidates,validateApolloSearch} from '../lib/apollo-connect.js';
@@ -49,6 +50,10 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(op==='studio'&&req.method==='GET')return res.status(200).json(await studioList(sql));
+      if(op==='studio-save'&&req.method==='POST'){
+        const r=await studioSave(sql,body);return res.status(r.code).json(r.error?{error:r.error}:{record:r.record});
+      }
       if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
       if(op==='google-ads-reports'&&req.method==='GET')return res.status(200).json({...await googleAdsReports(sql),changes:await adsChangeHistory(sql),missions:await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-analysis' ORDER BY id DESC LIMIT 5`,capabilities:(await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-capabilities' ORDER BY id DESC LIMIT 1`)[0]?.detail||{approvedChanges:false}});
       if(op==='google-ads-discard'&&req.method==='POST'){
