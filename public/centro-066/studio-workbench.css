@@ -55,3 +55,13 @@
 @media(max-width:760px){.shell.studio-mode{grid-template-columns:1fr}.wb-workarea{grid-template-columns:1fr}.wb-settings{grid-template-columns:1fr 1fr}.wb-library,.wb-stage,.wb-inspector{grid-column:1/-1}.wb-ruler,.wb-track{grid-template-columns:96px minmax(440px,1fr)}.wb-root{padding:10px}}
 
 .wb-block{touch-action:none}.wb-trim-right{position:absolute;right:0;top:0;bottom:0;width:9px;border-left:2px solid #ffe9ab80;cursor:ew-resize;background:#ffffffe8}
+
+/* Keep actual editing controls and tracks in sight without giant blank preview. */
+.wb-workarea{min-height:0;align-items:start}
+.wb-stage{align-self:start;justify-content:flex-start;min-height:0;overflow:hidden}
+.wb-preview-box{flex:none;height:clamp(235px,35vh,340px);min-height:0;max-height:none}
+.wb-preview-box canvas{max-height:clamp(220px,34vh,326px)}
+.wb-library,.wb-inspector{max-height:560px}
+.wb-root{gap:10px}
+.wb-stage>.studio-help{margin:0;text-align:center}
+@media(max-width:760px){.wb-preview-box{height:clamp(230px,34vh,310px)}.wb-library,.wb-inspector{max-height:none}}
