@@ -52,8 +52,8 @@ export function validateGeneration(input,assets=[]){
 }
 export function parseGenerationHistory(input){
  if(!Array.isArray(input))return [];
- return input.slice(0,MAX_RECORDS).filter(x=>x&&typeof x==='object'&&typeof x.id==='string'&&x.id.length<90&&Array.isArray(x.results)&&x.results.length<=4&&['prepared','imported'].includes(x.status))
- .map(x=>({...x,results:x.results.filter(v=>typeof v.assetId==='string'&&v.assetId.length<100).map(v=>({assetId:v.assetId,addedAt:v.addedAt||''}))}));
+ return input.slice(0,MAX_RECORDS).filter(x=>x&&typeof x==='object'&&typeof x.id==='string'&&x.id.length<90&&x.request&&typeof x.request==='object'&&typeof x.request.title==='string'&&typeof x.request.prompt==='string'&&Array.isArray(x.results)&&x.results.length<=4&&['prepared','imported'].includes(x.status))
+ .map(x=>({...x,results:x.results.filter(v=>v&&typeof v.assetId==='string'&&v.assetId.length<100).map(v=>({assetId:v.assetId,addedAt:v.addedAt||''}))}));
 }
 export function makeGenerationRecord(id,data){
  return {id,request:data,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),status:'prepared',results:[]};
@@ -213,7 +213,7 @@ export function studioGenerationView(root,notice,project,openTimeline){
   one('gen-new').onclick=()=>{draft=newGenerationDraft();selected=null;activePreview=null;keep();render();};
   one('gen-clear-preview').onclick=()=>{activePreview=null;const st=one('gen-stage');if(st)st.innerHTML='<div class="gen-placeholder"><span class="gen-play-icon">▶</span><strong>Visor vacío</strong><small>Elige un fotograma o un clip importado.</small></div>';};
   const form=one('gen-form');
-  form.oninput=()=>{captureForm();keep();};
+  form.oninput=ev=>{if(ev.target.name==='mode')return;captureForm();keep();};
   form.onchange=ev=>{
    const before=draft.mode;captureForm();
    if(ev.target.name==='mode'&&draft.mode!==before){draft.refs=[];keep();refreshImages();}
