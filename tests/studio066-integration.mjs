@@ -110,7 +110,9 @@ try {
     };
     studioView(root,request,()=>{});
     await new Promise(r=>setTimeout(r,50));
-    assert.match(root.textContent,/Estudio Creativo 066/);
+    assert.match(root.textContent,/ESPACIO DE TRABAJO · ESTUDIO 066/);
+    assert.match(root.textContent,/1 proyecto/);
+    assert.doesNotMatch(root.textContent,/1 proyectos/);
     assert.match(root.textContent,/Caso 066/);
     root.querySelector('[data-studio-tab="shots"]').click();
     assert.ok(root.querySelector('#studio-shot-form'));
