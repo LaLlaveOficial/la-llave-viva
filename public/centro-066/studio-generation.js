@@ -233,11 +233,12 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    if(validated.error){notice(validated.error);return;}
    const saved=makeGenerationRecord(crypto.randomUUID(),validated.value);
    busy=true;const btn=one('gen-save');if(btn)btn.disabled=true;
-   try{await upsertRemote(saved,'create');}
+   let remoteStored=false;
+   try{await upsertRemote(saved,'create');remoteStored=remoteOK;}
    catch(error){notice('Ficha solo local: '+error.message);}
    finally{busy=false;}
    history.unshift(saved);history=history.slice(0,MAX_RECORDS);selected=saved.id;keep();render();
-   notice('Solicitud preparada. Los medios siguen en tu navegador; no se ejecutó ningún motor.');
+   notice('Solicitud preparada '+(remoteStored?'y sincronizada en Neon Preview.':'solo en este navegador.')+' Ningún motor fue ejecutado.');
   };
   wireRefs();
   const upload=one('gen-upload-result');
@@ -286,7 +287,8 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   try{db=await mediaDB();assets=await listMedia(db);restore();
    if(!active||!root.isConnected)return;
    if(remoteOK){try{
-    const response=await request('studio-generations?projectId='+projectId);
+    const res=await fetch('/api/console-066?op=studio-generations&projectId='+encodeURIComponent(projectId),{credentials:'same-origin'});
+    const response=await res.json();if(!res.ok)throw new Error(response.error||'No se pudo recuperar el historial.');
     const remote=parseGenerationHistory(response.records.map(row=>({...row,id:row.id,createdAt:row.created_at,updatedAt:row.updated_at})));
     const known=new Set(remote.map(x=>x.id));history=[...remote,...history.filter(x=>!known.has(x.id))].slice(0,MAX_RECORDS);
     keep();
