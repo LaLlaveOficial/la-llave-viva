@@ -110,7 +110,7 @@ export function studioView(root,request,notice) {
       '<div class="studio-tabs" role="group" aria-label="Secciones del estudio">'+navTabs(state.tab)+'</div>'+
       (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
       '</section>';
-    if(state.tab==='editor')stopWorkbench=studioWorkbenchView(root.querySelector('#studio-workbench-host'),notice);
+    if(state.tab==='editor')stopWorkbench=studioWorkbenchView(root.querySelector('#studio-workbench-host'),notice,currentProject());
     root.querySelectorAll('[data-studio-tab]').forEach(button=>button.onclick=()=>{state.tab=button.dataset.studioTab;lastTab=state.tab;state.editProject=false;render();});
     root.querySelectorAll('[data-project-id]').forEach(button=>button.onclick=()=>{state.projectId=Number(button.dataset.projectId);state.shotId=null;state.editProject=false;render();});
     root.querySelectorAll('[data-shot-id]').forEach(button=>button.onclick=()=>{state.shotId=Number(button.dataset.shotId);render();});
