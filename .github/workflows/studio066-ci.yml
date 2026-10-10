@@ -25,8 +25,15 @@ jobs:
       - name: Validar editor y seguridad de Centro 066
         run: node --test tests/studio066.test.mjs tests/console066.test.mjs
       - name: Dependencias efímeras de integración
-        run: npm install --no-save --ignore-scripts --no-audit --no-fund @electric-sql/pglite jsdom
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund @electric-sql/pglite jsdom fake-indexeddb
       - name: Probar Postgres y DOM aislados del estudio
         run: node tests/studio066-integration.mjs
+      - name: Validar editor multimedia e interfaz
+        run: |
+          node --check public/centro-066/studio-workbench.js
+          node --check public/centro-066/studio-media.js
+          node --check public/centro-066/studio.js
+          node --check public/centro-066/app.js
+          node --test tests/studio066-workbench.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
