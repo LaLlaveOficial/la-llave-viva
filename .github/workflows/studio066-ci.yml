@@ -34,6 +34,7 @@ jobs:
           node --check public/centro-066/studio-media.js
           node --check public/centro-066/studio.js
           node --check public/centro-066/app.js
-          node --test tests/studio066-workbench.test.mjs
+          node --check public/centro-066/studio-generation.js
+          node --test tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
