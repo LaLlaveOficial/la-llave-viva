@@ -1,4 +1,5 @@
 import {studioWorkbenchView} from './studio-workbench.js';
+import {studioGenerationView} from './studio-generation.js';
 // Phase 1: project / shot drafts. All controls marked "pending" are genuinely inactive.
 const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const types={cine:'Narrativa / Cine',ads:'Piezas publicitarias'};
@@ -7,7 +8,7 @@ const qualities=['720p','1080p','2k','4k'];
 const durations=[3,5,8,10,15,20];
 const fpsValues=[24,30,60];
 const providers=[['pendiente','Sin seleccionar'],['wan','Wan (por conectar)'],['ltx','LTX (por conectar)'],['kling','Kling (por conectar)'],['veo','Veo (por conectar)'],['firefly','Adobe Firefly (por conectar)']];
-const tabs=[['projects','Proyectos'],['shots','Fotogramas y planos'],['voices','Voces y sonido'],['editor','Montaje y efectos'],['ads','Creatividades Ads']];
+const tabs=[['projects','Proyectos'],['shots','Fotogramas y planos'],['generate','Generación IA'],['voices','Voces y sonido'],['editor','Montaje y efectos'],['ads','Creatividades Ads']];
 const option=(value,current,label)=>'<option value="'+escapeHtml(value)+'"'+(String(value)===String(current)?' selected':'')+'>'+escapeHtml(label??value)+'</option>';
 const opts=(values,current)=>values.map(v=>option(v,current)).join('');
 const navTabs=(active)=>tabs.map(([key,label])=>'<button type="button" class="studio-tab'+(active===key?' current':'')+'" data-studio-tab="'+key+'" aria-pressed="'+(active===key?'true':'false')+'">'+label+'</button>').join('');
@@ -16,7 +17,7 @@ let lastTab='projects';
 
 export function studioView(root,request,notice) {
   const state={projects:[],shots:[],projectId:null,shotId:null,tab:lastTab,editProject:false,connected:false,loading:true};
-  let stopWorkbench=null;
+  let stopWorkbench=null,stopGenerator=null;
   const refresh=async()=>{
     const result=await request('studio');
     if(!root.isConnected)return;
@@ -106,11 +107,13 @@ export function studioView(root,request,notice) {
   function render(){
     if(!root.isConnected)return;
     if(stopWorkbench){stopWorkbench();stopWorkbench=null;}
+    if(stopGenerator){stopGenerator();stopGenerator=null;}
     root.innerHTML='<section class="studio-root"><div class="studio-banner"><span class="studio-caption">LA LLAVE · ESTUDIO AUDIOVISUAL</span><h2>Estudio Creativo 066</h2><p>Fotogramas, escenas, voces, publicidad y postproducción desde una biblioteca privada.</p><span class="studio-readiness">Fase 1 · Preparación de proyectos. Ninguna generación ni costo habilitados.</span></div>'+
       '<div class="studio-tabs" role="group" aria-label="Secciones del estudio">'+navTabs(state.tab)+'</div>'+
-      (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
+      (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='generate'?'<div id="studio-generation-host"></div>':state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
       '</section>';
     if(state.tab==='editor')stopWorkbench=studioWorkbenchView(root.querySelector('#studio-workbench-host'),notice,currentProject());
+    if(state.tab==='generate')stopGenerator=studioGenerationView(root.querySelector('#studio-generation-host'),notice,currentProject(),()=>{state.tab='editor';lastTab='editor';render();});
     root.querySelectorAll('[data-studio-tab]').forEach(button=>button.onclick=()=>{state.tab=button.dataset.studioTab;lastTab=state.tab;state.editProject=false;render();});
     root.querySelectorAll('[data-project-id]').forEach(button=>button.onclick=()=>{state.projectId=Number(button.dataset.projectId);state.shotId=null;state.editProject=false;render();});
     root.querySelectorAll('[data-shot-id]').forEach(button=>button.onclick=()=>{state.shotId=Number(button.dataset.shotId);render();});
