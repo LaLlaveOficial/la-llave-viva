@@ -8,6 +8,7 @@ import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
+import {validateStudioProject,validateStudioShot} from '../lib/studio066.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonStatus} from '../lib/houston-status.js';
 import {houstonConnect} from '../lib/houston-connect.js';
@@ -149,6 +150,76 @@ export function makeHandler(connect = neon, env = process.env) {
       if (op === 'logout' && req.method === 'POST') {
         await sql`DELETE FROM console066_sessions WHERE token_hash=${hashToken(token)}`;
         res.setHeader('Set-Cookie',cookie('',0)); return res.status(200).json({ok:true});
+      }
+      // Estudio Creativo 066: authenticated metadata only. Never invokes a generative provider.
+      if (op === 'studio' && req.method === 'GET') {
+        const [projects,shots]=await Promise.all([
+          sql`SELECT * FROM console066_studio_projects ORDER BY updated_at DESC,id DESC LIMIT 200`,
+          sql`SELECT * FROM console066_studio_shots ORDER BY updated_at DESC,id DESC LIMIT 2000`
+        ]);
+        return res.status(200).json({projects,shots,engineConnected:false,voiceConnected:false});
+      }
+      if (op === 'studio-project' && req.method === 'POST') {
+        const item=validateStudioProject(body);
+        if(!item)return res.status(400).json({error:'Revisa el nombre, el tipo y los datos del proyecto.'});
+        if(item.action==='create'){
+          const saved=await sql`
+            WITH created AS (
+              INSERT INTO console066_studio_projects(name,type,description)
+              VALUES (${item.name},${item.type},${item.description}) RETURNING *
+            ), logged AS (
+              INSERT INTO console066_audit(entity,entity_id,action,detail)
+              SELECT 'studio-project',id,'create',jsonb_build_object('name',name,'type',type) FROM created
+            ) SELECT * FROM created
+          `;
+          return res.status(201).json({project:saved[0]});
+        }
+        const saved=await sql`
+          WITH changed AS (
+            UPDATE console066_studio_projects
+            SET name=${item.name},type=${item.type},description=${item.description},version=version+1,updated_at=now()
+            WHERE id=${item.id} AND version=${item.version} RETURNING *
+          ), logged AS (
+            INSERT INTO console066_audit(entity,entity_id,action,detail)
+            SELECT 'studio-project',id,'update',jsonb_build_object('version',version) FROM changed
+          ) SELECT * FROM changed
+        `;
+        if(saved.length!==1)return res.status(409).json({error:'El proyecto cambió. Recarga la biblioteca antes de guardarlo.'});
+        return res.status(200).json({project:saved[0]});
+      }
+      if (op === 'studio-shot' && req.method === 'POST') {
+        const item=validateStudioShot(body);
+        if(!item)return res.status(400).json({error:'Revisa el plano, la duración, el formato y las variantes.'});
+        if(item.action==='create'){
+          const saved=await sql`
+            WITH created AS (
+              INSERT INTO console066_studio_shots
+              (project_id,title,script,reference_notes,aspect,resolution,duration_seconds,fps,variants,provider)
+              SELECT id,${item.title},${item.script},${item.referenceNotes},${item.aspect},${item.resolution},${item.duration},${item.fps},${item.variants},${item.provider}
+              FROM console066_studio_projects WHERE id=${item.projectId} RETURNING *
+            ), logged AS (
+              INSERT INTO console066_audit(entity,entity_id,action,detail)
+              SELECT 'studio-shot',id,'create',jsonb_build_object('projectId',project_id,'title',title) FROM created
+            ) SELECT * FROM created
+          `;
+          if(saved.length!==1)return res.status(404).json({error:'El proyecto ya no está disponible.'});
+          return res.status(201).json({shot:saved[0]});
+        }
+        const saved=await sql`
+          WITH changed AS (
+            UPDATE console066_studio_shots
+            SET title=${item.title},script=${item.script},reference_notes=${item.referenceNotes},
+              aspect=${item.aspect},resolution=${item.resolution},duration_seconds=${item.duration},
+              fps=${item.fps},variants=${item.variants},provider=${item.provider},
+              version=version+1,updated_at=now()
+            WHERE id=${item.id} AND project_id=${item.projectId} AND version=${item.version} RETURNING *
+          ), logged AS (
+            INSERT INTO console066_audit(entity,entity_id,action,detail)
+            SELECT 'studio-shot',id,'update',jsonb_build_object('version',version,'provider',provider,'variants',variants) FROM changed
+          ) SELECT * FROM changed
+        `;
+        if(saved.length!==1)return res.status(409).json({error:'El plano cambió. Recarga la biblioteca antes de guardarlo.'});
+        return res.status(200).json({shot:saved[0]});
       }
       if (op === 'data' && req.method === 'GET') {
         const [leads,tasks] = await Promise.all([
