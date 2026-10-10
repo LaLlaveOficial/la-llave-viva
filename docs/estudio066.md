@@ -136,3 +136,9 @@ WebM y MP4 nativo del navegador, SOLO cuando MediaRecorder.isTypeSupported confi
 720p/1080p y calidad Estándar / Alta / Máster, respectivamente 3/6/10 Mbps para 720p y 6/12/20 Mbps para 1080p: son bitrates solicitados al codificador, el valor efectivo podría variar. Proyectos anteriores reciben WebM/Alta sin perder datos. Los renders de Máster cargan CPU/GPU del navegador, 4K y codificación universal deben ir a render remoto.
 
 Pendiente: prueba manual del MP4 con Chrome Windows, audio AAC, VLC, precisión de duración y calidad real antes de declarar el módulo listo para producción.
+
+## Bloqueo seguro de exportación ante archivos ausentes (10 oct 2026)
+
+Una prueba en Chrome móvil produjo MP4 H.264 de 1080 × 1920 y 5 segundos, pero sin el PNG de la pista V1: solo se veía el título en V2. La captura mostraba el PNG disponible en Neon Storage, pero no en la biblioteca local de ese navegador. El formato era MP4 válido, **el montaje exportado no era íntegro**. Se añade un preflight que comprueba presencia de cada original en IndexedDB, tamaño de bytes, carga del recurso y decodificación de imagen/video/audio. Bloquea con mensaje claro si falta el archivo y dirige a «Biblioteca privada → Recuperar al equipo». El visor advierte que faltan medios locales, y la descarga desde Neon actualiza la vista previa sin requerir borrar ni reimportar el original. Prohibido informar exportación completa si falta una pista.
+
+El MP4 de ese ensayo mostró irregularidades de timestamps (DTS no monótono en algunos cuadros). Se pospone considerar producción profesional MP4 hasta normalización de timestamps y validación de audio/compatibilidad con reproducción real o FFmpeg remoto. El codec H.264 + dimensión 1080p no garantiza calidad visual del montaje ni tasa constante de 24 FPS.

@@ -85,3 +85,6 @@
 .wb-settings{grid-template-columns:minmax(170px,2fr) repeat(5,minmax(95px,1fr));gap:10px}
 @media(max-width:1350px){.wb-settings{grid-template-columns:repeat(3,minmax(0,1fr))}.wb-settings>label:first-child{grid-column:span 3}}
 @media(max-width:760px){.wb-settings{grid-template-columns:repeat(2,minmax(0,1fr))}.wb-settings>label:first-child{grid-column:span 2}}
+
+/* A missing local original must be visible in the editor, not hidden in export. */
+.wb-media-warning{padding:9px 12px!important;margin:0 0 9px!important;border:1px solid #a37b33;border-radius:8px;color:#efcc80!important;background:rgba(131,88,11,.12);line-height:1.4}
