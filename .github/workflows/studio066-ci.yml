@@ -24,5 +24,9 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validar editor y seguridad de Centro 066
         run: node --test tests/studio066.test.mjs tests/console066.test.mjs
+      - name: Dependencias efímeras de integración
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund @electric-sql/pglite jsdom
+      - name: Probar Postgres y DOM aislados del estudio
+        run: node tests/studio066-integration.mjs
       - name: Compilar la web sin publicar
         run: npm run build
