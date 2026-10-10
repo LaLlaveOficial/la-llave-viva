@@ -95,7 +95,7 @@ try {
     root.querySelector('[data-studio-tab="voices"]').click();
     assert.ok(root.querySelector('button[disabled]'),'No mostrar previews de voces sin conexión');
     root.querySelector('[data-studio-tab="editor"]').click();
-    assert.match(root.textContent,/Aún no operativa/);
+    assert.match(root.textContent,/Montaje y efectos/); // El editor ahora se monta en un módulo separado.
     root.querySelector('[data-studio-tab="ads"]').click();
     assert.match(root.textContent,/Creatividades publicitarias/);
     assert.match(root.textContent,/1.91:1/);
