@@ -11,6 +11,9 @@ const ctrl=(name,label,value,min,max,step)=>'<label>'+label+'<input data-propert
 export function studioWorkbenchView(root,notice){
  let db,assets=[],workspace=defaultWorkspace(),selected=null,isPlaying=false,rendering=false,startTick=0,startTime=0;
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
+ const history=[],future=[];
+ const checkpoint=()=>{history.push(JSON.stringify(workspace));if(history.length>30)history.shift();future.length=0;};
+ const restoreFrom=(source,dest)=>{if(!source.length)return;dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();selected=null;save();render();};
  const safeLoad=()=>{try{return parseWorkspace(JSON.parse(localStorage.getItem(workspaceKey)||'null'))||defaultWorkspace();}catch{return defaultWorkspace();}};
  workspace=safeLoad();
  function save(){try{localStorage.setItem(workspaceKey,JSON.stringify(workspace));}catch{notice('No se pudo guardar el montaje localmente. Exporta el proyecto JSON.');}}
@@ -159,11 +162,11 @@ export function studioWorkbenchView(root,notice){
   return '<div class="wb-timeline"><div class="wb-ruler"><div class="wb-track-label">Timeline</div><div class="wb-ruler-times">'+timeRuler()+'</div></div>'+
    tracks.map(track=>'<div class="wb-track"><div class="wb-track-label"><strong>'+track+'</strong><small>'+tracksNames[track]+'</small></div><div class="wb-track-content" data-timeline-seek="'+track+'">'+workspace.clips.filter(c=>c.track===track).map(c=>{
     const asset=findAsset(c.assetId),left=c.start/duration*100,width=c.duration/duration*100;
-    return '<button type="button" data-select-clip="'+e(c.id)+'" class="wb-block '+(selected===c.id?'selected ':'')+'wb-'+e(c.kind)+'" style="left:'+left.toFixed(3)+'%;width:'+Math.max(.75,width).toFixed(3)+'%" title="'+e(c.kind==='text'?c.text:(asset?.name||'Archivo no encontrado'))+'">'+e(c.kind==='text'?(c.text||'TÍTULO'):(asset?.name||'Archivo perdido'))+'</button>';
+    return '<button type="button" data-select-clip="'+e(c.id)+'" class="wb-block '+(selected===c.id?'selected ':'')+'wb-'+e(c.kind)+'" style="left:'+left.toFixed(3)+'%;width:'+Math.max(.75,width).toFixed(3)+'%" title="'+e(c.kind==='text'?c.text:(asset?.name||'Archivo no encontrado'))+'">'+e(c.kind==='text'?(c.text||'TÍTULO'):(asset?.name||'Archivo perdido'))+'<span class="wb-trim-right" title="Arrastrar para recortar"></span></button>';
    }).join('')+'<div class="wb-cursor" style="left:'+(workspace.playhead/duration*100).toFixed(3)+'%"></div></div></div>').join('')+'</div>';
  }
  function page(){
-  return '<div class="wb-root"><div class="wb-top"><div><span class="studio-caption">MONTAJE · EDITOR LOCAL NO DESTRUCTIVO</span><h3>Estudio de montaje 066</h3></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label></div></div>'+
+  return '<div class="wb-root"><div class="wb-top"><div><span class="studio-caption">MONTAJE · EDITOR LOCAL NO DESTRUCTIVO</span><h3>Estudio de montaje 066</h3></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-undo">↶ Deshacer</button><button type="button" class="subtle" id="studiowb-redo">↷ Rehacer</button><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label></div></div>'+
    '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Formato<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Exportación<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label></div>'+
    '<div class="wb-workarea"><aside class="wb-library"><h3>Biblioteca de medios</h3><p class="studio-help">Archivos locales guardados en tu navegador (IndexedDB), no en Neon ni en la nube. Haz copias de los originales.</p><label class="wb-file-label">+ Importar video, imagen o audio<input type="file" id="studiowb-upload" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/*"></label>'+
    '<div class="wb-media-list">'+(assets.length?assets.map(mediaCard).join(''):'<p class="studio-help">Importa un archivo para comenzar.</p>')+'</div><button type="button" class="subtle" id="studiowb-title">+ Añadir título</button></aside>'+
@@ -175,10 +178,12 @@ export function studioWorkbenchView(root,notice){
  }
  function wire(){
   const el=(id)=>root.querySelector('#'+id);
-  el('studiowb-name').onchange=ev=>{workspace.name=ev.target.value.slice(0,160);save();};
-  el('studiowb-aspect').onchange=ev=>{workspace.aspect=ev.target.value;save();paint();};
-  el('studiowb-quality').onchange=ev=>{workspace.quality=ev.target.value;save();paint();};
-  el('studiowb-fps').onchange=ev=>{workspace.fps=Number(ev.target.value);save();};
+  el('studiowb-undo').onclick=()=>restoreFrom(history,future);
+  el('studiowb-redo').onclick=()=>restoreFrom(future,history);
+  el('studiowb-name').onchange=ev=>{checkpoint();workspace.name=ev.target.value.slice(0,160);save();};
+  el('studiowb-aspect').onchange=ev=>{checkpoint();workspace.aspect=ev.target.value;save();paint();};
+  el('studiowb-quality').onchange=ev=>{checkpoint();workspace.quality=ev.target.value;save();paint();};
+  el('studiowb-fps').onchange=ev=>{checkpoint();workspace.fps=Number(ev.target.value);save();};
   el('studiowb-play').onclick=()=>play();
   el('studiowb-stop').onclick=()=>{pause();seek(0);};
   el('studiowb-seek').oninput=ev=>{pause();seek(Number(ev.target.value));};
@@ -190,22 +195,49 @@ export function studioWorkbenchView(root,notice){
   };
   root.querySelectorAll('[data-add-asset]').forEach(b=>b.onclick=async()=>{
    const asset=findAsset(b.dataset.addAsset);if(!asset)return;
-   const c=addTimelineClip(asset,workspace.clips);workspace.clips.push(c);selected=c.id;await prime();save();render();
+   checkpoint();const c=addTimelineClip(asset,workspace.clips);workspace.clips.push(c);selected=c.id;await prime();save();render();
   });
   root.querySelectorAll('[data-remove-asset]').forEach(b=>b.onclick=async()=>{
    if(!confirm('¿Eliminar el archivo local y sus clips en este montaje? No afecta el archivo original de tu PC.'))return;
-   const id=b.dataset.removeAsset;await deleteMedia(db,id);workspace.clips=workspace.clips.filter(c=>c.assetId!==id);assets=await listMedia(db);selected=null;
+   checkpoint();const id=b.dataset.removeAsset;await deleteMedia(db,id);workspace.clips=workspace.clips.filter(c=>c.assetId!==id);assets=await listMedia(db);selected=null;
    const url=urls.get(id);if(url){URL.revokeObjectURL(url);urls.delete(id);}
    save();render();
   });
-  el('studiowb-title').onclick=()=>{const c={id:crypto.randomUUID(),assetId:'',kind:'text',track:'V2',start:workspace.playhead,duration:4,sourceStart:0,text:'CASO 066',volume:0,opacity:1};workspace.clips.push(c);selected=c.id;save();render();};
-  root.querySelectorAll('[data-select-clip]').forEach(b=>b.onclick=()=>{selected=b.dataset.selectClip;render();});
+  el('studiowb-title').onclick=()=>{checkpoint();const c={id:crypto.randomUUID(),assetId:'',kind:'text',track:'V2',start:workspace.playhead,duration:4,sourceStart:0,text:'CASO 066',volume:0,opacity:1};workspace.clips.push(c);selected=c.id;save();render();};
+  root.querySelectorAll('[data-select-clip]').forEach(b=>{
+   b.onclick=()=>{selected=b.dataset.selectClip;render();};
+   b.onpointerdown=ev=>{
+    if(ev.button!==0||rendering)return;
+    const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
+    if(!clip)return;
+    const lane=b.parentElement,rect=lane.getBoundingClientRect();
+    if(!rect.width)return;
+    const initial=ev.clientX,start=clip.start,length=clip.duration,mode=ev.target.closest('.wb-trim-right')?'trim':'move';
+    let moved=false;
+    b.setPointerCapture?.(ev.pointerId);
+    b.onpointermove=pe=>{
+     const pixels=pe.clientX-initial;if(Math.abs(pixels)>3)moved=true;
+     if(!moved)return;
+     const change=Math.round(pixels/rect.width*timelineDuration(workspace.clips)*10)/10;
+     if(mode==='trim')clip.duration=number(length+change,.1,Math.min(120,600-start));
+     else clip.start=number(start+change,0,600-length);
+     const lengthTimeline=timelineDuration(workspace.clips);
+     b.style.left=(clip.start/lengthTimeline*100)+'%';
+     b.style.width=(clip.duration/lengthTimeline*100)+'%';
+    };
+    b.onpointerup=()=>{
+     b.onpointermove=null;b.onpointerup=null;
+     if(moved){history.push(JSON.stringify({...workspace,clips:workspace.clips.map(c=>c.id===clip.id?{...c,start,duration:length}:c)}));if(history.length>30)history.shift();future.length=0;selected=clip.id;save();render();}
+    };
+    b.onpointercancel=()=>{clip.start=start;clip.duration=length;b.onpointermove=null;b.onpointerup=null;render();};
+   };
+  });
   root.querySelectorAll('[data-timeline-seek]').forEach(b=>b.onclick=ev=>{
    if(ev.target!==b)return;const r=b.getBoundingClientRect();pause();seek((ev.clientX-r.left)/r.width*timelineDuration(workspace.clips));
   });
   root.querySelectorAll('[data-property]').forEach(el=>el.onchange=ev=>{
    const c=workspace.clips.find(x=>x.id===selected);if(!c)return;
-   const key=ev.target.dataset.property,value=ev.target.value;
+   checkpoint();const key=ev.target.dataset.property,value=ev.target.value;
    if(key==='track'){if(allowedTracks[c.kind].includes(value))c.track=value;}
    else if(['text','prompt'].includes(key))c[key]=value.slice(0,key==='text'?180:3000);
    else {const ranges={start:[0,600],duration:[.1,120],sourceStart:[0,600],volume:[0,2],brightness:[0,200],contrast:[0,200],saturation:[0,200],blur:[0,20],opacity:[0,1],scale:[.25,4],x:[-1,1],y:[-1,1]};if(ranges[key])c[key]=number(value,...ranges[key]);}
@@ -214,8 +246,8 @@ export function studioWorkbenchView(root,notice){
   });
   const selectedClip=workspace.clips.find(c=>c.id===selected);
   if(selectedClip){
-   el('studiowb-delete').onclick=()=>{workspace.clips=workspace.clips.filter(c=>c.id!==selected);media.get(selected)?.element.pause();media.delete(selected);selected=null;save();render();};
-   el('studiowb-duplicate').onclick=()=>{const copy={...selectedClip,id:crypto.randomUUID(),start:selectedClip.start+selectedClip.duration};workspace.clips.push(copy);selected=copy.id;save();render();};
+   el('studiowb-delete').onclick=()=>{checkpoint();workspace.clips=workspace.clips.filter(c=>c.id!==selected);media.get(selected)?.element.pause();media.delete(selected);selected=null;save();render();};
+   el('studiowb-duplicate').onclick=()=>{checkpoint();const copy={...selectedClip,id:crypto.randomUUID(),start:selectedClip.start+selectedClip.duration};workspace.clips.push(copy);selected=copy.id;save();render();};
    el('studiowb-copy').onclick=()=>{const text=selectedClip.prompt||'';if(!text){notice('Escribe primero el prompt.');return;}if(!navigator.clipboard?.writeText){notice('Selecciona y copia el prompt manualmente.');return;}navigator.clipboard.writeText(text).then(()=>notice('Prompt copiado.'),()=>notice('No se pudo copiar. Selecciona el texto del campo.'));};
   }
   el('studiowb-backup').onclick=()=>{const blob=new Blob([JSON.stringify(workspace,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='estudio066-timeline.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);notice('Proyecto JSON exportado. Los archivos multimedia originales NO se incluyen.');};
@@ -223,7 +255,7 @@ export function studioWorkbenchView(root,notice){
    const file=ev.target.files?.[0];if(!file||file.size>150000)return;
    try{const candidate=parseWorkspace(JSON.parse(await file.text()));if(!candidate)throw new Error('Estructura no válida');
     if(!confirm('¿Reemplazar este montaje local con el archivo JSON?'))return;
-    workspace=candidate;selected=null;save();render();notice('Montaje restaurado. Debes mantener los archivos en esta biblioteca local.');
+    checkpoint();workspace=candidate;selected=null;save();render();notice('Montaje restaurado. Debes mantener los archivos en esta biblioteca local.');
    }catch(error){notice('No se importó: '+error.message);}
   };
  }
