@@ -15,6 +15,9 @@ try {
   const migration=await fs.readFile(base+'/migrations/20261010_studio066.sql','utf8');
   await db.exec(migration);
   await db.exec(migration); // Idempotence on dedicated empty test database.
+  const genMigration=await fs.readFile(base+'/migrations/20261010_studio066_generations.sql','utf8');
+  await db.exec(genMigration);
+  await db.exec(genMigration);
   const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
   const salt='ab'.repeat(16);
   const password='qa-studio-066-password';
@@ -66,6 +69,30 @@ try {
   assert.equal(enriched.data.shot.resolution,'4k');
   assert.equal(enriched.data.shot.variants,4);
   assert.equal((await call('studio-shot',{...shot,action:'update',id:shotId,version:0})).code,409);
+  const capabilities=await call('studio-video-capabilities');
+  assert.equal(capabilities.code,200);
+  assert.equal(capabilities.data.canGenerate,false);
+  assert.equal(capabilities.data.canCharge,false);
+  const genId='5ba22ccc-899e-42c7-88ce-41ef808dc066';
+  const assetId='bf90a616-0de3-4954-b242-bbb79647ed19';
+  const generatedId='be90a616-0de3-4954-b242-bbb79647ed20';
+  const genRequest={mode:'frames',title:'Paula en el callejón',prompt:'Rainy escape, tracking shot',negative:'No identity drift',continuity:'Wet hair and dark coat',model:'pendiente',aspect:'9:16',resolution:'1080p',duration:5,fps:24,variants:2,audio:false,seed:'',preserveIdentity:true,preserveComposition:true,refs:[{assetId,role:'start'}]};
+  assert.equal((await call('studio-generations')).code,400);
+  assert.equal((await call('studio-generations',{projectId:id})).code,404); // GET only
+  assert.equal((await call('studio-generation',{action:'create',projectId:id,id:genId,request:{...genRequest,variants:99},results:[]})).code,400);
+  assert.equal((await call('studio-generation',{action:'create',projectId:id,id:genId,request:genRequest,results:[]},'https://invalid.example')).code,403);
+  const createdGen=await call('studio-generation',{action:'create',projectId:id,id:genId,request:genRequest,results:[]});
+  assert.equal(createdGen.code,201);
+  assert.equal(createdGen.data.record.status,'prepared');
+  assert.equal(createdGen.data.record.version,0);
+  assert.equal((await call('studio-generation',{action:'create',projectId:id,id:genId,request:genRequest,results:[]})).code,409);
+  const importedGen=await call('studio-generation',{action:'update',projectId:id,id:genId,version:0,request:genRequest,results:[{assetId:generatedId}]});
+  assert.equal(importedGen.code,200);
+  assert.equal(importedGen.data.record.version,1);
+  assert.equal(importedGen.data.record.status,'imported');
+  assert.equal((await call('studio-generation',{action:'update',projectId:id,id:genId,version:0,request:genRequest,results:[]})).code,409);
+  assert.equal((await db.query('SELECT COUNT(*)::int n FROM console066_studio_generations')).rows[0].n,1);
+  console.log('Generation metadata: authenticated + verified create/update, version conflict, no billing, no provider call.');
   const read=await call('studio');
   assert.equal(read.data.shots.length,1);
   assert.equal(read.data.shots[0].title,'Escape bajo la lluvia');
