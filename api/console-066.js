@@ -157,7 +157,7 @@ export function makeHandler(connect = neon, env = process.env) {
         const reply=await studioGenerationApi(sql,op,req);
         return res.status(reply.status).json(reply.data);
       }
-      if(['studio-cloud','studio-cloud-assets','studio-cloud-upload','studio-cloud-confirm','studio-cloud-download'].includes(op)) {
+      if(['studio-cloud','studio-cloud-assets','studio-cloud-upload','studio-cloud-confirm','studio-cloud-download','studio-cloud-trash','studio-cloud-restore','studio-cloud-trash-assets'].includes(op)) {
         const reply=await studioCloudApi(sql,op,req,env);
         return res.status(reply.status).json(reply.data);
       }

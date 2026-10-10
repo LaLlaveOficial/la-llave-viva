@@ -18,6 +18,7 @@ try {
   const genMigration=await fs.readFile(base+'/migrations/20261010_studio066_generations.sql','utf8');
   await db.exec(genMigration);
   await db.exec(await fs.readFile(base+'/migrations/20261010_studio066_media.sql','utf8'));
+  await db.exec(await fs.readFile(base+'/migrations/20261010_studio066_media_trash.sql','utf8'));
   await db.exec(await fs.readFile(base+'/migrations/20261010_studio066_media.sql','utf8'));
   await db.exec(genMigration);
   const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
@@ -75,6 +76,22 @@ try {
   assert.equal(cloudAnonymous.code,200);
   assert.equal(cloudAnonymous.data.enabled,false);
   assert.equal((await call('studio-cloud-upload',{projectId:id,id:'507d3aca-8f20-43cb-9469-5a15252bc075',kind:'image',mime:'image/png',size:123,name:'ref.png',sha256:'a'.repeat(64)})).code,503);
+  // Preview-only soft-delete retains original metadata and allows undo.
+  const cloudId='807c096a-11f0-4d93-84e0-eb37993e0566';
+  await sql`INSERT INTO console066_studio_media(id,project_id,name,kind,mime,size_bytes,sha256_hex,object_key,status)
+    VALUES (${cloudId}::uuid,${id},'rosa4.png','image','image/png',44,${'a'.repeat(64)},${'studio066/projects/'+id+'/'+cloudId},'ready')`;
+  const {studioCloudApi}=await import('../lib/studio-cloud066.js');
+  const cloudEnv={...env,STUDIO_CLOUD_ENABLED:'1',STUDIO_STORAGE_BRANCH_ID:'br-little-sound-av8vyecq',STUDIO_STORAGE_ENDPOINT:'https://br-little-sound-av8vyecq.storage.c-11.us-east-1.aws.neon.tech',STUDIO_STORAGE_BUCKET:'studio066-media-preview',STUDIO_STORAGE_ACCESS_KEY_ID:'EXAMPLE_ACCESS_KEY_01',STUDIO_STORAGE_SECRET_ACCESS_KEY:'test_secret_never_send_to_client_12345',STUDIO_STORAGE_REGION:'us-east-1'};
+  const cloudList=await studioCloudApi(sql,'studio-cloud-assets',{method:'GET',query:{projectId:id}},cloudEnv);
+  assert.equal(cloudList.data.assets.length,1);
+  assert.equal((await studioCloudApi(sql,'studio-cloud-trash',{method:'POST',body:{projectId:id,id:cloudId}},cloudEnv)).status,200);
+  assert.equal((await studioCloudApi(sql,'studio-cloud-assets',{method:'GET',query:{projectId:id}},cloudEnv)).data.assets.length,0);
+  assert.equal((await studioCloudApi(sql,'studio-cloud-trash-assets',{method:'GET',query:{projectId:id}},cloudEnv)).data.assets.length,1);
+  assert.equal((await studioCloudApi(sql,'studio-cloud-download',{method:'POST',body:{projectId:id,id:cloudId}},cloudEnv)).status,404);
+  assert.equal((await studioCloudApi(sql,'studio-cloud-restore',{method:'POST',body:{projectId:id,id:cloudId}},cloudEnv)).status,200);
+  assert.equal((await studioCloudApi(sql,'studio-cloud-assets',{method:'GET',query:{projectId:id}},cloudEnv)).data.assets.length,1);
+  assert.equal((await sql`SELECT count(*)::int AS n FROM console066_studio_media WHERE id=${cloudId}::uuid`)[0].n,1);
+
   const capabilities=await call('studio-video-capabilities');
   assert.equal(capabilities.code,200);
   assert.equal(capabilities.data.canGenerate,false);

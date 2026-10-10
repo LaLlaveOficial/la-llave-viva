@@ -18,7 +18,8 @@ function transaction(db,mode,operation){
   tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error||new Error('No se pudieron guardar los medios.'));
  });
 }
-export const listMedia=async db=>transaction(db,'readonly',store=>store.getAll());
+export const listMedia=async db=>(await transaction(db,'readonly',store=>store.getAll())).filter(x=>!x.trashedAt);
+export const listTrashedMedia=async db=>(await transaction(db,'readonly',store=>store.getAll())).filter(x=>x.trashedAt);
 export const readMedia=async(db,id)=>transaction(db,'readonly',store=>store.get(id));
 export const addMedia=async(db,file)=>{
  if(!file||file.size===0||file.size>150*1024*1024)throw new Error('El archivo debe pesar entre 1 B y 150 MB.');
@@ -31,6 +32,21 @@ export const addMedia=async(db,file)=>{
  await transaction(db,'readwrite',store=>store.put(item));
  return {...item,blob:undefined};
 };
+// Soft-delete retains the original binary so Restore is always possible.
+export async function trashMedia(db,id){
+ const item=await readMedia(db,id);
+ if(!item||item.trashedAt)return false;
+ await transaction(db,'readwrite',store=>store.put({...item,trashedAt:new Date().toISOString()}));
+ return true;
+}
+export async function restoreMedia(db,id){
+ const item=await readMedia(db,id);
+ if(!item?.trashedAt)return false;
+ const next={...item};delete next.trashedAt;
+ await transaction(db,'readwrite',store=>store.put(next));
+ return true;
+}
+// Physical removal remains internal and is never invoked by the UI.
 export const deleteMedia=async(db,id)=>transaction(db,'readwrite',store=>store.delete(id));
 export const workspaceKey='llave-studio066-workspace-v1';
 export const defaultWorkspace=()=>({version:1,name:'Caso 066 · Proyecto de montaje',aspect:'9:16',quality:'720p',fps:24,exportFormat:'webm',encodingQuality:'high',clips:[],playhead:0});
