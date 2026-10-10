@@ -240,12 +240,12 @@ export function studioGenerationView(root,notice,project,openTimeline){
     try{const a=await addMedia(db,file);record.results.push({assetId:a.id,addedAt:new Date().toISOString()});added++;}
     catch(error){notice(error.message);}
    }
-   if(added){record.status='imported';record.updatedAt=new Date().toISOString();assets=await listMedia(db);keep();render();notice(added+' clip(s) importados. No fueron generados por OP 066.');}
+   if(added){record.status='imported';record.updatedAt=new Date().toISOString();assets=await listMedia(db);activePreview=record.results.at(-1)?.assetId||null;keep();render();notice(added+' clip(s) importados. No fueron generados por OP 066.');}
   };
   const send=one('gen-to-timeline');
   if(send)send.onclick=()=>{
    const r=selectedRecord();
-   const v=r?.results?.[0];if(!v)return;
+   const v=r?.results?.find(x=>x.assetId===activePreview)||r?.results?.[0];if(!v)return;
    const asset=assets.find(a=>a.id===v.assetId);
    if(!asset)return notice('El clip ya no está disponible localmente.');
    const k=trackKeyFor(project);
@@ -253,7 +253,9 @@ export function studioGenerationView(root,notice,project,openTimeline){
    try{workspace=parseWorkspace(JSON.parse(localStorage.getItem(k)||'null'))||defaultWorkspace();}
    catch{workspace=defaultWorkspace();}
    if(workspace.clips.length>=120)return notice('Límite de 120 clips del timeline.');
-   const clip=addTimelineClip({...asset,duration:r.request.duration},workspace.clips);clip.prompt=r.request.prompt;clip.generationId=r.id;
+   if(workspace.clips.length===0){workspace.aspect=r.request.aspect;workspace.quality=['720p','1080p'].includes(r.request.resolution)?r.request.resolution:'1080p';workspace.fps=[24,30].includes(r.request.fps)?r.request.fps:24;}
+   const clip=addTimelineClip({...asset,duration:r.request.duration},workspace.clips);
+   clip.prompt=[r.request.prompt,r.request.negative?'Avoid: '+r.request.negative:'',r.request.continuity?'Continuity: '+r.request.continuity:''].filter(Boolean).join('\n').slice(0,3000);clip.generationId=r.id;
    workspace.clips.push(clip);
    try{localStorage.setItem(k,JSON.stringify(workspace));notice('Clip añadido a V1. Abriendo timeline.');openTimeline?.();}
    catch{notice('No se pudo guardar el timeline. Revisa espacio del navegador.');}
