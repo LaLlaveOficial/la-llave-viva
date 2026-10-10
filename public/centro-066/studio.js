@@ -49,7 +49,7 @@ export function studioView(root,request,notice) {
       '</button>'
     ).join('');
     return '<div class="studio-layout">'+
-      '<div class="studio-pane"><div class="studio-head"><h3>Biblioteca de proyectos</h3><span class="studio-caption">'+state.projects.length+' proyectos</span></div><div class="studio-project-list">'+(cards||empty)+'</div>'+
+      '<div class="studio-pane"><div class="studio-head"><h3>Biblioteca de proyectos</h3><span class="studio-caption">'+state.projects.length+' proyecto'+(state.projects.length===1?'':'s')</span></div><div class="studio-project-list">'+(cards||empty)+'</div>'+
       (active?'<div class="studio-actions"><button type="button" class="subtle" id="studio-edit-project">Editar seleccionado</button><button type="button" id="studio-open-shots">Abrir planos</button></div>':'')+
       '</div>'+projectForm+'</div>';
   }
@@ -108,7 +108,7 @@ export function studioView(root,request,notice) {
     if(!root.isConnected)return;
     if(stopWorkbench){stopWorkbench();stopWorkbench=null;}
     if(stopGenerator){stopGenerator();stopGenerator=null;}
-    root.innerHTML='<section class="studio-root"><div class="studio-banner"><span class="studio-caption">LA LLAVE · ESTUDIO AUDIOVISUAL</span><h2>Estudio Creativo 066</h2><p>Fotogramas, escenas, voces, publicidad y postproducción desde una biblioteca privada.</p><span class="studio-readiness">Fase 1 · Preparación de proyectos. Ninguna generación ni costo habilitados.</span></div>'+
+    root.innerHTML='<section class="studio-root"><div class="studio-banner studio-banner-compact"><div class="studio-banner-copy"><span class="studio-caption">ESPACIO DE TRABAJO · ESTUDIO 066</span><p>Fotogramas, referencias, prompts y montaje de tus proyectos.</p></div><span class="studio-readiness">Vista previa · Motores de generación y cargos deshabilitados</span></div>'+
       '<div class="studio-tabs" role="group" aria-label="Secciones del estudio">'+navTabs(state.tab)+'</div>'+
       (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='generate'?'<div id="studio-generation-host"></div>':state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
       '</section>';
