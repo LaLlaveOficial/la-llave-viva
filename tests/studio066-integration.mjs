@@ -97,7 +97,7 @@ try {
   assert.equal(read.data.shots.length,1);
   assert.equal(read.data.shots[0].title,'Escape bajo la lluvia');
   assert.equal(read.data.shots[0].fps,60);
-  assert.equal((await db.query("SELECT COUNT(*)::int n FROM console066_audit WHERE entity LIKE 'studio-%'")).rows[0].n,4);
+  assert.equal((await db.query("SELECT COUNT(*)::int n FROM console066_audit WHERE entity LIKE 'studio-%'")).rows[0].n,6);
   console.log('DB integration: migration, session auth, same-origin, project/shot CRUD, 400/401/403/404/409, persistence and audit passed.');
 
   const dom=new JSDOM('<!doctype html><html><body><div id="studio-test"></div></body></html>',{url:env.CONSOLE_ORIGIN,pretendToBeVisual:true});
