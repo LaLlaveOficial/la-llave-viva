@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# Superseded previews should not spawn repeated alerts.
+concurrency:
+  group: studio066-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Test seguridad + estudio y build
@@ -35,6 +40,7 @@ jobs:
           node --check public/centro-066/studio.js
           node --check public/centro-066/app.js
           node --check public/centro-066/studio-generation.js
-          node --test tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs
+          node --check public/centro-066/studio-portable.js
+          node --test tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build

@@ -65,3 +65,8 @@
 .wb-root{gap:10px}
 .wb-stage>.studio-help{margin:0;text-align:center}
 @media(max-width:760px){.wb-preview-box{height:clamp(230px,34vh,310px)}.wb-library,.wb-inspector{max-height:none}}
+
+/* Portable project transfer controls: make controls fit without crowding preview. */
+.wb-top .wb-row{justify-content:flex-end}
+.wb-top .wb-row>button,.wb-top .wb-row>.wb-file-label{font-size:10px!important;padding:8px 10px;min-height:32px}
+@media(max-width:760px){.wb-top .wb-row{justify-content:flex-start}}

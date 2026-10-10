@@ -102,3 +102,13 @@ Funciones efectivamente programadas:
 5. Tests end-to-end reales de Chrome, aislamiento multicuenta, controles de acceso, conservación de identidad de personajes y regresiones en la consola existente.
 
 La rama `main` y los servicios productivos deben mantenerse intactos hasta un consentimiento separado para merge y migraciones.
+
+## Respaldos portables de estudio
+
+La rama de desarrollo incluye **Respaldo completo con medios** y **Restaurar respaldo completo** en Montaje y efectos. El archivo JSON privado contiene los datos del timeline, las solicitudes de Generación IA guardadas localmente y los bytes de los archivos de imagen/video/audio referenciados. Límite: 40 archivos, 30 MiB por archivo y 48 MiB sumados. No sube a proveedores ni requiere créditos.
+
+Restaurar exige estar dentro del MISMO proyecto ID en el segundo dispositivo, confirma el reemplazo del montaje e historial locales, valida integridad de los tamaños e identificadores de archivos y nunca sobrescribe archivos multimedia que ya están presentes.
+
+**Seguridad:** los respaldos contienen imágenes y videos originales potencialmente privados o con derechos reservados. No compartirlos públicamente. No son copias cifradas; guardarlos con el mismo cuidado que los originales. El respaldo no incluye solicitudes que hayan quedado solo en Neon si todavía no fueron recuperadas al navegador, ni los recursos de otros proyectos o archivos huérfanos. Si supera los límites, falla con mensaje y no produce un archivo incompleto.
+
+**Siguiente fase:** Neon Storage está disponible en la rama aislada, pero no hemos creado bucket ni activado tráfico o facturación. El respaldo manual es temporal mientras se diseña almacenamiento privado compartido entre PC y móvil. El módulo no se publica en producción sin pruebas de Chrome e intervención explícita.
