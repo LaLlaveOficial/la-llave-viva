@@ -49,7 +49,7 @@ export function studioView(root,request,notice) {
       '</button>'
     ).join('');
     return '<div class="studio-layout">'+
-      '<div class="studio-pane"><div class="studio-head"><h3>Biblioteca de proyectos</h3><span class="studio-caption">'+state.projects.length+' proyecto'+(state.projects.length===1?'':'s')</span></div><div class="studio-project-list">'+(cards||empty)+'</div>'+
+      '<div class="studio-pane"><div class="studio-head"><h3>Biblioteca de proyectos</h3><span class="studio-caption">'+state.projects.length+' proyecto'+(state.projects.length===1?'':'s')+'</span></div><div class="studio-project-list">'+(cards||empty)+'</div>'+
       (active?'<div class="studio-actions"><button type="button" class="subtle" id="studio-edit-project">Editar seleccionado</button><button type="button" id="studio-open-shots">Abrir planos</button></div>':'')+
       '</div>'+projectForm+'</div>';
   }
