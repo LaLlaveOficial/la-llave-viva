@@ -1,6 +1,6 @@
 # Estudio Creativo 066 — Fase 1 (rama aislada)
 
-Estado: código preparado para revisión técnica. **No desplegado y no conectado a motores**.
+Estado: interfaz de trabajo disponible en **Vercel Preview aislado**. Generación IA y render remoto **no conectados**. Publicación y migraciones de producción **no ejecutadas**.
 Rama: `feature/estudio-creativo-066-fase1`.
 
 ## Alcance implementado
@@ -27,9 +27,9 @@ Rama: `feature/estudio-creativo-066-fase1`.
 - No hay acceso a API de OpenAI Images, ElevenLabs, Adobe, Kling, Veo, Wan ni LTX.
 - No hay créditos, videos ni audios generados, ni renders de pago.
 - No hay generación por lotes, ni exportación 4K/60 FPS ni escalado activo. Las preferencias no equivalen a capacidad garantizada del motor.
-- No hay subida, persistencia de archivos ni biblioteca visual. Las referencias se registran como notas, no como imágenes.
-- No hay timeline funcional, filtros, Foley, mezcla ni subtítulos procesados.
-- No se ha comprobado comportamiento en navegador real ni en un entorno con Postgres operativo.
+- La biblioteca **local de navegador** admite arrastrar/importar archivos PNG/JPEG/WebP, MP4/WebM/MOV y MP3/WAV/otros audios compatibles; los blobs se guardan en IndexedDB de este navegador, NO en servidor remoto. Máximo 150 MB por archivo; la cuota depende del navegador. Cerrar pestaña conserva archivos si no se borran datos del sitio. Exportar JSON no incorpora medios.
+- La pestaña **Montaje y efectos** tiene timeline funcional V1/V2/A1/A2, recorte y desplazamiento horizontal por arrastre, orden por pista, inspector de entrada/duración/volumen, zoom y posición, brillo/contraste/saturación/desenfoque, títulos sobreimpresos, campo de prompt de cada plano, deshacer/rehacer y reproducción previa. Acepta pistas de voz/Foley importadas localmente. No es todavía un reemplazo de Adobe Premiere.
+- Guardado de proyectos/planos validado manualmente por el propietario en Vercel Preview y verificado en la rama Neon de ensayo. Tests CI con PostgreSQL efímero, JSDOM e IndexedDB simulada. El render de video con MediaRecorder todavía requiere prueba manual en Chrome con archivos reales antes de aprobar calidad y sincronización.
 
 ## Puesta a prueba segura — requiere aprobación separada
 
@@ -48,3 +48,26 @@ Rama: `feature/estudio-creativo-066-fase1`.
 - **Editor:** timeline multipista, Foley, color, transiciones y exportaciones con FFmpeg/servicios especializados. Guardar el proyecto editable.
 
 La seguridad, la continuidad de personajes, la claridad de costos y la aprobación humana son requisitos del diseño.
+
+## Editor local funcional (fase experimental)
+
+Ruta: `/operaciones-066` en la vista previa de `feature/estudio-creativo-066-fase1` → `Estudio Creativo` → `Montaje y efectos`.
+
+1. Crear/seleccionar un proyecto en **Proyectos**. Cada proyecto guarda su montaje local de forma separada en el navegador.
+2. Importar medios desde el panel Biblioteca. No se suben a la nube ni se transfieren a proveedores externos. Guardar copias originales fuera del navegador.
+3. Añadir medios al timeline. Las imágenes entran en V1, los audios en A1; las pistas se ajustan en el inspector. Añadir títulos en V2.
+4. Seleccionar un bloque y editar inicio, entrada del original, duración, volumen, color, posición o su prompt. Arrastrar un bloque para moverlo; utilizar el asa derecha para ajustar su duración. Deshacer/re-hacer cambios del montaje.
+5. Reproducir en el visor. Exportar **WebM** de 720p o 1080p, 24/30 FPS, vertical/horizontal/cuadrado/panorámico. La exportación ocurre a velocidad real sobre el propio navegador, solo para proyectos de hasta 120 segundos, si `MediaRecorder` y los códecs del navegador lo admiten. La calidad y el audio se deben revisar manualmente antes de publicar.
+6. Exportar proyecto JSON para recuperar su timeline en otro momento. **El JSON no incluye video, audio o fotogramas**; los assets seguirán vinculados por sus IDs locales y requieren conservar el navegador original y su almacenamiento.
+
+**Limitaciones relevantes:** no hay exportación MP4 nativa, 2K/4K, interpolación de 60 FPS, automatización de prompts a clip, proxy de alta resolución, máscaras/seguimiento complejos, catálogo ElevenLabs conectado, exportación en la nube, render distribuido, autosincronización multi-dispositivo, ni monitor de costos de IA. Los renders locales usan CPU/GPU del navegador (no cumplen el objetivo de cero carga del PC); el procesamiento profesional de larga duración deberá trasladarse a un worker remoto autorizado. La interfaz de voces y los botones de generación permanecen deshabilitados hasta que exista un proveedor verificado y un presupuesto autorizado.
+
+**Seguridad:** la API privada original mantiene sesiones y validación de origen. La rama usa una `DATABASE_URL` restringida a la rama Neon de ensayo, sin modificar producción. Los blobs locales solo se leen desde el origen web con permiso del navegador. El CSP privado autoriza URLs `blob:` para reproducir medios. No poner credenciales de OpenAI/ElevenLabs en JS público.
+
+## Criterios para pasar a producción
+
+- Usuario revisa visualmente la interfaz en Vercel Preview con medios de prueba.
+- Validar exportación WebM real desde Chrome (video 9:16, 16:9, audio A1, título V2) y consistencia temporal, duración y calidad.
+- Confirmar que se recupera un timeline tras recargar sin perder archivos locales.
+- Confirmar explícitamente si se acepta temporalmente biblioteca local o es obligatorio almacenamiento remoto y backups antes del lanzamiento.
+- Publicación a `main`, cambios de producción y proveedores IA solo con autorización nueva.
