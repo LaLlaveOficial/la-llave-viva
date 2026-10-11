@@ -322,7 +322,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   const sheet=getRuntimeStylesheet();if(!sheet)return null;
   const full='.wb-root[data-studio-runtime="'+runtimeId+'"] '+selector;
   const index=sheet.cssRules.length;sheet.insertRule(full+'{}',index);
-  const rule=sheet.cssRules[index];for(const [property,value] of Object.entries(declarations))rule.style.setProperty(property,String(value));
+  const rule=sheet.cssRules[index];for(const [property,value] of Object.entries(declarations))rule.style.setProperty(property,String(value),'important');
   runtimeRules.set(key,rule);return rule;
  }
  function applyTimelineGeometry(){
