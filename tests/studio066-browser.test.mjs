@@ -122,8 +122,10 @@ try{
  await page.locator('#studiowb-blade-tool').click();
  const scrollAfterBlade=await page.locator('.wb-timeline').evaluate(el=>el.scrollLeft);
  assert.ok(Math.abs(scrollAfterBlade-scrollBeforeBlade)<2,'Selecting razor must not reset horizontally scrolled timeline');
- const afterRect=await page.locator('.wb-timeline [data-select-clip].selected').boundingBox();
- await page.mouse.click(afterRect.x+Math.min(afterRect.width/2,90),afterRect.y+afterRect.height/2);
+ const moving=page.locator('.wb-timeline [data-select-clip].selected');const afterRect=await moving.boundingBox();
+ const bladeBefore=await moving.evaluate(el=>({rect:el.getBoundingClientRect().toJSON(),clip:el.dataset.selectClip,geometry:el.dataset.wbGeometryClip,start:document.querySelector('[data-property=start]')?.value,duration:document.querySelector('[data-property=duration]')?.value,runtime:el.closest('.wb-root')?.dataset.studioRuntime,tool:el.closest('.wb-root')?.dataset.editorTool,scroll:el.closest('.wb-timeline')?.scrollLeft}));console.log('RELOCATED_BLADE_BEFORE',JSON.stringify({afterRect,bladeBefore}));
+ const bladeX=afterRect.x+Math.min(afterRect.width/2,90),bladeY=afterRect.y+afterRect.height/2;await page.mouse.click(bladeX,bladeY);
+ const afterBlade=await moving.evaluate(el=>({count:document.querySelectorAll('.wb-timeline [data-select-clip]').length,selected:el.className,notice:document.querySelector('[role=status]')?.textContent,rect:el.getBoundingClientRect().toJSON(),data:el.dataset}));console.log('RELOCATED_BLADE_AFTER',JSON.stringify({bladeX,bladeY,afterBlade}));
  assert.equal(await page.locator('.wb-timeline [data-select-clip]').count(),3,'Blade must split relocated long clip at visible click');
  assert.equal(await page.locator('.wb-cut-seam').count(),1,'The relocated split must show its cut seam; the separated original piece is no longer joined');
  const movedCutJoin=await page.locator('.wb-timeline [data-select-clip]').evaluateAll(nodes=>Math.abs(nodes[nodes.length-2].getBoundingClientRect().right-nodes[nodes.length-1].getBoundingClientRect().left));
