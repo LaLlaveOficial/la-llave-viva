@@ -84,9 +84,9 @@ try{
  await page.locator('#studiowb-select-tool').click();
  await page.locator('.wb-timeline [data-select-clip]').first().click();
  await page.locator('[data-property=start]').fill('17.63');
- await page.locator('[data-property=start]').dispatchEvent('change');
+ await page.locator('[data-property=start]').press('Tab');
  await page.locator('[data-property=duration]').fill('20.67');
- await page.locator('[data-property=duration]').dispatchEvent('change');
+ await page.locator('[data-property=duration]').press('Tab');
  // The inspector commits on the next animation frame; wait for the rendered
  // block geometry to catch up before measuring the relocated clip.
  await page.waitForFunction(()=>{
