@@ -8,9 +8,15 @@ let page;
 try{
  const context=await browser.newContext({viewport:{width:1440,height:900},deviceScaleFactor:1});
  page=await context.newPage();
- page.on('pageerror',error=>errors.push(error.message));
+ page.on('pageerror',error=>errors.push('JS: '+(error.stack||error.message)));
+ page.on('console',msg=>{if(msg.type()==='error')errors.push('Console: '+msg.text());});
+ page.on('requestfailed',req=>errors.push('Failed request: '+req.url()+' '+req.failure()?.errorText));
  await page.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});
- await page.locator('#studiowb-upload').waitFor({timeout:15000});
+ await page.locator('#studiowb-upload').waitFor({timeout:15000}).catch(async error=>{
+ const diagnostics=await page.evaluate(()=>({url:location.href,head:document.documentElement.outerHTML.slice(0,1100),scripts:[...document.scripts].map(x=>x.src||x.textContent?.slice(0,130))}));
+ console.error('Browser loader diagnostics:',JSON.stringify({diagnostics,errors}));
+ throw error;
+ });
  await page.locator('#studiowb-upload').setInputFiles({name:'real-image.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
  await page.locator('[data-add-asset]').first().waitFor({timeout:10000});
  await page.locator('[data-add-asset]').first().click();
