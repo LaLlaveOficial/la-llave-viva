@@ -124,6 +124,7 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.equal(Number(root.querySelector('[data-property="duration"]').value),beforeTrim+2,'right handle expands duration by 2s');
   root.querySelector('#studiowb-undo').click();
   assert.match(resizeBlock().title,/CASO/);
+  resizeBlock().click();
   assert.equal(Number(root.querySelector('[data-property="duration"]').value),beforeTrim,'undo restores clip duration');
   bindRect();
   fire(resizeBlock().querySelector('.wb-trim-right'),'pointerdown',640);
