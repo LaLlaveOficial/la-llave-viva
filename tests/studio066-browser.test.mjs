@@ -65,6 +65,29 @@ try{
  await page.mouse.click(cb.x+60,cb.y+cb.height/2);
  const count=await page.locator('.wb-timeline [data-select-clip]').count();
  assert.equal(count,2,'Blade should split image under real pointer: got '+count);
+ // Regression from user's screenshots: inspector says 17.63s but thumbnail
+ // stays at the old timeline origin, then razor rejects a visibly valid cut.
+ await page.locator('#studiowb-select-tool').click();
+ await page.locator('.wb-timeline [data-select-clip]').first().click();
+ await page.locator('[data-property=start]').fill('17.63');
+ await page.locator('[data-property=start]').dispatchEvent('change');
+ await page.locator('[data-property=duration]').fill('20.67');
+ await page.locator('[data-property=duration]').dispatchEvent('change');
+ const pos=await page.locator('.wb-timeline [data-select-clip].selected').evaluate(el=>{
+  const lane=el.parentElement,cr=el.getBoundingClientRect(),lr=lane.getBoundingClientRect();
+  return {start:Number(document.querySelector('[data-property=start]').value),duration:Number(document.querySelector('[data-property=duration]').value),
+    visualStart:(cr.left-lr.left)/lr.width,styleLeft:el.style.left,visualDuration:cr.width/lr.width,
+    laneWidth:lr.width,elWidth:cr.width,rootScroll:document.querySelector('.wb-timeline').scrollLeft};
+ });
+ console.log('USER_MOVE_SCENARIO',JSON.stringify(pos));
+ assert.ok(Math.abs(pos.visualStart-pos.start/(pos.start+pos.duration+2))<.025,'DOM clip position must agree with inspector: '+JSON.stringify(pos));
+ assert.ok(Math.abs(pos.visualDuration-pos.duration/(pos.start+pos.duration+2))<.025,'DOM clip width must agree with inspector: '+JSON.stringify(pos));
+ const movingBlock=page.locator('.wb-timeline [data-select-clip].selected');
+ await movingBlock.scrollIntoViewIfNeeded();
+ await page.locator('#studiowb-blade-tool').click();
+ const afterRect=await page.locator('.wb-timeline [data-select-clip].selected').boundingBox();
+ await page.mouse.click(afterRect.x+Math.min(afterRect.width/2,90),afterRect.y+afterRect.height/2);
+ assert.equal(await page.locator('.wb-timeline [data-select-clip]').count(),3,'Blade must split relocated long clip at visible click');
  if(errors.length)throw new Error('Uncaught JS errors: '+errors.join(' | '));
  console.log(JSON.stringify({result:'BROWSER_EDITOR_PASS',imageImported:true,originalDuration,resized,moved,bladeClips:count,handleWidth:edge.width}));
 }catch(error){
