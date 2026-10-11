@@ -22,6 +22,8 @@ export function studioWorkbenchView(root,notice,project=null){
  const trackState=Object.fromEntries(tracks.map(t=>[t,{locked:false,muted:false,hidden:false}]));
  const rulerSpan=()=>timelineSpan(workspace.clips,12);
  const rulerWidth=()=>Math.max(900,Math.ceil(rulerSpan()*80*timelineZoom));
+ const rulerStep=seconds=>timelineZoom>=3?1:timelineZoom>=1.6?2:seconds>180?20:seconds>60?10:5;
+ const lanePosition=(clientX,lane)=>{const bounds=lane.getBoundingClientRect();return trackPosition(clientX,bounds.left+lane.clientLeft,lane.clientWidth,rulerSpan());};
  const checkpoint=()=>{history.push(JSON.stringify(workspace));if(history.length>30)history.shift();future.length=0;};
  const restoreFrom=(source,dest)=>{if(!source.length)return;dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();selected=null;save();render();};
  const localKey=workspaceKey+':'+(project&&Number.isSafeInteger(Number(project.id))?Number(project.id):'scratch');
@@ -202,7 +204,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<div class="wb-inspector-section" data-inspector-panel="prompt"><label>Prompt técnico<textarea data-property="prompt" rows="8" maxlength="3000" placeholder="Camera, lens, motion, lighting, continuity...">'+e(c.prompt||'')+'</textarea></label><button type="button" class="subtle" id="studiowb-copy">Copiar prompt</button><p class="studio-help">Guarda instrucciones de producción. No consume créditos ni envía datos a motores IA.</p></div></div>';
  }
  function timeRuler(){
-  const seconds=rulerSpan(),step=timelineZoom>=3?1:timelineZoom>=1.6?2:seconds>180?20:seconds>60?10:5;
+  const seconds=rulerSpan(),step=rulerStep(seconds);
   let ticks='';for(let t=0;t<=seconds;t+=step)ticks+='<span class="wb-time-tick" style="left:'+(t/seconds*100).toFixed(4)+'%">'+fmt(t)+'</span>';
   return ticks;
  }
@@ -215,14 +217,16 @@ export function studioWorkbenchView(root,notice,project=null){
    '<button type="button" data-track-flag="'+track+':muted" aria-pressed="'+state.muted+'" title="'+(state.muted?'Activar audio':'Silenciar')+' '+track+'">'+(state.muted?'🔇':'♫')+'</button>')+'</div></div>';
  }
  function timeline(){
-  const seconds=rulerSpan(),width=rulerWidth();
-  return '<div class="wb-timeline" data-tool="'+editingTool+'" style="--wb-lane-min:'+width+'px" tabindex="0" aria-label="Secuencia de montaje"><div class="wb-ruler"><div class="wb-track-label wb-ruler-title"><span>TIEMPO</span><small>'+mediaTimecode(workspace.playhead,workspace.fps)+'</small></div><div class="wb-ruler-times" data-ruler-seek="true" style="width:'+width+'px">'+timeRuler()+'<div id="studiowb-ruler-cursor" class="wb-ruler-cursor" style="left:'+(workspace.playhead/seconds*100).toFixed(4)+'%"></div></div></div>'+
+  const seconds=rulerSpan(),width=rulerWidth(),step=rulerStep(seconds),gridStep=(width*step/seconds).toFixed(2);
+  return '<div class="wb-timeline" data-tool="'+editingTool+'" data-ruler-span="'+seconds+'" data-ruler-step="'+step+'" style="--wb-lane-min:'+width+'px;--wb-grid-step:'+gridStep+'px" tabindex="0" aria-label="Secuencia de montaje"><div class="wb-ruler"><div class="wb-track-label wb-ruler-title"><span>TIEMPO</span><small>'+mediaTimecode(workspace.playhead,workspace.fps)+'</small></div><div class="wb-ruler-times" data-ruler-seek="true" style="width:'+width+'px">'+timeRuler()+'<div id="studiowb-ruler-cursor" class="wb-ruler-cursor" style="left:'+(workspace.playhead/seconds*100).toFixed(4)+'%"></div></div></div>'+
    tracks.map(track=>'<div class="wb-track'+(trackState[track].locked?' wb-track-locked':'')+(trackState[track].muted||trackState[track].hidden?' wb-track-disabled':'')+'">'+trackHeader(track)+'<div class="wb-track-content" data-timeline-seek="'+track+'" style="width:'+width+'px">'+workspace.clips.filter(c=>c.track===track).map(clip=>{
     const asset=findAsset(clip.assetId),left=clip.start/seconds*100,wide=clip.duration/seconds*100,name=clip.kind==='text'?clip.text||'TÍTULO':asset?.name||'Original ausente';
+    const frame=1/workspace.fps,isMediaSplit=clip.kind!=='text'&&Boolean(clip.assetId);
+    const splitAfter=isMediaSplit&&workspace.clips.some(other=>other.id!==clip.id&&other.track===clip.track&&other.assetId===clip.assetId&&Math.abs(clip.start+clip.duration-other.start)<=frame&&Math.abs((clip.sourceStart||0)+clip.duration-(other.sourceStart||0))<=frame);
     const thumb=asset&&clip.kind==='image'?'<img class="wb-block-thumbnail" data-clip-image="'+e(asset.id)+'" alt="" aria-hidden="true">':
       asset&&clip.kind==='video'?'<video class="wb-block-thumbnail" data-clip-video="'+e(asset.id)+'" muted playsinline preload="metadata" aria-hidden="true"></video>':'';
     const wave=asset&&clip.kind==='audio'?'<canvas class="wb-waveform" data-waveform-id="'+e(asset.id)+'" aria-hidden="true"></canvas>':'';
-    return '<button type="button" data-select-clip="'+e(clip.id)+'" class="wb-block wb-pro-clip '+(selected===clip.id?'selected ':'')+'wb-'+e(clip.kind)+'" style="left:'+left.toFixed(4)+'%;width:'+Math.max(.65,wide).toFixed(4)+'%" title="'+e(name)+'">'+thumb+wave+'<span class="wb-clip-inner"><b>'+e(name)+'</b><small>'+mediaTimecode(clip.duration,workspace.fps)+'</small></span>'+
+    return '<button type="button" data-select-clip="'+e(clip.id)+'" class="wb-block wb-pro-clip '+(selected===clip.id?'selected ':'')+'wb-'+e(clip.kind)+'" style="left:'+left.toFixed(4)+'%;width:'+Math.max(.65,wide).toFixed(4)+'%" title="'+e(name)+'">'+thumb+wave+(splitAfter?'<i class="wb-cut-seam" aria-hidden="true"></i>':'')+'<span class="wb-clip-inner"><b>'+e(name)+'</b><small>'+mediaTimecode(clip.duration,workspace.fps)+'</small></span>'+
     (!asset&&clip.kind!=='text'?'<span class="wb-clip-missing">Falta original</span>':'')+'<span class="wb-trim-left" title="Arrastra para cambiar entrada del clip" style="width:16px!important;min-width:16px!important;max-width:16px!important"></span><span class="wb-trim-right" title="Arrastra para estirar o recortar el clip" style="width:16px!important;min-width:16px!important;max-width:16px!important"></span></button>';
    }).join('')+'<div class="wb-cursor" style="left:'+(workspace.playhead/seconds*100).toFixed(4)+'%"></div></div></div>').join('')+'</div>';
  }
@@ -336,7 +340,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    trackState[track][flag]=!trackState[track][flag];saveTrackPrefs();syncPlayback(true);paint();render();
   });
   root.querySelector('[data-ruler-seek]')?.addEventListener('click',event=>{
-   const bounds=event.currentTarget.getBoundingClientRect();pause();seek((event.clientX-bounds.left)/bounds.width*rulerSpan());
+   pause();seek(lanePosition(event.clientX,event.currentTarget));
   });
   el('studiowb-zoom').onchange=ev=>{const current=root.querySelector('.wb-timeline'),ratio=current?.scrollLeft/Math.max(1,current?.scrollWidth||1)||0;timelineZoom=Number(ev.target.value);render();const next=root.querySelector('.wb-timeline');if(next)next.scrollLeft=ratio*next.scrollWidth;};
   el('studiowb-timeline-fit').onclick=()=>{
@@ -371,8 +375,8 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     lane.ondragleave=()=>lane.classList.remove('wb-drop-ready');
     lane.ondrop=ev=>{ev.preventDefault();lane.classList.remove('wb-drop-ready');
       const assetId=ev.dataTransfer?.getData('text/plain'),asset=findAsset(assetId);
-      if(!asset)return;const rect=lane.getBoundingClientRect();
-      addFromLibrary(assetId,{start:trackPosition(ev.clientX,rect.left,rect.width,rulerSpan()),track:lane.dataset.timelineSeek});
+      if(!asset)return;
+      addFromLibrary(assetId,{start:lanePosition(ev.clientX,lane),track:lane.dataset.timelineSeek});
     };
   });
   el('studiowb-undo').onclick=()=>restoreFrom(history,future);
@@ -453,7 +457,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
       const pixels=pe.clientX-initial;
       if(!moved&&Math.abs(pixels)<4)return;
       moved=true;
-      const seconds=(pixels/rect.width)*rulerSpan();
+      const seconds=pixels/Math.max(1,rulerWidth()/rulerSpan());
       preview=previewClipDrag(original,mode,seconds,{fps:workspace.fps,clips:workspace.clips,snapping});
       if(!preview)return;
       const visibleSpan=rulerSpan();
