@@ -64,12 +64,19 @@ try{
  });
  assert.ok(movedPosition.relativePx>25,'Dragged clip must actually move visually, not just in the inspector: '+JSON.stringify(movedPosition));
  await page.locator('#studiowb-blade-tool').click();
+ const bladeCursor=await page.locator('.wb-timeline [data-select-clip]').first().evaluate(el=>getComputedStyle(el).cursor);
+ assert.ok(bladeCursor.includes('data:image/svg+xml'),'Blade mode must show the scissor cursor, got '+bladeCursor);
+ const rulerGrid=await page.locator('.wb-timeline').evaluate(el=>({span:Number(el.dataset.rulerSpan),step:Number(el.dataset.rulerStep),grid:parseFloat(getComputedStyle(el).getPropertyValue('--wb-grid-step')),lane:parseFloat(getComputedStyle(el).getPropertyValue('--wb-lane-min'))}));
+ assert.ok(Math.abs(rulerGrid.grid-rulerGrid.lane*rulerGrid.step/rulerGrid.span)<1,'Ruler labels and track grid must share one time scale: '+JSON.stringify(rulerGrid));
  let block=page.locator('.wb-timeline [data-select-clip]').first();
  await block.scrollIntoViewIfNeeded();
  const cb=await block.boundingBox();
  await page.mouse.click(cb.x+60,cb.y+cb.height/2);
  const count=await page.locator('.wb-timeline [data-select-clip]').count();
  assert.equal(count,2,'Blade should split image under real pointer: got '+count);
+ assert.equal(await page.locator('.wb-cut-seam').count(),1,'A real cut must remain visibly marked at the joining clip edge');
+ const cutJoin=await page.locator('.wb-timeline [data-select-clip]').evaluateAll(nodes=>Math.abs(nodes[0].getBoundingClientRect().right-nodes[1].getBoundingClientRect().left));
+ assert.ok(cutJoin<3,'Split parts must touch at the exact visible cut, gap='+cutJoin);
  // Regression from user's screenshots: inspector says 17.63s but thumbnail
  // stays at the old timeline origin, then razor rejects a visibly valid cut.
  await page.locator('#studiowb-select-tool').click();
@@ -111,6 +118,9 @@ try{
  const afterRect=await page.locator('.wb-timeline [data-select-clip].selected').boundingBox();
  await page.mouse.click(afterRect.x+Math.min(afterRect.width/2,90),afterRect.y+afterRect.height/2);
  assert.equal(await page.locator('.wb-timeline [data-select-clip]').count(),3,'Blade must split relocated long clip at visible click');
+ assert.equal(await page.locator('.wb-cut-seam').count(),1,'The relocated split must show its cut seam; the separated original piece is no longer joined');
+ const movedCutJoin=await page.locator('.wb-timeline [data-select-clip]').evaluateAll(nodes=>Math.abs(nodes[nodes.length-2].getBoundingClientRect().right-nodes[nodes.length-1].getBoundingClientRect().left));
+ assert.ok(movedCutJoin<3,'Relocated split parts must meet at the exact visible cut, gap='+movedCutJoin);
  // Mobile viewport must keep the library/editor/inspector connected, not stack
  // unusable panes or lose an imported original after switching views.
  const mobileContext=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
