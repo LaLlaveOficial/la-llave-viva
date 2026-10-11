@@ -17,7 +17,7 @@ jobs:
   validate:
     name: Test seguridad + estudio y build
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - name: Checkout de la rama
         uses: actions/checkout@v4
@@ -52,3 +52,23 @@ jobs:
           node --test tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
+      - name: Instalar Chromium real para verificar interacciones
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Probar arrastre, recorte y cuchilla en Chrome real
+        run: |
+          npm run dev -- --host 127.0.0.1 --port 4173 >/tmp/studio066-vite.log 2>&1 &
+          for i in $(seq 1 35); do
+            curl -fsS http://127.0.0.1:4173/tests/studio066-browser-harness.html >/dev/null && break
+            sleep 1
+          done
+          node tests/studio066-browser.test.mjs
+      - name: Captura de fallo de interacción
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: estudio066-browser-failure
+          path: /tmp/studio066-browser/failed.png
+          if-no-files-found: ignore
+

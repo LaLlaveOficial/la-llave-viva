@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime} from '../public/centro-066/studio-timeline-tools.js';
+import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,previewClipDrag,clipDragChanged} from '../public/centro-066/studio-timeline-tools.js';
 import {mediaDB,addMedia,listMedia,readMedia,listTrashedMedia,trashMedia,restoreMedia} from '../public/centro-066/studio-media.js';
 
 const image={id:'a',kind:'image',assetId:'id1',track:'V1',start:0,duration:6,sourceStart:1.5,prompt:'Cinematic',opacity:1};
@@ -66,4 +66,31 @@ test('blade pointer maps position into timeline and rounds to a frame',()=>{
  assert.equal(slices.length,2);
  assert.equal(slices[0].duration,2);
  assert.equal(slices[1].sourceStart,3.5);
+});
+
+test('image clip can be extended with right trim without changing the original',()=>{
+ const initial={...image,kind:'image',sourceStart:0,start:0,duration:5};
+ const extended=previewClipDrag(initial,'trim-right',2,{fps:24});
+ assert.equal(extended.duration,7);
+ assert.equal(extended.start,0);
+ assert.equal(initial.duration,5);
+ assert.equal(clipDragChanged(initial,extended),true);
+});
+test('trim-left extends image left; video cannot reveal negative source frames',()=>{
+ const picture={...image,kind:'image',start:3,duration:4,sourceStart:0};
+ const result=previewClipDrag(picture,'trim-left',-2,{fps:24});
+ assert.deepEqual([result.start,result.duration,result.sourceStart],[1,6,0]);
+ const originalVideo={...image,kind:'video',start:3,duration:4,sourceStart:0};
+ const video=previewClipDrag(originalVideo,'trim-left',-2,{fps:24});
+ assert.deepEqual([video.start,video.duration,video.sourceStart],[3,4,0]);
+});
+test('body drag is bounded, frame-snapped and does not mutate source',()=>{
+ const before={...image,start:0,duration:5};
+ const moved=previewClipDrag(before,'move',1.25,{fps:24,snapping:false,clips:[]});
+ assert.equal(moved.start,1.25);
+ assert.equal(before.start,0);
+ const clamped=previewClipDrag(before,'move',10000,{fps:24,clips:[]});
+ assert.equal(clamped.start,595);
+ assert.equal(clipDragChanged(before,moved),true);
+ assert.equal(clipDragChanged(before,before),false);
 });

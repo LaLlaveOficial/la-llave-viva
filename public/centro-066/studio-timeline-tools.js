@@ -38,3 +38,33 @@ export function pointerCutTime(clientX,left,width,seconds,fps=24){
  const time=Math.min(seconds,Math.max(0,(clientX-left)/width*seconds));
  return Math.round(time*fps)/fps;
 }
+
+/**
+ * Pure timeline drag math. The gesture is only committed after a successful
+ * pointerup, so cancelling never damages the saved timeline or undo history.
+ * Use the same time-scale for every track and zoom level.
+ */
+export function previewClipDrag(clip,mode,delta,{fps=24,clips=[],snapping=true}={}){
+ if(!clip||!['move','trim-left','trim-right'].includes(mode)||!Number.isFinite(delta))return null;
+ if(!Number.isInteger(fps)||fps<1||fps>120)return null;
+ const deltaFrame=Math.round(delta*fps)/fps;
+ const maxLength=Math.min(120,600-clip.start);
+ const duration=clip.duration;
+ if(mode==='trim-right'){
+  const result={...clip,duration:round(Math.max(.1,Math.min(maxLength,duration+deltaFrame)))};
+  return result;
+ }
+ if(mode==='trim-left'){
+  const minDelta=Math.max(-clip.start,-Math.max(0,Number(clip.sourceStart)||0));
+  // Still images have no finite source length: they may extend left to timeline zero.
+  const earliest=clip.kind==='image'||clip.kind==='text'?-clip.start:minDelta;
+  const applied=Math.max(earliest,Math.min(duration-.1,deltaFrame));
+  return {...clip,start:round(clip.start+applied),duration:round(duration-applied),
+    sourceStart:round(Math.max(0,(clip.sourceStart||0)+applied))};
+ }
+ const position=Math.min(600-duration,Math.max(0,clip.start+deltaFrame));
+ return {...clip,start:snapToEdges(position,clips,clip.id,{enabled:snapping})};
+}
+export function clipDragChanged(before,after){
+ return Boolean(before&&after&&(before.start!==after.start||before.duration!==after.duration||before.sourceStart!==after.sourceStart));
+}

@@ -3,7 +3,7 @@ import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
 import {mountStudioCloud} from './studio-cloud066.js';
 import {exportCanvasRecording,exportFormatCapabilities,recordingBitrate} from './studio-recording.js';
 import {preflightExportMedia,formatExportPreflightError} from './studio-export-preflight.js';
-import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime} from './studio-timeline-tools.js';
+import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,previewClipDrag,clipDragChanged} from './studio-timeline-tools.js';
 import {extractPeaks,timelineSpan,mediaTimecode,trackIsEditable,trackIsAudible,trackIsVisible} from './studio-timeline-visuals.js';
 // Editor en navegador, sin llamadas a proveedores ni consumo de créditos.
 const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -413,35 +413,61 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     };
     b.onpointerleave=()=>b.style.removeProperty('--blade-x');
    b.onpointerdown=ev=>{
-    if(ev.button!==0||rendering||editingTool==='blade')return;
-    const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
-    if(!clip||!trackIsEditable(trackState,clip.track))return;
-    const lane=b.parentElement,rect=lane.getBoundingClientRect();
-    if(!rect.width)return;
-    const initial=ev.clientX,start=clip.start,length=clip.duration,sourceStart=clip.sourceStart||0,mode=ev.target.closest('.wb-trim-left')?'trim-left':ev.target.closest('.wb-trim-right')?'trim-right':'move';
-    let moved=false;
-    b.setPointerCapture?.(ev.pointerId);
-    b.onpointermove=pe=>{
-     const pixels=pe.clientX-initial;if(Math.abs(pixels)>3)moved=true;
-     if(!moved)return;
-     const change=Math.round(pixels/rect.width*rulerSpan()*100)/100;
-     if(mode==='trim-right')clip.duration=number(length+change,.1,Math.min(120,600-start));
-     else if(mode==='trim-left'){
-       const delta=number(change,-start,length-.1);
-       clip.start=Math.round((start+delta)*100)/100;
-       clip.duration=Math.round((length-delta)*100)/100;
-       clip.sourceStart=Math.max(0,Math.round((sourceStart+delta)*100)/100);
-     }else clip.start=snapToEdges(number(start+change,0,600-length),workspace.clips,clip.id,{enabled:snapping});
-     const widthSeconds=rulerSpan();
-     b.style.left=(clip.start/widthSeconds*100)+'%';
-     b.style.width=(clip.duration/widthSeconds*100)+'%';
+     if(ev.button!==0||rendering||editingTool==='blade')return;
+     const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
+     if(!clip||!trackIsEditable(trackState,clip.track))return;
+     const lane=b.parentElement,rect=lane.getBoundingClientRect();
+     if(!rect.width||!Number.isFinite(ev.clientX))return;
+     const hit=ev.target?.closest?.('.wb-trim-left,.wb-trim-right');
+     const mode=hit?.classList.contains('wb-trim-left')?'trim-left':hit?.classList.contains('wb-trim-right')?'trim-right':'move';
+     const initial=ev.clientX,original={...clip},pid=ev.pointerId;
+     const env=root.ownerDocument.defaultView;
+     if(!env)return;
+     let moved=false,preview=original,ended=false;
+     const matching=pe=>pid===undefined||pe.pointerId===undefined||pe.pointerId===pid;
+     const cleanup=()=>{
+      if(ended)return;ended=true;
+      env.removeEventListener('pointermove',move,true);
+      env.removeEventListener('pointerup',up,true);
+      env.removeEventListener('pointercancel',cancel,true);
+      b.classList.remove('wb-gesture-active','wb-gesture-trim');
+      b.style.removeProperty('z-index');
+      try{if(pid!==undefined&&b.hasPointerCapture?.(pid))b.releasePointerCapture(pid);}catch{}
+     };
+     const move=pe=>{
+      if(!matching(pe))return;
+      const pixels=pe.clientX-initial;
+      if(!moved&&Math.abs(pixels)<4)return;
+      moved=true;
+      const seconds=(pixels/rect.width)*rulerSpan();
+      preview=previewClipDrag(original,mode,seconds,{fps:workspace.fps,clips:workspace.clips,snapping});
+      if(!preview)return;
+      const visibleSpan=rulerSpan();
+      b.style.left=(preview.start/visibleSpan*100).toFixed(5)+'%';
+      b.style.width=(preview.duration/visibleSpan*100).toFixed(5)+'%';
+      b.classList.add('wb-gesture-active');
+      const time=b.querySelector('.wb-clip-inner small');
+      if(time)time.textContent=mediaTimecode(preview.duration,workspace.fps);
+     };
+     const up=pe=>{
+      if(!matching(pe))return;
+      cleanup();
+      if(!moved||!clipDragChanged(original,preview))return;
+      // Commit once on pointerup. No DOM replacement or timeline data mutation during drag.
+      checkpoint();
+      Object.assign(clip,{start:preview.start,duration:preview.duration,sourceStart:preview.sourceStart});
+      selected=clip.id;inspectorTab='clip';save();render();paint();
+     };
+     const cancel=pe=>{if(!matching(pe))return;cleanup();if(moved)render();};
+     env.addEventListener('pointermove',move,true);
+     env.addEventListener('pointerup',up,true);
+     env.addEventListener('pointercancel',cancel,true);
+     b.classList.add('wb-gesture-trim');
+     b.style.zIndex='12';
+     try{if(pid!==undefined)b.setPointerCapture?.(pid);}catch{}
+     // Browser must not start text selection or native dragging instead of trimming.
+     ev.preventDefault();
     };
-    b.onpointerup=()=>{
-     b.onpointermove=null;b.onpointerup=null;
-     if(moved){history.push(JSON.stringify({...workspace,clips:workspace.clips.map(c=>c.id===clip.id?{...c,start,duration:length,sourceStart}:c)}));if(history.length>30)history.shift();future.length=0;selected=clip.id;save();render();}
-    };
-    b.onpointercancel=()=>{clip.start=start;clip.duration=length;clip.sourceStart=sourceStart;b.onpointermove=null;b.onpointerup=null;render();};
-   };
   });
   root.querySelectorAll('[data-timeline-seek]').forEach(b=>b.onclick=ev=>{
    if(ev.target!==b)return;const r=b.getBoundingClientRect();pause();seek((ev.clientX-r.left)/r.width*rulerSpan());
