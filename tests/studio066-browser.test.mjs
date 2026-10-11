@@ -169,10 +169,13 @@ try{
  await audioPage.locator('#studiowb-upload').setInputFiles({name:'voice.wav',mimeType:'audio/wav',buffer:wav});
  await audioPage.locator('[data-add-asset]').first().click();
  const dragAudio=async selector=>{
+  await audioPage.locator(selector).scrollIntoViewIfNeeded();
   await audioPage.locator('[data-select-clip]').first().scrollIntoViewIfNeeded();
   const from=await audioPage.locator('[data-select-clip]').first().boundingBox(),to=await audioPage.locator(selector).boundingBox();
   const x=from.x+Math.min(30,from.width/2),y=from.y+from.height/2;
-  await audioPage.mouse.move(x,y);await audioPage.mouse.down();await audioPage.mouse.move(x,to.y+to.height/2,{steps:10});await audioPage.mouse.up();
+  console.log('AUDIO_DRAG_BEFORE',JSON.stringify({selector,from,to,viewport:audioPage.viewportSize()}));
+  await audioPage.mouse.move(x,y);await audioPage.mouse.down();await audioPage.mouse.move(x,to.y+to.height/2,{steps:10});
+  console.log('AUDIO_DRAG_PREVIEW',JSON.stringify(await audioPage.locator('.wb-timeline').evaluate(el=>({scrollTop:el.scrollTop,rect:el.getBoundingClientRect().toJSON(),ready:el.querySelector('.wb-drop-ready')?.dataset,preview:el.querySelector('[data-select-clip]')?.dataset}))));await audioPage.mouse.up();
  };
  await dragAudio('[data-timeline-seek="V1"]');
  assert.equal(await audioPage.locator('[data-property=track]').inputValue(),'A1','Audio cannot be dropped on video track');
