@@ -319,7 +319,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   setLaneWidth(ruler);
   timelineEl.querySelectorAll('[data-timeline-seek]').forEach(setLaneWidth);
   timelineEl.querySelectorAll('.wb-ruler,.wb-track').forEach(row=>{
-   const labelWidth=parseFloat(getComputedStyle(row).gridTemplateColumns)||115;
+   const labelWidth=parseFloat(timelineEl.ownerDocument.defaultView.getComputedStyle(row).gridTemplateColumns)||115;
    row.style.setProperty('grid-template-columns',labelWidth+'px '+width+'px','important');
    row.style.setProperty('width',(labelWidth+width)+'px','important');
    row.style.setProperty('min-width',(labelWidth+width)+'px','important');
