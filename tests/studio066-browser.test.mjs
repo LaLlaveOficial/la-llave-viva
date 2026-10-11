@@ -105,7 +105,7 @@ try{
  const mobile=await mobileContext.newPage();
  mobile.on('pageerror',err=>errors.push('Mobile: '+err.message));
  await mobile.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});
- await mobile.locator('#studiowb-upload').waitFor();
+ await mobile.locator('#studiowb-upload').waitFor({state:'attached'});
  await mobile.locator('#studiowb-upload').setInputFiles({name:'mobile-image.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
  await mobile.locator('[data-mobile-pane="media"]').click();
  await mobile.locator('[data-add-asset]').first().click();
