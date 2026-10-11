@@ -120,6 +120,15 @@ export function makeHandler(connect = neon, env = process.env) {
         try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
         catch(e){return res.status(502).json({error:e.message});}
       }
+      if(op==='agent-outputs'&&req.method==='GET'){
+        const rows=await sql`SELECT id,detail,created_at FROM console066_audit WHERE entity='agent-output' ORDER BY id DESC LIMIT 40`;
+        return res.status(200).json({outputs:rows.map(r=>({id:r.id,...r.detail,createdAt:r.created_at}))});
+      }
+      if(op==='agent-output-approve'&&req.method==='POST'){
+        if(!Number.isSafeInteger(body.id)||body.id<1)return res.status(400).json({error:'Propuesta inválida.'});
+        const rows=await sql`UPDATE console066_audit SET detail=detail||jsonb_build_object('status','approved','approvedAt',now()) WHERE id=${body.id} AND entity='agent-output' AND detail->>'status'='pending_review' RETURNING id`;
+        return res.status(rows.length?200:409).json(rows.length?{ok:true,published:false,sent:false}:{error:'La propuesta ya fue procesada.'});
+      }
       if(op==='metrics-import'&&req.method==='POST'){
         const item=validateMetricImport(body);if(!item)return res.status(400).json({error:'Revisa la marca, periodo y columnas de Metricool.'});
         await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('metrics',0,'import',${JSON.stringify(item)}::jsonb)`;

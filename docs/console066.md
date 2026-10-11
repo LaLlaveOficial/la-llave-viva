@@ -68,3 +68,15 @@ Los seis agentes tienen rutinas persistentes en Houston/Railway, sin necesitar u
 La rotación usa America/Santiago: radar a las 00/06/12/18; contactos 01/07/13/19; contenido 02/08/14/20; prensa 03/09/15/21; analítica 04/10/16/22; crecimiento 05/11/17/23. Cada agente ejecuta cuatro veces al día. No se ejecutan comunicaciones, publicaciones ni cambios publicitarios. Se conservan los límites y pausas del motor; 24/7 significa cobertura programada, no seis procesos consumiendo IA continuamente.
 
 La programación no da al motor acceso nuevo a Gmail, CRM o métricas: si no puede consultar una fuente, debe declararlo y no producir análisis inventados. Las tareas manuales de marketing siguen recibiendo las métricas y estados guardados mediante `marketingText`.
+
+## Datos y ventas para Houston (11-oct-2026)
+
+El cliente `node /houston/llave-context.mjs context <agente>` consulta un gateway accesible solo desde loopback del contenedor. El gateway añade la autenticación de servidor al endpoint fijo `/api/agent-066`; nunca entrega secretos al cliente. Peticiones públicas y headers de IP reenviada no autorizan el gateway. El endpoint Vercel valida el token de Houston en tiempo constante y no admite operaciones de publicación, envío, pagos o cambios Ads.
+
+Cada rutina recibe CRM público sin notas ni mensajes privados, pagos agregados, recuentos de suscriptores con consentimiento y observaciones fechadas. Contenido, analítica y crecimiento intentan actualizar Google Ads, Meta, GA4 y Metricool en paralelo, como máximo una vez cada dos horas. El límite global de lectura de proveedores es 70 segundos; una fuente fallida conserva su última lectura e informa el estado. Los datos históricos de pagos incluyen pruebas; no equivalen automáticamente a ventas comerciales.
+
+La búsqueda usa Tavily básico si se configura `TAVILY_API_KEY` en Vercel por el propietario; sin esa clave se utiliza Google News RSS para descubrimiento de noticias. Este último no ofrece búsqueda completa de perfiles de Instagram/TikTok y las fechas del feed requieren verificación en la fuente. Hay un límite de 24 búsquedas del equipo al día. No se usa Bing RSS para marketing: sus condiciones limitan ese feed a uso personal no comercial.
+
+Los agentes guardan propuestas mediante `node /houston/llave-context.mjs save <agente>` con JSON por stdin (kind, title, text). Son registros `agent-output` en la auditoría existente, siempre `pending_review`. Marketing muestra los textos completos y permite aprobar el texto exacto. Aprobar no publica ni envía. No se duplican secuencias de suscripción ni se cambian los flujos de compra existentes.
+
+Crecimiento prioriza segmentos de lectores con interés de compra, piezas completas diferenciadas para Instagram/TikTok, CTAs hacia `/comprar`, UTM por pieza y experimentos de conversión. Comunidades y perfiles públicos nunca se etiquetan como compradores o suscriptores confirmados sin evidencia y consentimiento.
