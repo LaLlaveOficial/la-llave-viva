@@ -56,7 +56,12 @@ jobs:
         run: |
           command -v google-chrome
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright
-      - name: Probar arrastre, recorte y cuchilla en Chrome real
+      - name: Preparar verificación del archivo audiovisual exportado
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          command -v ffprobe
+      - name: Probar montaje, transiciones y exportación en Chrome real
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/studio066-http.log 2>&1 &
           for i in $(seq 1 35); do
