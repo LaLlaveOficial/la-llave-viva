@@ -356,6 +356,8 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   addRuntimeRule('playhead','.wb-timeline .wb-cursor',{left:position(workspace.playhead)});
   const cursor=timelineEl.querySelector('#studiowb-ruler-cursor');
   if(cursor)addRuntimeRule('ruler-playhead','.wb-ruler-times #studiowb-ruler-cursor',{left:position(workspace.playhead)});
+  timelineEl.dataset.runtimeGeometryRules=String(runtimeRules.size);
+  timelineEl.dataset.runtimeStylesheet=runtimeSheet?'ready':'missing';
  }
  function render(){
   const oldTimelineScroll=root.querySelector('.wb-timeline')?.scrollLeft||0;
