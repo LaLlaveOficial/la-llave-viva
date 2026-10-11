@@ -40,6 +40,9 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.ok(root.querySelector('#studiowb-upload'));
   assert.ok(root.querySelector('#studiowb-canvas'));
   assert.ok(root.querySelector('#studiowb-export'));
+  assert.ok(root.querySelector('#studiowb-top-export'));
+  assert.ok(root.querySelector('.wb-file-menu summary'));
+  assert.ok(root.querySelector('#studiowb-portable-export'));
   assert.ok(root.querySelector('#studiowb-blade-tool'));
   assert.ok(root.querySelector('#studiowb-split'));
   assert.ok(root.querySelector('#studiowb-zoom'));

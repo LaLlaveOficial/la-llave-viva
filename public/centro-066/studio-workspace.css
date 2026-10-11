@@ -194,3 +194,28 @@
  .wb-edit-toolbar button{font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){.wb-root *{scroll-behavior:auto!important;animation:none!important}}
+
+/* The File menu replaces six oversized backup buttons in the main toolbar. */
+.wb-top .wb-row{flex-wrap:nowrap;position:relative}
+.wb-top .wb-top-export{padding:7px 12px!important;min-height:34px;border-radius:4px!important;background:#d5a754!important;color:#1a160e!important;font-size:10px!important}
+.wb-file-menu{position:relative;z-index:18;flex-shrink:0}
+.wb-file-menu summary{list-style:none;padding:9px 12px;min-height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#242b2e;border:1px solid #5d584d;border-radius:4px;color:#ddd7ca;font-size:10px;font-weight:650}
+.wb-file-menu summary::-webkit-details-marker{display:none}
+.wb-file-menu[open] summary{color:#ffd993;border-color:#b28c4b}
+.wb-file-menu-content{position:absolute;right:0;top:calc(100% + 5px);width:min(290px,85vw);z-index:19;background:#1c2125;border:1px solid #ab895156;border-radius:6px;box-shadow:0 15px 32px #000b;display:grid;gap:5px;padding:9px}
+.wb-file-menu-content>button,.wb-file-menu-content>.wb-file-label{display:flex!important;justify-content:center;align-items:center;width:100%;min-height:35px!important}
+.wb-file-menu-content>.wb-file-label{border:1px solid #655b40!important;cursor:pointer;background:#342c1e!important}
+.wb-stage{position:relative}
+@media(max-width:850px){
+ .wb-top .wb-row{flex:1;justify-content:flex-end;gap:4px;flex-wrap:nowrap}
+ .wb-top .wb-row button{min-width:0}
+ .wb-top .wb-workspace-brand p{display:none}
+ .wb-top .wb-workspace-brand .studio-caption{display:none}
+ .wb-file-menu summary{padding:8px 7px;white-space:nowrap;font-size:9px}
+}
+@media(max-width:450px){
+ .wb-top{flex-wrap:wrap}
+ .wb-top .wb-row{width:100%;justify-content:flex-start;max-height:none;overflow:visible}
+ .wb-file-menu{margin-left:auto}
+ .wb-top .wb-top-export{margin-left:0}
+}
