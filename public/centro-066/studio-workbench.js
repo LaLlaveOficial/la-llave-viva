@@ -519,6 +519,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
       const visibleSpan=rulerSpan(),clipRule=runtimeRules.get('clip:'+b.dataset.wbGeometryClip);
       clipRule?.style.setProperty('left',(preview.start/visibleSpan*100).toFixed(5)+'%');
       clipRule?.style.setProperty('width',(preview.duration/visibleSpan*100).toFixed(5)+'%');
+      b.dataset.previewStart=String(preview.start);b.dataset.previewDuration=String(preview.duration);
       b.classList.add('wb-gesture-active');
       const time=b.querySelector('.wb-clip-inner small');
       if(time)time.textContent=mediaTimecode(preview.duration,workspace.fps);
