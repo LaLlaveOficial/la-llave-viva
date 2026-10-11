@@ -60,3 +60,11 @@ node tests/console066-integration.mjs
 Se ejecutó contra Postgres local PGlite: migración repetible, 31 candidatos y 17 tareas, login, lecturas/guardados, aprobación exacta, retiro de aprobación al editar, conflicto entre versiones, duplicados y auditoría atómica. La interfaz se verificó con DOM simulado (filtro por país, edición, guardado y estados de conexión). No se logró inspección visual con navegador en este entorno; falta comprobar presentación móvil y escritorio en la vista previa antes de producción.
 
 Fuentes técnicas consultadas: https://vercel.com/docs/headers/request-headers y https://vercel.com/docs/routing/rewrites.
+
+## Rotación de Houston (11-oct-2026)
+
+Los seis agentes tienen rutinas persistentes en Houston/Railway, sin necesitar una pestaña abierta. La acción `setup` crea las faltantes y actualiza programación e instrucciones de las existentes, sin duplicar sus nombres. Repetir la operación no crea otras rutinas. La activación se confirma leyendo Houston; un despliegue por sí solo no activa rutinas.
+
+La rotación usa America/Santiago: radar a las 00/06/12/18; contactos 01/07/13/19; contenido 02/08/14/20; prensa 03/09/15/21; analítica 04/10/16/22; crecimiento 05/11/17/23. Cada agente ejecuta cuatro veces al día. No se ejecutan comunicaciones, publicaciones ni cambios publicitarios. Se conservan los límites y pausas del motor; 24/7 significa cobertura programada, no seis procesos consumiendo IA continuamente.
+
+La programación no da al motor acceso nuevo a Gmail, CRM o métricas: si no puede consultar una fuente, debe declararlo y no producir análisis inventados. Las tareas manuales de marketing siguen recibiendo las métricas y estados guardados mediante `marketingText`.
