@@ -11,6 +11,7 @@ try{
  page.on('pageerror',error=>errors.push('JS: '+(error.stack||error.message)));
  page.on('console',msg=>{if(msg.type()==='error')errors.push('Console: '+msg.text());});
  page.on('requestfailed',req=>errors.push('Failed request: '+req.url()+' '+req.failure()?.errorText));
+ page.on('response',resp=>{if(resp.status()>=400)errors.push('HTTP '+resp.status()+' '+resp.url());});
  await page.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});
  await page.locator('#studiowb-upload').waitFor({timeout:15000}).catch(async error=>{
  const diagnostics=await page.evaluate(()=>({url:location.href,head:document.documentElement.outerHTML.slice(0,1100),scripts:[...document.scripts].map(x=>x.src||x.textContent?.slice(0,130))}));
