@@ -96,13 +96,15 @@ try{
   const lane=clip?.parentElement;
   if(!clip||!lane||lane.getBoundingClientRect().width<100||!Number.isFinite(start)||!Number.isFinite(duration))return false;
   const expectedSpan=start+duration+2;
-  const left=parseFloat(clip.style.left)/100,width=parseFloat(clip.style.width)/100;
+  const laneRect=lane.getBoundingClientRect(),clipRect=clip.getBoundingClientRect();
+  if(laneRect.width<100)return false;
+  const left=(clipRect.left-laneRect.left)/laneRect.width,width=clipRect.width/laneRect.width;
   return Math.abs(left-start/expectedSpan)<.025&&Math.abs(width-duration/expectedSpan)<.025;
  },null,{timeout:5000});
  const pos=await page.locator('.wb-timeline [data-select-clip].selected').evaluate(el=>{
   const lane=el.parentElement,cr=el.getBoundingClientRect(),lr=lane.getBoundingClientRect();
   return {start:Number(document.querySelector('[data-property=start]').value),duration:Number(document.querySelector('[data-property=duration]').value),
-    visualStart:(cr.left-lr.left)/lr.width,styleLeft:el.style.left,visualDuration:cr.width/lr.width,
+    visualStart:(cr.left-lr.left)/lr.width,styleLeft:getComputedStyle(el).left,visualDuration:cr.width/lr.width,
     laneWidth:lr.width,elWidth:cr.width,rootScroll:document.querySelector('.wb-timeline').scrollLeft,
     laneStyle:{width:lane.style.width,minWidth:lane.style.minWidth,computedWidth:getComputedStyle(lane).width,minWidthComputed:getComputedStyle(lane).minWidth,display:getComputedStyle(lane).display},
     row:{className:lane.parentElement?.className,rect:lane.parentElement?.getBoundingClientRect().toJSON?.(),width:lane.parentElement?.style.width,grid:lane.parentElement?getComputedStyle(lane.parentElement).gridTemplateColumns:''},
