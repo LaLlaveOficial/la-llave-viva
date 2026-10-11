@@ -103,12 +103,12 @@ try{
  },null,{timeout:5000});
  const pos=await page.locator('.wb-timeline [data-select-clip].selected').evaluate(el=>{
   const lane=el.parentElement,cr=el.getBoundingClientRect(),lr=lane.getBoundingClientRect();
-  return {start:Number(document.querySelector('[data-property=start]').value),duration:Number(document.querySelector('[data-property=duration]').value),
+  const sheet=[...document.styleSheets].find(item=>item.href?.includes('studio-workspace.css')),runtime=lane.closest('.wb-root')?.dataset.studioRuntime,timeline=lane.closest('.wb-timeline');return {start:Number(document.querySelector('[data-property=start]').value),duration:Number(document.querySelector('[data-property=duration]').value),
     visualStart:(cr.left-lr.left)/lr.width,styleLeft:getComputedStyle(el).left,visualDuration:cr.width/lr.width,
     laneWidth:lr.width,elWidth:cr.width,rootScroll:document.querySelector('.wb-timeline').scrollLeft,
     laneStyle:{width:lane.style.width,minWidth:lane.style.minWidth,computedWidth:getComputedStyle(lane).width,minWidthComputed:getComputedStyle(lane).minWidth,display:getComputedStyle(lane).display},
     row:{className:lane.parentElement?.className,rect:lane.parentElement?.getBoundingClientRect().toJSON?.(),width:lane.parentElement?.style.width,grid:lane.parentElement?getComputedStyle(lane.parentElement).gridTemplateColumns:''},
-    timeline:{width:lane.closest('.wb-timeline')?.clientWidth,scrollWidth:lane.closest('.wb-timeline')?.scrollWidth,vars:lane.closest('.wb-timeline')?getComputedStyle(lane.closest('.wb-timeline')).getPropertyValue('--wb-lane-min'):'',runtimeRules:lane.closest('.wb-timeline')?.dataset.runtimeGeometryRules,stylesheet:lane.closest('.wb-timeline')?.dataset.runtimeStylesheet},rootRuntime:lane.closest('.wb-root')?.dataset.studioRuntime,dynamicRules:[...document.styleSheets].find(sheet=>sheet.href?.includes('studio-workspace.css'))?.cssRules?Array.from([...document.styleSheets].find(sheet=>sheet.href?.includes('studio-workspace.css')).cssRules).filter(rule=>rule.selectorText?.includes('data-studio-runtime')).map(rule=>({selector:rule.selectorText,style:rule.style?.cssText})):[]};
+    timeline:{width:lane.closest('.wb-timeline')?.clientWidth,scrollWidth:lane.closest('.wb-timeline')?.scrollWidth,vars:lane.closest('.wb-timeline')?getComputedStyle(lane.closest('.wb-timeline')).getPropertyValue('--wb-lane-min'):'',runtimeRules:lane.closest('.wb-timeline')?.dataset.runtimeGeometryRules,stylesheet:lane.closest('.wb-timeline')?.dataset.runtimeStylesheet},rootRuntime:runtime,timelineMatches:document.querySelector('.wb-root[data-studio-runtime="'+runtime+'"] .wb-timeline')===timeline,rowMatches:document.querySelector('.wb-root[data-studio-runtime="'+runtime+'"] .wb-track[data-wb-geometry-row="1"]')===lane.parentElement,sheetDisabled:sheet?.disabled,sheetMedia:sheet?.media?.mediaText,sheetRules:sheet?.cssRules?.length,rootDisplay:getComputedStyle(lane.closest('.wb-root')).display,rootRect:lane.closest('.wb-root').getBoundingClientRect().toJSON(),panelRect:lane.closest('.wb-timeline-panel').getBoundingClientRect().toJSON(),rowDataset:lane.parentElement?.dataset,cssVars:timeline?{lane:getComputedStyle(timeline).getPropertyValue('--wb-lane-min'),display:getComputedStyle(timeline).display,overflow:getComputedStyle(timeline).overflow}:null,dynamicRules:sheet?.cssRules?Array.from(sheet.cssRules).filter(rule=>rule.selectorText?.includes('data-studio-runtime')).map(rule=>({selector:rule.selectorText,style:rule.style?.cssText})):[]};
  });
  console.log('USER_MOVE_SCENARIO',JSON.stringify(pos));
  const viewBeforeCut=await page.locator('.wb-timeline').evaluate(el=>({left:el.scrollLeft,clientWidth:el.clientWidth,scrollWidth:el.scrollWidth}));
@@ -159,6 +159,6 @@ try{
  fs.mkdirSync('/tmp/studio066-browser',{recursive:true});
  if(page)await page.screenshot({path:'/tmp/studio066-browser/failed.png',fullPage:true}).catch(()=>{});
  console.error('BROWSER_EDITOR_FAIL',error?.stack||error);
- if(page){const e=await page.evaluate(()=>({messages:window.__studioHarness?.messages,lastHTML:document.querySelector('#studio-mount')?.textContent?.slice(0,600)})).catch(()=>null);console.error(JSON.stringify(e));}
+ if(page){const e=await page.evaluate(()=>({messages:window.__studioHarness?.messages,lastHTML:document.querySelector('#studio-mount')?.textContent?.slice(0,600)})).catch(()=>null);console.error(JSON.stringify({...e,errors}));}
  process.exitCode=1;
 }finally{await browser.close();}
