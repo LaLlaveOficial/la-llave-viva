@@ -117,7 +117,8 @@ try{
  assert.ok(Math.abs(pos.visualStart-pos.start/(pos.start+pos.duration+2))<.025,'DOM clip position must agree with inspector: '+JSON.stringify(pos));
  assert.ok(Math.abs(pos.visualDuration-pos.duration/(pos.start+pos.duration+2))<.025,'DOM clip width must agree with inspector: '+JSON.stringify(pos));
  const movingBlock=page.locator('.wb-timeline [data-select-clip].selected');
- await movingBlock.scrollIntoViewIfNeeded();
+ // The editor already reveals the edited clip after inspector changes. Keep
+ // that anchor; scrolling a wide clip to its left edge hides it under track labels.
  const scrollBeforeBlade=await page.locator('.wb-timeline').evaluate(el=>el.scrollLeft);
  await page.locator('#studiowb-blade-tool').click();
  const scrollAfterBlade=await page.locator('.wb-timeline').evaluate(el=>el.scrollLeft);
