@@ -72,3 +72,15 @@ Contrato geométrico:
 - Botones de fundido alternan una entrada/salida de hasta un segundo y abren su duración en el inspector. La duración se limita a media longitud del clip. El volumen admite 0–2 con Web Audio y 0–1 con reproducción HTML sin ganancia.
 - Fundidos a transparencia y a silencio calculados por el mismo compositor/mezclador de reproducción y exportación local. No representan disoluciones cruzadas entre pares de clips.
 - QA Chrome: arrastre arriba/abajo, inserción de video y audio entre pistas, rechazo de tipo incompatible, doce pistas, undo/redo, recuperación al recargar, fundidos y volumen.
+
+## Transiciones entre clips — 11-oct-2026
+
+- Video (T): disolución entre dos imágenes/videos solapados en una misma pista. Audio (Shift+T): mezcla cruzada de audio o del sonido de dos videos, separada del efecto visual.
+- Se selecciona el clip entrante. No se mueven clips automáticamente: debe existir al menos 0,1 s de solape. Duración máxima: 10 s, limitada al solape y al material original disponible. No se admiten solapes ambiguos de tres fuentes.
+- Cada efecto conserva `fromId` y `duration` en el clip entrante; no se duplican ni alteran archivos. Inspector contextual y región visible en timeline utilizan la misma escala temporal que los bloques, bajo CSP estricta.
+- Disolución: composición ponderada en una superficie transparente antes de mezclar con las demás pistas. Evita la pérdida de brillo que produciría dibujar dos clips semitransparentes directamente sobre negro.
+- Audio: ganancias seno/coseno de potencia constante. No se promete volumen constante para fuentes correlacionadas ni normalización/límite de picos; el usuario mantiene el control de volumen.
+- Cambiar pistas, separar o borrar una fuente elimina los efectos que pierden su relación válida. Deshacer recupera el estado anterior completo. JSON y respaldo portable conservan efectos válidos.
+- Exportación: se bloquea la edición mientras captura, se permite cancelar, y se restaura/guarda el cabezal previo. Las transiciones se ejecutan mediante el mismo compositor y mezcla de preview.
+- QA real: PNG rojo/azul y dos WAV originales de 440/880 Hz; lectura del pixel del visor, región de timeline, bloqueo, undo/redo, recuperación al recargar, cancelación y descarga de WebM. FFmpeg decodifica el archivo y verifica la mezcla de colores y ambas frecuencias en el tramo cruzado.
+- Alcance: WebM validado con Chromium. No declara validación de MP4/AAC, Windows, Safari, exportación remota ni equivalencia con render offline de precisión constante.

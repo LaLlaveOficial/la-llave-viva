@@ -1,3 +1,4 @@
+import {sanitizeTransitions} from './studio-transitions.js';
 import {normalizeTracks,compatibleTrack} from './studio-tracks.js';
 // Estudio 066 · biblioteca local. Los archivos quedan en este navegador, NO en servidores.
 const DB_NAME='llave-studio066-media-v1',STORE='assets';
@@ -67,7 +68,7 @@ export function parseWorkspace(value){
   const fades=Object.fromEntries(['videoFadeIn','videoFadeOut','audioFadeIn','audioFadeOut'].map(k=>[k,Math.min(c.duration/2,Math.max(0,Number(c[k])||0))]));
   items.push({...c,...fades,id,assetId,start:c.start,duration:c.duration,text:String(c.text||'').slice(0,500),sourceStart:Math.max(0,Number(c.sourceStart)||0),volume:Math.min(2,Math.max(0,Number(c.volume??1))),opacity:Math.min(1,Math.max(0,Number(c.opacity??1))),brightness:Math.min(200,Math.max(0,Number(c.brightness??100))),contrast:Math.min(200,Math.max(0,Number(c.contrast??100))),saturation:Math.min(200,Math.max(0,Number(c.saturation??100))),blur:Math.min(20,Math.max(0,Number(c.blur)||0))});
  }
- return {version:1,name:String(value.name||'Montaje').slice(0,160),aspect:value.aspect,quality:value.quality,fps:value.fps,exportFormat:value.exportFormat||'webm',encodingQuality:value.encodingQuality||'high',tracks:orderedTracks,clips:items,playhead:Math.min(600,Math.max(0,Number(value.playhead)||0))};
+ return {version:1,name:String(value.name||'Montaje').slice(0,160),aspect:value.aspect,quality:value.quality,fps:value.fps,exportFormat:value.exportFormat||'webm',encodingQuality:value.encodingQuality||'high',tracks:orderedTracks,clips:sanitizeTransitions(items),playhead:Math.min(600,Math.max(0,Number(value.playhead)||0))};
 }
 export function timelineDuration(clips){return Math.max(5,...clips.map(c=>c.start+c.duration));}
 export function addTimelineClip(asset,clips){

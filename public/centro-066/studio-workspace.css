@@ -657,3 +657,8 @@
 .wb-fade-marker{position:absolute;z-index:3;top:1px;color:#ffd87a;font-size:16px;pointer-events:none}.wb-fade-entry{left:18px}.wb-fade-exit{right:18px}
 
 .wb-root .wb-edit-toolbar button{display:inline-flex;align-items:center;justify-content:center}.wb-edit-toolbar svg{flex-shrink:0}
+
+/* Separate video/audio transition regions use the same CSP-safe time scale as clips. */
+.wb-root .wb-transition-marker{position:absolute;z-index:4;top:1px;height:18px;min-height:18px!important;min-width:18px;border:1px solid #f4cc6b!important;background:#57421b!important;color:#ffe4a1!important;border-radius:2px;padding:0!important;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+.wb-root .wb-transition-marker svg{width:15px;height:15px}.wb-root .wb-transition-audio{top:auto;bottom:1px;background:#173d30!important;color:#a3e2bd!important;border-color:#6db990!important}
+.wb-transition-properties{border-top:1px solid #a8854240;margin-top:12px;padding-top:10px}.wb-transition-properties h4{color:#f4d487}

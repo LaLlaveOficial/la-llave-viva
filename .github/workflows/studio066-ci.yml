@@ -49,7 +49,7 @@ jobs:
           node --check public/centro-066/studio-portable.js
           node --check public/centro-066/studio-cloud066.js
           node --check lib/studio-cloud066.js
-          node --test tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
+          node --test tests/studio066-transitions.test.mjs tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
       - name: Preparar navegador Chrome preinstalado para pruebas reales
@@ -64,11 +64,14 @@ jobs:
             sleep 1
           done
           node tests/studio066-browser.test.mjs
+          node tests/studio066-transitions-browser.test.mjs
       - name: Capturas de interacción
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: estudio066-browser-evidence
-          path: /tmp/studio066-browser/*.png
+          path: |
+            /tmp/studio066-browser/*.png
+            /tmp/studio066-browser/transitions.webm
           if-no-files-found: ignore
 

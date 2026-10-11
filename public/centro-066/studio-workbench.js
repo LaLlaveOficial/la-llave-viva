@@ -1,3 +1,5 @@
+import {createTransition,transitionWindow,sanitizeTransitions,audioTransitionGain} from './studio-transitions.js';
+import {renderVisualFrame} from './studio-compositor.js';
 import {compatibleTrack,insertTrack,fadeEnvelope} from './studio-tracks.js';
 import {mediaDB,listMedia,readMedia,addMedia,trashMedia,restoreMedia,listTrashedMedia,workspaceKey,defaultWorkspace,parseWorkspace,timelineDuration,addTimelineClip} from './studio-media.js';
 import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
@@ -17,7 +19,7 @@ const tracksNames={V2:'Títulos / capas',V1:'Video / fotogramas',A1:'Voz / diál
 const option=(value,actual,label)=>'<option value="'+e(value)+'"'+(String(actual)===String(value)?' selected':'')+'>'+e(label??value)+'</option>';
 const ctrl=(name,label,value,min,max,step)=>'<label>'+label+'<input data-property="'+name+'" type="number" min="'+min+'" max="'+max+'" step="'+step+'" value="'+e(value)+'"></label>';
 const toolIcon=name=>{
- const paths={select:'M5 3v16l4-4 4 7 3-2-4-7h7Z',blade:'M9 9 20 3M9 15l11 6M9 9l11 12M9 15l11-12',split:'M12 3v18M4 6h5v12H4zM15 6h5v12h-5z',duplicate:'M9 8h11v13H9zM5 16H3V3h12v2',remove:'M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 10v7M14 10v7',snap:'M5 4v9a7 7 0 0 0 14 0V4h-4v9a3 3 0 0 1-6 0V4zM5 8h4M15 8h4',fit:'M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 12h8M12 8v8',videoFadeIn:'M3 17h18M3 17 16 5M16 5v6M16 5h-6M19 4h2v7h-2z',videoFadeOut:'M3 17h18M3 5l13 12M16 17v-6M16 17h-6M19 4h2v7h-2z',audioFadeIn:'M3 18 13 6M13 6v5M13 6H8M17 6v12M20 10v5',audioFadeOut:'M3 6l10 12M13 18v-5M13 18H8M17 6v12M20 10v5',volume:'M3 9h4l5-5v16l-5-5H3zM16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14'};
+ const paths={videoTransition:'M3 5h12v14H3zM9 5h12v14H9zM3 12h18M9 8l6 8',audioTransition:'M3 5l18 14M3 19 21 5M3 10v4M21 10v4',select:'M5 3v16l4-4 4 7 3-2-4-7h7Z',blade:'M9 9 20 3M9 15l11 6M9 9l11 12M9 15l11-12',split:'M12 3v18M4 6h5v12H4zM15 6h5v12h-5z',duplicate:'M9 8h11v13H9zM5 16H3V3h12v2',remove:'M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 10v7M14 10v7',snap:'M5 4v9a7 7 0 0 0 14 0V4h-4v9a3 3 0 0 1-6 0V4zM5 8h4M15 8h4',fit:'M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 12h8M12 8v8',videoFadeIn:'M3 17h18M3 17 16 5M16 5v6M16 5h-6M19 4h2v7h-2z',videoFadeOut:'M3 17h18M3 5l13 12M16 17v-6M16 17h-6M19 4h2v7h-2z',audioFadeIn:'M3 18 13 6M13 6v5M13 6H8M17 6v12M20 10v5',audioFadeOut:'M3 6l10 12M13 18v-5M13 18H8M17 6v12M20 10v5',volume:'M3 9h4l5-5v16l-5-5H3zM16 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14'};
  return '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="'+paths[name]+'"/>'+(name==='blade'?'<circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/>':'')+'</svg>';
 };
 export function studioWorkbenchView(root,notice,project=null){
@@ -26,7 +28,7 @@ export function studioWorkbenchView(root,notice,project=null){
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  let inspectorRenderFrame=0,pendingInspectorRefresh=null;
- const history=[],future=[],waveforms=new Map();
+ const history=[],future=[],waveforms=new Map(),transitionSurface={};
  let tracks=workspace.tracks;
  const trackState=Object.fromEntries(tracks.map(t=>[t,{locked:false,muted:false,hidden:false}]));
  const rulerSpan=()=>timelineSpan(workspace.clips,12);
@@ -46,7 +48,7 @@ export function studioWorkbenchView(root,notice,project=null){
   for(const t of tracks)for(const k of ['locked','muted','hidden'])if(typeof stored?.[t]?.[k]==='boolean')trackState[t][k]=stored[t][k];
  }catch{}
  const saveTrackPrefs=()=>{try{localStorage.setItem(trackStateKey,JSON.stringify(trackState));}catch{}};
- function save(){syncTracks();try{localStorage.setItem(localKey,JSON.stringify(workspace));}catch{notice('No se pudo guardar el montaje localmente. Exporta el proyecto JSON.');}}
+ function save(){const normalized=sanitizeTransitions(workspace.clips);workspace.clips.forEach((c,i)=>{for(const key of ['videoTransition','audioTransition']){if(normalized[i][key])c[key]=normalized[i][key];else delete c[key];}});syncTracks();try{localStorage.setItem(localKey,JSON.stringify(workspace));}catch{notice('No se pudo guardar el montaje localmente. Exporta el proyecto JSON.');}}
  function activeClip(c,t){return t>=c.start&&t<c.start+c.duration;}
  function clipSource(c,t){return c.sourceStart+(t-c.start);}
  function seek(t){workspace.playhead=number(t,0,timelineDuration(workspace.clips));save();syncPlayback(true);paint();drawTime();}
@@ -81,15 +83,15 @@ export function studioWorkbenchView(root,notice,project=null){
   }
  }
  function syncPlayback(force=false){
-  const t=workspace.playhead;
+  const t=workspace.playhead,audioWindows=workspace.clips.map(c=>transitionWindow(workspace.clips,c,'audio')).filter(Boolean);
   for(const c of workspace.clips){
    const m=media.get(c.id);if(!m)continue;
    const on=activeClip(c,t);
    const target=Math.max(0,clipSource(c,t));
    if(on&&(force||Math.abs(m.element.currentTime-target)>.35))try{m.element.currentTime=target;}catch{}
    m.element.muted=!trackIsAudible(trackState,c.track);
-    if(m.gain)m.gain.gain.value=on&&trackIsAudible(trackState,c.track)?number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio'):0;
-   if(m.gain)m.element.volume=1;else m.element.volume=on&&trackIsAudible(trackState,c.track)?Math.min(1,number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio')):0;
+    if(m.gain)m.gain.gain.value=on&&trackIsAudible(trackState,c.track)?number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio')*audioTransitionGain(workspace.clips,c,t,audioWindows):0;
+   if(m.gain)m.element.volume=1;else m.element.volume=on&&trackIsAudible(trackState,c.track)?Math.min(1,number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio')*audioTransitionGain(workspace.clips,c,t,audioWindows)):0;
    if(isPlaying&&on&&m.element.paused)m.element.play().catch(()=>{});
    else if((!isPlaying||!on)&&!m.element.paused)m.element.pause();
   }
@@ -98,27 +100,8 @@ export function studioWorkbenchView(root,notice,project=null){
  function paint(){
   const cvs=canvas();if(!cvs||!cvs.isConnected)return;
   const {w,h}=dimensions();if(cvs.width!==w)cvs.width=w;if(cvs.height!==h)cvs.height=h;
-  const ctx=cvs.getContext('2d');if(!ctx)return;
-  ctx.fillStyle='#101417';ctx.fillRect(0,0,w,h);
   const t=Math.min(workspace.playhead,Math.max(0,timelineDuration(workspace.clips)-1/Math.max(24,workspace.fps)));
-  for(const c of workspace.clips.filter(c=>(c.kind==='video'||c.kind==='image')&&trackIsVisible(trackState,c.track)).sort((a,b)=>tracks.indexOf(b.track)-tracks.indexOf(a.track))){
-   if(!activeClip(c,t))continue;
-   const source=c.kind==='image'?cache.get(c.assetId):media.get(c.id)?.element;
-   if(!source||!(source.videoWidth||source.naturalWidth))continue;
-   const sw=source.videoWidth||source.naturalWidth,sh=source.videoHeight||source.naturalHeight;
-   const zoom=number(c.scale??1,.25,4)||1;const k=Math.max(w/sw,h/sh)*zoom;
-   const dw=sw*k,dh=sh*k,cx=(w-dw)/2+number(c.x??0,-1,1)*w/2,cy=(h-dh)/2+number(c.y??0,-1,1)*h/2;
-   ctx.save();ctx.globalAlpha=number(c.opacity??1,0,1)*fadeEnvelope(c,t);ctx.filter='brightness('+number(c.brightness??100,0,200)+'%) contrast('+number(c.contrast??100,0,200)+'%) saturate('+number(c.saturation??100,0,200)+'%) blur('+number(c.blur??0,0,20)+'px)';
-   try{ctx.drawImage(source,cx,cy,dw,dh);}catch{}
-   ctx.restore();
-  }
-  for(const c of workspace.clips.filter(c=>c.kind==='text'&&activeClip(c,t))){
-   const size=Math.round(h/18);
-   ctx.save();ctx.globalAlpha=number(c.opacity??1,0,1)*fadeEnvelope(c,t);ctx.font='700 '+size+'px Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='#000';ctx.shadowBlur=14;ctx.lineWidth=Math.max(3,size/9);ctx.strokeStyle='#000';
-   const text=(c.text||'TÍTULO').slice(0,180).split('\n');
-   text.forEach((line,i)=>{const y=h*.78+i*size*1.2;ctx.strokeText(line,w/2,y,w*.9);ctx.fillStyle='#fff';ctx.fillText(line,w/2,y,w*.9);});
-   ctx.restore();
-  }
+  renderVisualFrame({canvas:cvs,clips:workspace.clips,tracks,trackState,time:t,surface:transitionSurface,sources:c=>c.kind==='image'?cache.get(c.assetId):media.get(c.id)?.element});
  }
  function drawTime(){
   const l=root.querySelector('#studiowb-time');if(l)l.textContent=mediaTimecode(workspace.playhead,workspace.fps)+' / '+mediaTimecode(timelineDuration(workspace.clips),workspace.fps);
@@ -156,6 +139,9 @@ export function studioWorkbenchView(root,notice,project=null){
   if(outputFormat==='mp4'&&!exportFormatCapabilities(window.MediaRecorder).mp4){notice('Este navegador no ofrece MP4 H.264. Selecciona WebM o espera el render remoto.');return;}
   rendering=true;
   exportAbort=new AbortController();
+  const exportControls=Array.from(root.querySelectorAll('button,input,select,textarea')).map(node=>[node,node.disabled]);
+  exportControls.forEach(([node])=>node.disabled=true);
+  const cancelButton=root.ownerDocument.createElement('button');cancelButton.type='button';cancelButton.id='studiowb-cancel-export';cancelButton.className='subtle';cancelButton.textContent='Cancelar exportación';cancelButton.onclick=()=>exportAbort?.abort();root.querySelector('.wb-row')?.append(cancelButton);
   const button=root.querySelector('#studiowb-export'),seekBar=root.querySelector('#studiowb-seek'),playBtn=root.querySelector('#studiowb-play');
   if(button){button.disabled=true;button.textContent='Renderizando '+outputFormat.toUpperCase()+'…';}
   if(seekBar)seekBar.disabled=true;
@@ -166,6 +152,7 @@ export function studioWorkbenchView(root,notice,project=null){
    if(exportAbort.signal.aborted)throw new Error('Exportación cancelada.');
    const preflight=await preflightExportMedia({clips:workspace.clips,assets,read:id=>readMedia(db,id),loadImage:c=>getPicture(c),loadMedia:c=>getMedia(c)});
    if(!preflight.ok){notice(formatExportPreflightError(preflight));return;}
+   for(const c of workspace.clips)for(const channel of ['video','audio']){const pair=transitionWindow(workspace.clips,c,channel);if(pair&&transitionSourceLimit(pair)+.001<pair.duration)throw new Error('La transición excede el material original disponible. Acorta su duración o ajusta el solape.');}
    const useAudio=workspace.clips.some(c=>c.kind==='audio'||c.kind==='video');
    if(useAudio){audioGraph();await audioCtx?.resume();connectSources();}
    isPlaying=true;syncPlayback(true);paint();
@@ -188,8 +175,8 @@ export function studioWorkbenchView(root,notice,project=null){
   }catch(error){
    if(!exportAbort?.signal.aborted)notice('No se pudo exportar: '+error.message);
   }finally{
-   pause();workspace.playhead=before;syncPlayback(true);paint();drawTime();
-   rendering=false;exportAbort=null;
+   pause();workspace.playhead=before;save();syncPlayback(true);paint();drawTime();
+   rendering=false;exportAbort=null;cancelButton.remove();exportControls.forEach(([node,disabled])=>{if(node.isConnected)node.disabled=disabled;});
    if(button){button.disabled=false;button.textContent='Exportar '+outputFormat.toUpperCase();}
    if(seekBar)seekBar.disabled=false;
    if(playBtn)playBtn.disabled=false;
@@ -212,9 +199,29 @@ export function studioWorkbenchView(root,notice,project=null){
     (c.kind==='text'?'<label>Título<textarea data-property="text" maxlength="180" rows="3">'+e(c.text||'')+'</textarea></label>':'')+
     '<div class="wb-row wb-clip-actions"><button type="button" class="subtle" id="studiowb-duplicate">Duplicar</button><button type="button" class="subtle" id="studiowb-delete">Eliminar clip</button></div></div>'+
     '<div class="wb-inspector-section" data-inspector-panel="color">'+(c.kind==='audio'?'<p class="studio-help">Los clips de audio no tienen ajustes visuales.</p>':
-    '<h4>Corrección básica</h4><div class="studio-fields">'+ctrl('brightness','Brillo %',c.brightness??100,0,200,5)+ctrl('contrast','Contraste %',c.contrast??100,0,200,5)+ctrl('saturation','Saturación %',c.saturation??100,0,200,5)+ctrl('blur','Desenfoque',c.blur??0,0,20,1)+ctrl('opacity','Opacidad',c.opacity??1,0,1,.1)+ctrl('scale','Escala',c.scale??1,.25,4,.1)+ctrl('x','Posición X',c.x??0,-1,1,.1)+ctrl('y','Posición Y',c.y??0,-1,1,.1)+ctrl('videoFadeIn','Fundido de video · entrada (s)',c.videoFadeIn||0,0,c.duration/2,.1)+ctrl('videoFadeOut','Fundido de video · salida (s)',c.videoFadeOut||0,0,c.duration/2,.1)+'</div>')+'</div>'+
-    '<div class="wb-inspector-section" data-inspector-panel="sound"><h4>Mezcla de audio</h4><div class="studio-fields">'+ctrl('volume','Volumen (0–2)',c.volume??1,0,2,.1)+ctrl('audioFadeIn','Fundido de audio · entrada (s)',c.audioFadeIn||0,0,c.duration/2,.1)+ctrl('audioFadeOut','Fundido de audio · salida (s)',c.audioFadeOut||0,0,c.duration/2,.1)+'</div><p class="studio-help">Silencia o activa una pista desde sus controles. Los fundidos ajustan el volumen al inicio y al final del clip.</p></div>'+
+    '<h4>Corrección básica</h4><div class="studio-fields">'+ctrl('brightness','Brillo %',c.brightness??100,0,200,5)+ctrl('contrast','Contraste %',c.contrast??100,0,200,5)+ctrl('saturation','Saturación %',c.saturation??100,0,200,5)+ctrl('blur','Desenfoque',c.blur??0,0,20,1)+ctrl('opacity','Opacidad',c.opacity??1,0,1,.1)+ctrl('scale','Escala',c.scale??1,.25,4,.1)+ctrl('x','Posición X',c.x??0,-1,1,.1)+ctrl('y','Posición Y',c.y??0,-1,1,.1)+ctrl('videoFadeIn','Fundido de video · entrada (s)',c.videoFadeIn||0,0,c.duration/2,.1)+ctrl('videoFadeOut','Fundido de video · salida (s)',c.videoFadeOut||0,0,c.duration/2,.1)+'</div>'+transitionControls(c,'video'))+'</div>'+
+    '<div class="wb-inspector-section" data-inspector-panel="sound"><h4>Mezcla de audio</h4><div class="studio-fields">'+ctrl('volume','Volumen (0–2)',c.volume??1,0,2,.1)+ctrl('audioFadeIn','Fundido de audio · entrada (s)',c.audioFadeIn||0,0,c.duration/2,.1)+ctrl('audioFadeOut','Fundido de audio · salida (s)',c.audioFadeOut||0,0,c.duration/2,.1)+'</div><p class="studio-help">Silencia o activa una pista desde sus controles. Los fundidos ajustan el volumen al inicio y al final del clip.</p>'+transitionControls(c,'audio')+'</div>'+
     '<div class="wb-inspector-section" data-inspector-panel="prompt"><label>Prompt técnico<textarea data-property="prompt" rows="8" maxlength="3000" placeholder="Camera, lens, motion, lighting, continuity...">'+e(c.prompt||'')+'</textarea></label><button type="button" class="subtle" id="studiowb-copy">Copiar prompt</button><p class="studio-help">Guarda instrucciones de producción. No consume créditos ni envía datos a motores IA.</p></div></div>';
+ }
+ function transitionSourceLimit(pair){
+  let limit=Math.min(10,pair.overlap);
+  for(const c of [pair.outgoing,pair.incoming])if(['video','audio'].includes(c.kind)){
+   const duration=media.get(c.id)?.element.duration;
+   if(!Number.isFinite(duration))return 0;
+   limit=Math.min(limit,duration-clipSource(c,pair.start));
+  }
+  return Math.max(0,limit);
+ }
+ function transitionControls(c,channel){
+  const pair=transitionWindow(workspace.clips,c,channel),key=channel+'Transition';
+  if(!pair)return '';
+  return '<div class="wb-transition-properties"><h4>'+(channel==='video'?'Disolución de video':'Fundido cruzado de audio')+'</h4><p class="studio-help">Desde '+e(findAsset(pair.outgoing.assetId)?.name||'clip anterior')+' · Solape '+pair.overlap.toFixed(2)+' s</p>'+ctrl(key,'Duración de transición (s)',pair.duration,.1,transitionSourceLimit(pair),.1)+'<button type="button" class="subtle" data-remove-transition="'+channel+'">Quitar transición</button></div>';
+ }
+ function transitionMarkers(track){
+  return workspace.clips.filter(c=>c.track===track).flatMap(c=>['video','audio'].map(channel=>{
+   const pair=transitionWindow(workspace.clips,c,channel);if(!pair)return '';
+   return '<button type="button" class="wb-transition-marker wb-transition-'+channel+'" data-select-transition="'+e(c.id)+'" data-transition-channel="'+channel+'" data-transition-start="'+pair.start+'" data-transition-duration="'+pair.duration+'" title="'+(channel==='video'?'Disolución de video':'Fundido cruzado de audio')+' · '+pair.duration.toFixed(2)+' s" aria-label="Editar transición de '+channel+'">'+toolIcon(channel+'Transition')+'</button>';
+  })).join('');
  }
  function timeRuler(){
   const seconds=rulerSpan(),step=rulerStep(seconds);
@@ -242,7 +249,7 @@ export function studioWorkbenchView(root,notice,project=null){
     const wave=asset&&clip.kind==='audio'?'<canvas class="wb-waveform" data-waveform-id="'+e(asset.id)+'" aria-hidden="true"></canvas>':'';
     return '<button type="button" data-select-clip="'+e(clip.id)+'" class="wb-block wb-pro-clip '+(selected===clip.id?'selected ':'')+'wb-'+e(clip.kind)+'" title="'+e(name)+'">'+thumb+wave+((clip.videoFadeIn||clip.audioFadeIn)?'<span class="wb-fade-marker wb-fade-entry" title="Fundido de entrada">◿</span>':'')+((clip.videoFadeOut||clip.audioFadeOut)?'<span class="wb-fade-marker wb-fade-exit" title="Fundido de salida">◺</span>':'')+(splitAfter?'<i class="wb-cut-seam" aria-hidden="true"></i>':'')+'<span class="wb-clip-inner"><b>'+e(name)+'</b><small>'+mediaTimecode(clip.duration,workspace.fps)+'</small></span>'+
     (!asset&&clip.kind!=='text'?'<span class="wb-clip-missing">Falta original</span>':'')+'<span class="wb-trim-left" title="Arrastra para cambiar entrada del clip"></span><span class="wb-trim-right" title="Arrastra para estirar o recortar el clip"></span></button>';
-   }).join('')+'<div class="wb-cursor" ></div></div></div>'+((track===tracks.filter(t=>t[0]==='V').at(-1))?trackGap('video',null):'')).join('')+trackGap('audio',null)+'</div>';
+   }).join('')+transitionMarkers(track)+'<div class="wb-cursor" ></div></div></div>'+((track===tracks.filter(t=>t[0]==='V').at(-1))?trackGap('video',null):'')).join('')+trackGap('audio',null)+'</div>';
  }
  async function fillTimelineMedia(){
   for(const item of root.querySelectorAll('[data-clip-image],[data-clip-video]')){
@@ -286,6 +293,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<span class="wb-tool-separator" aria-hidden="true"></span>'+
     '<button type="button" id="studiowb-snap" title="Imán (M)" aria-label="Imán (M)" aria-pressed="'+snapping+'">'+toolIcon('snap')+'</button>'+
     '<span class="wb-tool-separator" aria-hidden="true"></span>'+['videoFadeIn','videoFadeOut','audioFadeIn','audioFadeOut','volume'].map((key,i)=>'<button type="button" data-edit-effect="'+key+'" title="'+['Video: fade in (I)','Video: fade out (O)','Audio: fade in (Shift+I)','Audio: fade out (Shift+O)','Volumen (G)'][i]+'" aria-label="'+['Video: fade in (I)','Video: fade out (O)','Audio: fade in (Shift+I)','Audio: fade out (Shift+O)','Volumen (G)'][i]+'">'+toolIcon(key)+'</button>').join('')+
+    ['video','audio'].map(channel=>'<button type="button" data-add-transition="'+channel+'" title="'+(channel==='video'?'Disolución entre clips (T)':'Fundido cruzado de audio (Shift+T)')+'" aria-label="'+(channel==='video'?'Disolución entre clips (T)':'Fundido cruzado de audio (Shift+T)')+'">'+toolIcon(channel+'Transition')+'</button>').join('')+
     '<label class="wb-tool-zoom">Zoom <input id="studiowb-zoom" aria-label="Zoom de la línea de tiempo" type="range" min=".5" max="5" step=".25" value="'+timelineZoom+'"></label>'+
     '<button type="button" id="studiowb-timeline-fit" title="Ajustar (F)" aria-label="Ajustar (F)">'+toolIcon('fit')+'</button>'+
     '<div id="studiowb-tool-hint" class="wb-tool-hint" role="status">'+(editingTool==='blade'?'CUCHILLA · Haz clic en un clip para cortarlo exactamente aquí':'SELECCIÓN · Arrastra, recorta o elige un clip')+'</div></div>'+
@@ -380,6 +388,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    block.dataset.wbGeometryClip=String(index);
    addRuntimeRule('clip:'+index,'[data-wb-geometry-clip="'+index+'"]',{left:position(clip.start),width:Math.max(.65,clip.duration/seconds*100).toFixed(4)+'%'});
   });
+  timelineEl.querySelectorAll('[data-select-transition]').forEach((marker,index)=>{marker.dataset.wbGeometryTransition=String(index);addRuntimeRule('transition:'+index,'[data-wb-geometry-transition="'+index+'"]',{left:position(marker.dataset.transitionStart),width:(Number(marker.dataset.transitionDuration)/seconds*100).toFixed(4)+'%'});});
   addRuntimeRule('playhead','.wb-timeline .wb-cursor',{left:position(workspace.playhead)});
   const cursor=timelineEl.querySelector('#studiowb-ruler-cursor');
   if(cursor)addRuntimeRule('ruler-playhead','.wb-ruler-times #studiowb-ruler-cursor',{left:position(workspace.playhead)});
@@ -451,11 +460,12 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     if(added)track=added.id;
     const next=start===null?clip:insertClipAt(asset,clip,snapToEdges(start,workspace.clips,null,{enabled:snapping}),track||clip.track);
     if(!trackIsEditable(trackState,next.track)){notice('Pista bloqueada: desbloquéala para insertar medios.');return;}
-    checkpoint();if(added)workspace.tracks=added.tracks;workspace.clips.push(next);selected=next.id;mobilePane='timeline';save();await prime();render();
+    checkpoint();if(added)workspace.tracks=added.tracks;workspace.clips.push(next);selected=next.id;inspectorTab='clip';mobilePane='timeline';save();await prime();render();
    }catch(error){notice(error.message);}
   };
   root.querySelectorAll('[data-insert-asset]').forEach(b=>b.onclick=()=>addFromLibrary(b.dataset.insertAsset,{start:workspace.playhead}));
   root.querySelectorAll('[data-drag-asset]').forEach(card=>card.ondragstart=ev=>{
+    if(rendering){ev.preventDefault();return;}
     ev.dataTransfer?.setData('text/plain',card.dataset.dragAsset);
     if(ev.dataTransfer)ev.dataTransfer.effectAllowed='copy';
   });
@@ -475,6 +485,15 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     if(!asset)return;if((asset.kind==='audio')!==(gap.dataset.trackGap==='audio')){notice('Usa una zona de inserción del mismo tipo que el clip.');return;}
     const lane=root.querySelector('[data-timeline-seek]');addFromLibrary(id,{start:lanePosition(ev.clientX,lane),gap});};
   });
+  root.querySelectorAll('[data-add-transition]').forEach(button=>button.onclick=async()=>{
+   if(rendering)return;
+   const c=workspace.clips.find(x=>x.id===selected),channel=button.dataset.addTransition;
+   if(!c){notice('Selecciona el segundo clip del solape.');return;}
+   if(!trackIsEditable(trackState,c.track)){notice('Pista bloqueada.');return;}
+   try{await prime();if(!root.isConnected||selected!==c.id||rendering||!trackIsEditable(trackState,c.track))return;const effect=createTransition(workspace.clips,c.id,channel),pair=transitionWindow(workspace.clips,c,channel,effect),limit=transitionSourceLimit(pair);if(limit<.1)throw new Error('No hay suficiente material original para esta transición. Ajusta el solape y la entrada del medio.');effect.duration=Math.min(effect.duration,limit);checkpoint();c[channel+'Transition']=effect;inspectorTab=channel==='video'?'color':'sound';save();render();paint();notice('Transición de '+channel+' aplicada. Ajusta su duración en el inspector.');}catch(error){notice(error.message);}
+  });
+  root.querySelectorAll('[data-select-transition]').forEach(button=>button.onclick=()=>{selected=button.dataset.selectTransition;inspectorTab=button.dataset.transitionChannel==='video'?'color':'sound';render();});
+  root.querySelectorAll('[data-remove-transition]').forEach(button=>button.onclick=()=>{const c=workspace.clips.find(x=>x.id===selected);if(!c||!trackIsEditable(trackState,c.track))return;checkpoint();delete c[button.dataset.removeTransition+'Transition'];save();render();syncPlayback(true);paint();});
   root.querySelectorAll('[data-edit-effect]').forEach(button=>button.onclick=()=>{
    const c=workspace.clips.find(x=>x.id===selected),key=button.dataset.editEffect;
    if(!c){notice('Selecciona un clip.');return;}if(!trackIsEditable(trackState,c.track)){notice('Pista bloqueada.');return;}
@@ -613,6 +632,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   });
   // Standard desktop editing shortcuts, disabled when typing into forms or another panel.
   const shortcut=ev=>{
+   if(rendering){ev.preventDefault();return;}
    if(!root.isConnected||!root.contains(root.ownerDocument.activeElement)&&root.ownerDocument.activeElement?.closest?.('input,textarea,select,[contenteditable=true]'))return;
    if(ev.target?.closest?.('input,textarea,select,[contenteditable=true]'))return;
    const key=(ev.key||'').toLowerCase();
@@ -621,6 +641,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    else if(key==='v'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();editingTool='select';render();}
     else if(key==='c'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();editingTool='blade';render();}
     else if(key==='s'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();splitSelected();}
+   else if(key==='t'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();root.querySelector('[data-add-transition="'+(ev.shiftKey?'audio':'video')+'"]')?.click();}
    else if(key===' '&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();play();}
    else if(!ev.ctrlKey&&!ev.metaKey&&['d','m','f','g','i','o'].includes(key)){ev.preventDefault();const id={d:'studiowb-toolbar-duplicate',m:'studiowb-snap',f:'studiowb-timeline-fit'}[key];if(id)el(id).click();else root.querySelector('[data-edit-effect="'+(key==='g'?'volume':(ev.shiftKey?'audio':'video')+(key==='i'?'FadeIn':'FadeOut'))+'"]')?.click();}
    else if((key==='delete'||key==='backspace')&&selected){ev.preventDefault();const clip=workspace.clips.find(x=>x.id===selected);if(clip&&trackIsEditable(trackState,clip.track)){checkpoint();workspace.clips=workspace.clips.filter(x=>x.id!==selected);selected=null;save();render();}}
@@ -630,7 +651,8 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    const c=workspace.clips.find(x=>x.id===selected);if(!c)return;
    if(!trackIsEditable(trackState,c.track)){notice('Desbloquea esta pista para modificar el clip.');return;}
    checkpoint();const key=ev.target.dataset.property,value=ev.target.value;
-   if(key==='track'){if(compatibleTrack(c.kind,value)&&tracks.includes(value)&&trackIsEditable(trackState,value))c.track=value;}
+   if(['videoTransition','audioTransition'].includes(key)){const channel=key.slice(0,-10),pair=transitionWindow(workspace.clips,c,channel);if(pair)c[key].duration=number(value,.1,transitionSourceLimit(pair));}
+   else if(key==='track'){if(compatibleTrack(c.kind,value)&&tracks.includes(value)&&trackIsEditable(trackState,value))c.track=value;}
    else if(['text','prompt'].includes(key))c[key]=value.slice(0,key==='text'?180:3000);
    else {const ranges={videoFadeIn:[0,c.duration/2],videoFadeOut:[0,c.duration/2],audioFadeIn:[0,c.duration/2],audioFadeOut:[0,c.duration/2],start:[0,600],duration:[.1,120],sourceStart:[0,600],volume:[0,2],brightness:[0,200],contrast:[0,200],saturation:[0,200],blur:[0,20],opacity:[0,1],scale:[.25,4],x:[-1,1],y:[-1,1]};if(ranges[key])c[key]=number(value,...ranges[key]);}
    if(c.start+c.duration>600)c.duration=Math.max(.1,600-c.start);
