@@ -64,6 +64,7 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.ok(root.querySelector('[data-bin-switch="cloud"]'));
   assert.ok(root.querySelector('[data-bin-switch="text"]'));
   assert.ok(root.querySelector('#studiowb-source-frame'));
+  assert.equal(root.querySelector('#studiowb-source-pane').hidden,true,'Empty source preview never overlaps the media list');
   assert.ok(root.querySelector('#studiowb-source-add'));
   assert.ok(root.querySelector('#studiowb-media-search'));
   assert.ok(root.querySelector('.wb-timeline-panel'));

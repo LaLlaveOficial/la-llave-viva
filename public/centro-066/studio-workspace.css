@@ -486,3 +486,21 @@
  .wb-root .wb-timeline .wb-pro-clip .wb-trim-left,
  .wb-root .wb-timeline .wb-pro-clip .wb-trim-right{width:22px!important;min-width:22px!important;max-width:22px!important}
 }
+
+/* Real-Chrome regression: keep file cards and source monitor in separate flex slots.
+   Previously the source panel overlapped (and stole clicks from) "Al final". */
+.wb-root .wb-library{display:flex!important;flex-direction:column;overflow:hidden!important;position:relative}
+.wb-root .wb-bin-local{min-height:0!important;flex:1 1 0!important;overflow:hidden!important;display:flex!important;flex-direction:column}
+.wb-root[data-bin=cloud] .wb-bin-local,
+.wb-root[data-bin=text] .wb-bin-local{display:none!important}
+.wb-root .wb-media-list{min-height:0!important;flex:1 1 auto!important;max-height:none!important;
+  overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain;position:relative}
+.wb-root .wb-media-item{position:relative;z-index:0}
+.wb-root .wb-source-pane{flex:0 0 auto!important;max-height:142px!important;position:relative!important;
+  z-index:1;overflow:hidden;border-top:1px solid #4b473e;padding:7px!important}
+.wb-root .wb-source-pane[hidden]{display:none!important}
+.wb-root .wb-source-frame{height:68px!important;min-height:0!important}
+@media(max-width:850px){
+ .wb-root .wb-source-pane{max-height:155px!important}
+ .wb-root .wb-source-frame{height:75px!important}
+}
