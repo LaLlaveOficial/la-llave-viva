@@ -112,28 +112,28 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   // Full pointer gesture, not just a synthetic button click: end trim must expand.
   root.querySelector('#studiowb-select-tool').click();
   const resizeBlock=()=>root.querySelector('[data-select-clip]');
-  const bindRect=()=>resizeBlock().closest('[data-timeline-seek]').getBoundingClientRect=()=>({left:0,width:960,right:960,top:0,bottom:70,height:70});
+  const bindRect=()=>resizeBlock().closest('[data-timeline-seek]').getBoundingClientRect=()=>({left:0,width:1920,right:1920,top:0,bottom:70,height:70});
   const fire=(el,type,x)=>el.dispatchEvent(new dom.window.MouseEvent(type,{bubbles:true,cancelable:true,button:0,clientX:x}));
   bindRect();
   const beforeTrim=resizeBlock().style.width;
-  fire(resizeBlock().querySelector('.wb-trim-right'),'pointerdown',320);
-  fire(dom.window,'pointermove',480);
+  fire(resizeBlock().querySelector('.wb-trim-right'),'pointerdown',640);
+  fire(dom.window,'pointermove',960);
   assert.notEqual(resizeBlock().style.width,beforeTrim,'resize changes the visible clip while dragging');
-  fire(dom.window,'pointerup',480);
+  fire(dom.window,'pointerup',960);
   assert.equal(Number(root.querySelector('[data-property="duration"]').value),6,'right handle expands duration by 2s');
   root.querySelector('#studiowb-undo').click();
   assert.match(resizeBlock().title,/CASO/);
   assert.equal(resizeBlock().style.width,beforeTrim,'undo restores clip width');
   bindRect();
-  fire(resizeBlock().querySelector('.wb-trim-right'),'pointerdown',320);
-  fire(dom.window,'pointermove',400);
-  fire(dom.window,'pointercancel',400);
+  fire(resizeBlock().querySelector('.wb-trim-right'),'pointerdown',640);
+  fire(dom.window,'pointermove',720);
+  fire(dom.window,'pointercancel',720);
   assert.equal(resizeBlock().style.width,beforeTrim,'pointercancel must not save a partial resize');
 
   // Moving a clip is a different action from trimming it.
   bindRect();
   fire(resizeBlock().querySelector('.wb-clip-inner'),'pointerdown',160);
-  fire(dom.window,'pointermove',320);
+  fire(dom.window,'pointermove',480);
   fire(dom.window,'pointerup',320);
   assert.equal(Number(root.querySelector('[data-property="start"]').value),2,'dragging clip body moves it in timeline');
   const lockedBefore=Number(root.querySelector('[data-property="start"]').value);
