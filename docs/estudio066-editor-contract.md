@@ -62,3 +62,13 @@ Contrato geométrico:
 - Exportación descargada, reproducida y comprobada en dispositivos destino.
 - Recuperación de proyecto/medios y protección de datos confirmadas.
 - Demo humana aceptada explícitamente por usuario, autorización separada de merge/deploy.
+
+## Pistas y herramientas (11-oct-2026)
+
+- Pistas ordenadas persistidas en `workspace.tracks`, con identificadores estables y un máximo de 12 pistas en total. Migración automática de proyectos anteriores con V2, V1, A1 y A2.
+- Arrastre vertical: video, imagen y texto solo en pistas V; audio solo en A. Un destino bloqueado o incompatible cancela el cambio.
+- Soltar entre pistas crea una pista del mismo tipo en una única transacción junto con el movimiento; cancelar o superar el límite conserva el proyecto. Deshacer/Rehacer incluye las pistas.
+- Barra de iconos SVG con nombre/atajo en tooltip: selección V, cuchilla C, dividir S, duplicar D, quitar Supr, imán M, ajustar F, fundidos de video I/O, fundidos de audio Shift+I/Shift+O y volumen G.
+- Botones de fundido alternan una entrada/salida de hasta un segundo y abren su duración en el inspector. La duración se limita a media longitud del clip. El volumen admite 0–2 con Web Audio y 0–1 con reproducción HTML sin ganancia.
+- Fundidos a transparencia y a silencio calculados por el mismo compositor/mezclador de reproducción y exportación local. No representan disoluciones cruzadas entre pares de clips.
+- QA Chrome: arrastre arriba/abajo, inserción de video y audio entre pistas, rechazo de tipo incompatible, doce pistas, undo/redo, recuperación al recargar, fundidos y volumen.

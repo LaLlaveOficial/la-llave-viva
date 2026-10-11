@@ -64,11 +64,11 @@ jobs:
             sleep 1
           done
           node tests/studio066-browser.test.mjs
-      - name: Captura de fallo de interacción
-        if: failure()
+      - name: Capturas de interacción
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: estudio066-browser-failure
-          path: /tmp/studio066-browser/failed.png
+          name: estudio066-browser-evidence
+          path: /tmp/studio066-browser/*.png
           if-no-files-found: ignore
 

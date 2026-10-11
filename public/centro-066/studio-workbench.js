@@ -89,7 +89,7 @@ export function studioWorkbenchView(root,notice,project=null){
    if(on&&(force||Math.abs(m.element.currentTime-target)>.35))try{m.element.currentTime=target;}catch{}
    m.element.muted=!trackIsAudible(trackState,c.track);
     if(m.gain)m.gain.gain.value=on&&trackIsAudible(trackState,c.track)?number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio'):0;
-   if(!m.gain)m.element.volume=on&&trackIsAudible(trackState,c.track)?Math.min(1,number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio')):0;
+   if(m.gain)m.element.volume=1;else m.element.volume=on&&trackIsAudible(trackState,c.track)?Math.min(1,number(c.volume??1,0,2)*fadeEnvelope(c,t,'audio')):0;
    if(isPlaying&&on&&m.element.paused)m.element.play().catch(()=>{});
    else if((!isPlaying||!on)&&!m.element.paused)m.element.pause();
   }
