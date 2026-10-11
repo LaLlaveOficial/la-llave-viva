@@ -601,3 +601,25 @@
     min-height:315px !important;
   }
 }
+
+
+/* Compact desktop track lanes so all four editorial tracks remain visible
+   within the timeline viewport. Touch layouts keep their larger hit areas. */
+@media (min-width:851px) {
+  .wb-track {
+    min-height:58px !important;
+  }
+  .wb-track-content {
+    min-height:56px !important;
+  }
+  .wb-pro-track-label {
+    min-height:56px !important;
+  }
+  .wb-pro-clip {
+    height:46px !important;
+    min-height:46px !important;
+  }
+  .wb-waveform {
+    height:20px !important;
+  }
+}
