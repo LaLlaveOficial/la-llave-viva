@@ -58,10 +58,10 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.ok(root.querySelector('#studiowb-toolbar-remove'));
   assert.equal(root.querySelectorAll('[data-track-flag]').length,8);
   assert.ok(root.querySelector('#studiowb-ruler-cursor'));
-  const beforeWidth=parseInt(root.querySelector('.wb-ruler-times').style.width,10);
+  const beforeWidth=Number(root.querySelector('.wb-timeline').dataset.rulerWidth);
   root.querySelector('#studiowb-zoom').value='2';
   root.querySelector('#studiowb-zoom').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
-  assert.ok(parseInt(root.querySelector('.wb-ruler-times').style.width,10)>beforeWidth);
+  assert.ok(Number(root.querySelector('.wb-timeline').dataset.rulerWidth)>beforeWidth);
   root.querySelector('[data-track-flag="A1:muted"]').click();
   assert.equal(root.querySelector('[data-track-flag="A1:muted"]').getAttribute('aria-pressed'),'true');
   root.querySelector('[data-track-flag="V2:locked"]').click();
