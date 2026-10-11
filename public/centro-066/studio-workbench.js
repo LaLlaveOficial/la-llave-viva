@@ -331,6 +331,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   wbRoot.dataset.studioRuntime=runtimeId;
   clearRuntimeGeometry();
   const seconds=rulerSpan(),width=rulerWidth(),step=rulerStep(seconds);
+  timelineEl.dataset.rulerWidth=String(width);
   const position=time=>(Math.max(0,Number(time)||0)/seconds*100).toFixed(4)+'%';
   addRuntimeRule('timeline','.wb-timeline',{'--wb-lane-min':width+'px','--wb-grid-step':(width*step/seconds).toFixed(2)+'px'});
   const ruler=timelineEl.querySelector('.wb-ruler-times');
