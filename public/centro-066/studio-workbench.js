@@ -20,6 +20,7 @@ export function studioWorkbenchView(root,notice,project=null){
  const runtimeId='s'+(++studio066RuntimeSequence),runtimeRules=new Map();let runtimeSheet=null;
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
+ let inspectorRenderFrame=0,pendingInspectorRefresh=null;
  const history=[],future=[],waveforms=new Map();
  const trackState=Object.fromEntries(tracks.map(t=>[t,{locked:false,muted:false,hidden:false}]));
  const rulerSpan=()=>timelineSpan(workspace.clips,12);
@@ -296,6 +297,20 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    if(asset.kind==='video')elem.playsInline=true;
    frame.append(elem);
   }catch{if(frame.isConnected)frame.textContent='No se pudo abrir el original';}
+ }
+ function scheduleInspectorRefresh(clipId,reveal){
+  pendingInspectorRefresh={clipId,reveal};
+  if(inspectorRenderFrame)return;
+  const view=root.ownerDocument.defaultView;
+  const refresh=()=>{
+   inspectorRenderFrame=0;
+   const pending=pendingInspectorRefresh;pendingInspectorRefresh=null;
+   if(!root.isConnected)return;
+   render();
+   if(pending?.reveal)revealSelectedClip(pending.clipId);
+  };
+  if(view?.requestAnimationFrame)inspectorRenderFrame=view.requestAnimationFrame(refresh);
+  else inspectorRenderFrame=setTimeout(refresh,0);
  }
  function revealSelectedClip(id){
   const timelineEl=root.querySelector('.wb-timeline');
@@ -574,10 +589,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    save();
    // Never replace the focused inspector field while Chrome is dispatching its change/blur event.
    const clipId=selected,reveal=key==='start'||key==='duration';
-   const afterChange=()=>{if(!root.isConnected)return;render();if(reveal)revealSelectedClip(clipId);};
-   const view=root.ownerDocument.defaultView;
-   if(view?.requestAnimationFrame)view.requestAnimationFrame(afterChange);
-   else setTimeout(afterChange,0);
+   scheduleInspectorRefresh(clipId,reveal);
   });
   const selectedClip=workspace.clips.find(c=>c.id===selected);
   if(selectedClip){
