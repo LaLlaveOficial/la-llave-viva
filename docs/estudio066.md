@@ -150,3 +150,12 @@ Nuevos componentes desarrollados en rama aislada: tarjetas locales con miniatura
 
 Miniaturas de originales locales y subidos a la nube: si el archivo está local, se muestra directamente; el remoto no recuperado exige pulsar «Vista previa» (descarga firmada con SHA-256 y tamaño verificados) para evitar transferencias y facturación automáticas. Los móviles pueden añadir a la posición del cabezal sin drag HTML5. El botón «+ Al final» mantiene el comportamiento previo.
 Estas funciones son un **editor no destructivo de primera fase**; no están implementadas todas las herramientas de Premiere/CapCut/Firefly (keyframes reales, waveforms, transiciones complejas, colaboración, GPU/FFmpeg remoto).
+
+
+## Estación visual unificada y responsive — 11 octubre 2026 (Preview)
+
+El usuario aportó un paquete ZIP de referencia de Stitch con siete pantallas: workspace de edición multitrack para escritorio, vista móvil, generación Firefly/IA, montaje Copilot, render/exportación móvil y desktop. Se adopta la **arquitectura visual**, no el branding ni capacidades inexistentes (GPU NVENC, colas de render, créditos falsos).
+
+Nueva hoja de estilos aislada `studio-workspace.css` y mejoras de UI sin alterar IndexedDB, Neon, proyectos ni los endpoints. En escritorio: navegación OP 066 condensada, cabecera profesional, seis parámetros de proyecto, toolbar, biblioteca acoplada con fichas/miniaturas, pestañas Medios/Nube/Texto/Audio, panel Origen con previsualización real, monitor Programa, inspector contextual y timeline multitrack en el mismo viewport. Herramientas funcionales anteriores conservadas; móviles: cabecera horizontal con scrolling y selector de panel bajo el monitor, por defecto timeline; Biblioteca e Inspector mediante dock táctil para evitar minúsculos tres paneles al mismo tiempo. En la galería: seleccionar thumbnail abre imagen/video/audio real, 'Insertar en cabezal' pasa al timeline, drag & drop sigue soportado en PC. Las etiquetas de navegación nunca implican motores IA activos.
+
+**Pendiente:** QA real en Chrome/Android, Safari, tamaño 390/768/1440, contraste, prueba visual con archivo real, pulir Timeline y transiciones avanzadas; no autorizar producción antes de QA manual. El diseño requiere nuevas pruebas de teclado, acceso por pantalla, rendimiento con 100+ archivos y estado de nube/papelera.

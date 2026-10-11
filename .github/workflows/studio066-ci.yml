@@ -41,6 +41,8 @@ jobs:
           node --check public/centro-066/studio-media.js
           node --check public/centro-066/studio-timeline-tools.js
           node --check public/centro-066/studio.js
+          test -s public/centro-066/studio-workspace.css
+          grep -q 'studio-workspace.css' public/centro-066/index.html
           node --check public/centro-066/app.js
           node --check public/centro-066/studio-generation.js
           node --check public/centro-066/studio-portable.js
