@@ -219,3 +219,50 @@
  .wb-file-menu{margin-left:auto}
  .wb-top .wb-top-export{margin-left:0}
 }
+
+/* Shared studio visual language: generation and planning use the same tight docks.
+   Design-only; never display fake AI results, credits or provider connectivity. */
+.shell.studio-mode .studio-pane{background:#14181d;border:1px solid #3c413d;border-radius:6px;padding:16px}
+.shell.studio-mode .studio-pane h3{color:#f1e6d0}
+.shell.studio-mode .studio-head{border-bottom:1px solid #4a463b;padding-bottom:8px}
+.shell.studio-mode .studio-tab:not(.current):hover{background:#322917;color:#ffe8ad}
+.studio-root:has(#studio-generation-host){gap:0!important;background:#0c1014}
+.studio-root:has(#studio-generation-host)>.studio-banner{display:none}
+.studio-root:has(#studio-generation-host)>.studio-tabs{padding:2px 7px;gap:2px;flex-wrap:nowrap;overflow:auto;background:#11151a;border-bottom:1px solid #4b4437}
+.studio-root:has(#studio-generation-host)>.studio-tabs button{min-height:36px;padding:10px 12px;border:0;border-radius:5px 5px 0 0;background:transparent;color:#c4c7c3;white-space:nowrap;font-size:11px}
+.studio-root:has(#studio-generation-host)>.studio-tabs button.current{color:#f4d38a;border-bottom:2px solid #eabc62;background:#ddaa4a17}
+#studio-generation-host{border:1px solid #4d4636;border-top:0;min-width:0}
+#studio-generation-host .gen-workspace{display:grid;grid-template-columns:minmax(195px,.8fr) minmax(340px,1.5fr) minmax(300px,1.1fr);gap:0;min-height:clamp(570px,77vh,960px);align-items:stretch;background:#101418;border:0}
+#studio-generation-host .gen-workspace>*{border:0;border-radius:0;padding:13px!important;background:#151a1f;min-height:0}
+#studio-generation-host .gen-history{background:#13181d;border-right:1px solid #40433e;max-height:clamp(570px,77vh,960px);overflow:auto}
+#studio-generation-host .gen-preview-panel{background:#090c10;border-right:1px solid #40433e}
+#studio-generation-host .gen-form{max-height:clamp(570px,77vh,960px);overflow-y:auto;background:#14191f}
+#studio-generation-host .gen-heading{padding-bottom:9px;margin-bottom:3px;border-bottom:1px solid #393d38}
+#studio-generation-host .gen-heading h3{font-size:13px}
+#studio-generation-host .gen-heading button{min-height:30px;padding:7px!important}
+#studio-generation-host .gen-record,#studio-generation-host .gen-result,#studio-generation-host .gen-result-tile{border-radius:4px!important;background:#1a1f25!important}
+#studio-generation-host .gen-record.active{border-color:#d3a858!important;background:#3b2d1c!important}
+#studio-generation-host .gen-stage{background:#05070a;min-height:250px;max-height:none;flex:1;border:1px solid #333e40;border-radius:3px}
+#studio-generation-host .gen-form input:not([type=checkbox]):not([type=radio]):not([type=file]),#studio-generation-host .gen-form select,#studio-generation-host .gen-form textarea{border-radius:4px;background:#0b0e12;border-color:#555b5859;padding:8px}
+#studio-generation-host .gen-form details{border-top:1px solid #494a42}
+#studio-generation-host .gen-state{border-radius:4px}
+#studio-generation-host .gen-cta button{min-height:34px;border-radius:4px}
+#studio-generation-host .gen-ref-thumb{border-radius:4px;background:#080b0d}
+@media(max-width:1300px) and (min-width:851px){
+ #studio-generation-host .gen-workspace{grid-template-columns:minmax(195px,.85fr) minmax(340px,1.4fr)}
+ #studio-generation-host .gen-form{grid-column:1/-1;max-height:unset;border-top:1px solid #45443b}
+ #studio-generation-host .gen-history{max-height:600px}
+}
+@media(max-width:850px){
+ .studio-root:has(#studio-generation-host)>.studio-tabs{padding:2px 4px}
+ #studio-generation-host .gen-workspace{display:flex;flex-direction:column;gap:0;min-height:0}
+ #studio-generation-host .gen-preview-panel{order:0;min-height:310px;border:0;border-bottom:1px solid #4d463a}
+ #studio-generation-host .gen-form{order:1;max-height:none;border:0;border-bottom:1px solid #4d463a}
+ #studio-generation-host .gen-history{order:2;max-height:390px;border:0;overflow:auto}
+ #studio-generation-host .gen-stage{min-height:230px;max-height:clamp(280px,40svh,380px)}
+}
+@media(max-width:450px){
+ #studio-generation-host .gen-form .gen-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #studio-generation-host .gen-form .gen-ref-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #studio-generation-host .gen-mode{flex-wrap:wrap}
+}
