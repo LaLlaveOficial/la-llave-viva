@@ -58,6 +58,11 @@ try{
  await page.mouse.down();await page.mouse.move(sx+130,bb.y+bb.height/2,{steps:12});await page.mouse.up();
  const moved=Number(await page.locator('[data-property=start]').inputValue());
  assert.ok(moved>0.5,'Drag of image body must move clip, got '+moved);
+ const movedPosition=await page.locator('.wb-timeline [data-select-clip].selected').evaluate(el=>{
+  const r=el.getBoundingClientRect(),lane=el.parentElement.getBoundingClientRect();
+  return {relativePx:r.left-lane.left,laneWidth:lane.width,left:el.style.left};
+ });
+ assert.ok(movedPosition.relativePx>25,'Dragged clip must actually move visually, not just in the inspector: '+JSON.stringify(movedPosition));
  await page.locator('#studiowb-blade-tool').click();
  let block=page.locator('.wb-timeline [data-select-clip]').first();
  await block.scrollIntoViewIfNeeded();
@@ -87,7 +92,10 @@ try{
  assert.ok(Math.abs(pos.visualDuration-pos.duration/(pos.start+pos.duration+2))<.025,'DOM clip width must agree with inspector: '+JSON.stringify(pos));
  const movingBlock=page.locator('.wb-timeline [data-select-clip].selected');
  await movingBlock.scrollIntoViewIfNeeded();
+ const scrollBeforeBlade=await page.locator('.wb-timeline').evaluate(el=>el.scrollLeft);
  await page.locator('#studiowb-blade-tool').click();
+ const scrollAfterBlade=await page.locator('.wb-timeline').evaluate(el=>el.scrollLeft);
+ assert.ok(Math.abs(scrollAfterBlade-scrollBeforeBlade)<2,'Selecting razor must not reset horizontally scrolled timeline');
  const afterRect=await page.locator('.wb-timeline [data-select-clip].selected').boundingBox();
  await page.mouse.click(afterRect.x+Math.min(afterRect.width/2,90),afterRect.y+afterRect.height/2);
  assert.equal(await page.locator('.wb-timeline [data-select-clip]').count(),3,'Blade must split relocated long clip at visible click');
