@@ -43,14 +43,14 @@ try{
  await page.mouse.move(edge.x+edge.width/2,edge.y+edge.height/2);
  await page.mouse.down();
  await page.mouse.move(edge.x+edge.width/2+120,edge.y+edge.height/2,{steps:12});
- const during=await page.locator('[data-select-clip]').first().getAttribute('style');
+ const during=await page.locator('[data-select-clip]').first().boundingBox();
  await page.mouse.up();
  const resized=Number(await page.locator('[data-property=duration]').inputValue());
  assert.ok(resized>originalDuration+0.5,'Pointer trim must expand actual image clip, got '+resized);
  await page.locator('#studiowb-undo').click();
  await page.locator('[data-select-clip]').first().waitFor();
- const restored=await page.locator('[data-select-clip]').first().getAttribute('style');
- assert.ok(restored!==during,'Undo restores original visual clip length');
+ const restored=await page.locator('[data-select-clip]').first().boundingBox();
+ assert.ok(during&&restored&&Math.abs(restored.width-during.width)>10,'Undo restores original rendered clip width');
  await page.locator('#studiowb-select-tool').click();
  const body=page.locator('.wb-timeline [data-select-clip] .wb-clip-inner').first();
  await body.scrollIntoViewIfNeeded();
