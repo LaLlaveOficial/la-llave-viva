@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {insertClipAt,splitClipAt,snapToEdges,trackPosition} from '../public/centro-066/studio-timeline-tools.js';
+import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime} from '../public/centro-066/studio-timeline-tools.js';
 import {mediaDB,addMedia,listMedia,readMedia,listTrashedMedia,trashMedia,restoreMedia} from '../public/centro-066/studio-media.js';
 
 const image={id:'a',kind:'image',assetId:'id1',track:'V1',start:0,duration:6,sourceStart:1.5,prompt:'Cinematic',opacity:1};
@@ -54,4 +54,16 @@ test('soft delete preserves local original bytes and restoration is idempotent',
  }finally{
   db?.close();globalThis.window=original;if(globalIDB===undefined)delete globalThis.indexedDB;else globalThis.indexedDB=globalIDB;
  }
+});
+
+test('blade pointer maps position into timeline and rounds to a frame',()=>{
+ assert.equal(pointerCutTime(180,100,960,12,24),1);
+ assert.equal(pointerCutTime(580,100,960,12,24),6);
+ assert.equal(pointerCutTime(-100,100,960,12,24),0);
+ assert.equal(pointerCutTime(2000,100,960,12,24),12);
+ assert.equal(pointerCutTime(50,0,0,12,24),0);
+ const slices=splitClipAt([image],image.id,pointerCutTime(200,100,600,12,24),()=> 'right');
+ assert.equal(slices.length,2);
+ assert.equal(slices[0].duration,2);
+ assert.equal(slices[1].sourceStart,3.5);
 });

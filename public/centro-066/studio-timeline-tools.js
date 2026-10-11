@@ -30,3 +30,11 @@ export function trackPosition(clientX,left,width,duration){
  if(!Number.isFinite(width)||width<=0)return 0;
  return round(Math.max(0,Math.min(600,((clientX-left)/width)*duration)));
 }
+
+// Blade interaction: translate the real pointer into a frame-aligned cut.
+// The ruler and track content share the same coordinate system.
+export function pointerCutTime(clientX,left,width,seconds,fps=24){
+ if(![clientX,left,width,seconds,fps].every(Number.isFinite)||width<=0||seconds<=0||fps<1||fps>120)return 0;
+ const time=Math.min(seconds,Math.max(0,(clientX-left)/width*seconds));
+ return Math.round(time*fps)/fps;
+}

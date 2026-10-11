@@ -3,7 +3,7 @@ import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
 import {mountStudioCloud} from './studio-cloud066.js';
 import {exportCanvasRecording,exportFormatCapabilities,recordingBitrate} from './studio-recording.js';
 import {preflightExportMedia,formatExportPreflightError} from './studio-export-preflight.js';
-import {insertClipAt,splitClipAt,snapToEdges,trackPosition} from './studio-timeline-tools.js';
+import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime} from './studio-timeline-tools.js';
 import {extractPeaks,timelineSpan,mediaTimecode,trackIsEditable,trackIsAudible,trackIsVisible} from './studio-timeline-visuals.js';
 // Editor en navegador, sin llamadas a proveedores ni consumo de créditos.
 const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -20,8 +20,8 @@ export function studioWorkbenchView(root,notice,project=null){
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  const history=[],future=[],waveforms=new Map();
  const trackState=Object.fromEntries(tracks.map(t=>[t,{locked:false,muted:false,hidden:false}]));
- const rulerSpan=()=>timelineSpan(workspace.clips);
- const rulerWidth=()=>Math.max(700,Math.ceil(rulerSpan()*30*timelineZoom));
+ const rulerSpan=()=>timelineSpan(workspace.clips,12);
+ const rulerWidth=()=>Math.max(900,Math.ceil(rulerSpan()*80*timelineZoom));
  const checkpoint=()=>{history.push(JSON.stringify(workspace));if(history.length>30)history.shift();future.length=0;};
  const restoreFrom=(source,dest)=>{if(!source.length)return;dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();selected=null;save();render();};
  const localKey=workspaceKey+':'+(project&&Number.isSafeInteger(Number(project.id))?Number(project.id):'scratch');
@@ -216,7 +216,7 @@ export function studioWorkbenchView(root,notice,project=null){
  }
  function timeline(){
   const seconds=rulerSpan(),width=rulerWidth();
-  return '<div class="wb-timeline" style="--wb-lane-min:'+width+'px" tabindex="0" aria-label="Secuencia de montaje"><div class="wb-ruler"><div class="wb-track-label wb-ruler-title"><span>TIEMPO</span><small>'+mediaTimecode(workspace.playhead,workspace.fps)+'</small></div><div class="wb-ruler-times" data-ruler-seek="true" style="width:'+width+'px">'+timeRuler()+'<div id="studiowb-ruler-cursor" class="wb-ruler-cursor" style="left:'+(workspace.playhead/seconds*100).toFixed(4)+'%"></div></div></div>'+
+  return '<div class="wb-timeline" data-tool="'+editingTool+'" style="--wb-lane-min:'+width+'px" tabindex="0" aria-label="Secuencia de montaje"><div class="wb-ruler"><div class="wb-track-label wb-ruler-title"><span>TIEMPO</span><small>'+mediaTimecode(workspace.playhead,workspace.fps)+'</small></div><div class="wb-ruler-times" data-ruler-seek="true" style="width:'+width+'px">'+timeRuler()+'<div id="studiowb-ruler-cursor" class="wb-ruler-cursor" style="left:'+(workspace.playhead/seconds*100).toFixed(4)+'%"></div></div></div>'+
    tracks.map(track=>'<div class="wb-track'+(trackState[track].locked?' wb-track-locked':'')+(trackState[track].muted||trackState[track].hidden?' wb-track-disabled':'')+'">'+trackHeader(track)+'<div class="wb-track-content" data-timeline-seek="'+track+'" style="width:'+width+'px">'+workspace.clips.filter(c=>c.track===track).map(clip=>{
     const asset=findAsset(clip.assetId),left=clip.start/seconds*100,wide=clip.duration/seconds*100,name=clip.kind==='text'?clip.text||'TÍTULO':asset?.name||'Original ausente';
     const thumb=asset&&clip.kind==='image'?'<img class="wb-block-thumbnail" data-clip-image="'+e(asset.id)+'" alt="" aria-hidden="true">':
@@ -252,13 +252,25 @@ export function studioWorkbenchView(root,notice,project=null){
  }
 
  function page(){
-  return '<div class="wb-root" data-bin="'+activeBin+'" data-mobile-pane="'+mobilePane+'"><div class="wb-top"><div class="wb-workspace-brand"><span class="wb-brand-mark" aria-hidden="true">◈</span><div><span class="studio-caption">LA LLAVE 066 · ESTACIÓN CREATIVA</span><h3>Estudio de montaje 066</h3><p class="studio-help">'+e(project?.name||'Montaje libre')+' · Guardado en este navegador</p></div></div></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-undo">↶ Deshacer</button><button type="button" class="subtle" id="studiowb-redo">↷ Rehacer</button><button type="button" class="wb-top-export" id="studiowb-top-export">⇧ Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button><details class="wb-file-menu"><summary>Archivo y respaldos ▾</summary><div class="wb-file-menu-content"><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label><button type="button" class="subtle" id="studiowb-portable-export"'+(!project?.id?' disabled':'')+'>Respaldo completo con medios</button><label class="wb-file-label">Restaurar respaldo completo<input id="studiowb-portable-import" type="file" accept=".json,application/json" '+(!project?.id?'disabled':'')+'></label></div></details></div></div>'+
+  return '<div class="wb-root" data-bin="'+activeBin+'" data-editor-tool="'+editingTool+'" data-mobile-pane="'+mobilePane+'"><div class="wb-top"><div class="wb-workspace-brand"><span class="wb-brand-mark" aria-hidden="true">◈</span><div><span class="studio-caption">LA LLAVE 066 · ESTACIÓN CREATIVA</span><h3>Estudio de montaje 066</h3><p class="studio-help">'+e(project?.name||'Montaje libre')+' · Guardado en este navegador</p></div></div></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-undo">↶ Deshacer</button><button type="button" class="subtle" id="studiowb-redo">↷ Rehacer</button><button type="button" class="wb-top-export" id="studiowb-top-export">⇧ Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button><details class="wb-file-menu"><summary>Archivo y respaldos ▾</summary><div class="wb-file-menu-content"><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label><button type="button" class="subtle" id="studiowb-portable-export"'+(!project?.id?' disabled':'')+'>Respaldo completo con medios</button><label class="wb-file-label">Restaurar respaldo completo<input id="studiowb-portable-import" type="file" accept=".json,application/json" '+(!project?.id?'disabled':'')+'></label></div></details></div></div>'+
    '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Orientación<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Resolución<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label><label>Archivo<select id="studiowb-format">'+option('webm',workspace.exportFormat||'webm','WebM · VP9/VP8')+option('mp4',workspace.exportFormat||'webm','MP4 · H.264'+(exportFormatCapabilities(window.MediaRecorder).mp4?'':' · no disponible')).replace('<option','<option'+(exportFormatCapabilities(window.MediaRecorder).mp4?'':' disabled'))+'</select></label><label>Calidad<select id="studiowb-encode-quality">'+[['standard','Estándar'],['high','Alta'],['master','Máster']].map(([v,l])=>option(v,workspace.encodingQuality||'high',l)).join('')+'</select></label></div>'+
-   '<div class="wb-edit-toolbar" role="toolbar" aria-label="Herramientas del timeline"><span class="wb-tool-section">EDICIÓN</span><button id="studiowb-select-tool" aria-pressed="'+(editingTool==='select')+'">↖ Seleccionar</button><button id="studiowb-blade-tool" aria-pressed="'+(editingTool==='blade')+'">✂ Cortar</button><button id="studiowb-split" title="Dividir clip bajo el cabezal">✂ Dividir</button><button id="studiowb-toolbar-duplicate" title="Duplicar clip seleccionado">⧉ Duplicar</button><button id="studiowb-toolbar-remove" title="Quitar clip seleccionado">⌫ Quitar</button><button id="studiowb-snap" aria-pressed="'+snapping+'">🧲 Imán '+(snapping?'activado':'apagado')+'</button><label>Zoom <input id="studiowb-zoom" aria-label="Zoom del timeline" type="range" min="1" max="5" step=".5" value="'+timelineZoom+'"></label><small>Arrastra archivos desde la biblioteca a las pistas. En móvil usa «En cabezal».</small></div>'+
    '<div class="wb-workarea"><aside class="wb-library" aria-label="Explorador multimedia"><div class="wb-pane-heading"><span class="wb-pane-kicker">RECURSOS DEL PROYECTO</span><h3>Biblioteca <span class="wb-count">'+(assets.length+trash.length)+'</span></h3></div><div class="wb-bin-tabs" role="group" aria-label="Explorar recursos">'+[['media','Medios'],['cloud','Nube'],['text','Texto'],['audio','Audio']].map(([id,label])=>'<button type="button" data-bin-switch="'+id+'" aria-pressed="'+(activeBin===id)+'">'+label+'</button>').join('')+'</div><div class="wb-bin-local"><label class="wb-file-label">＋ Importar video, imagen o audio<input type="file" id="studiowb-upload" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/*"></label><label class="wb-search-wrap"><span>⌕</span><input id="studiowb-media-search" type="search" placeholder="Buscar medios…" value="'+e(mediaQuery)+'" aria-label="Buscar archivos en biblioteca"></label>'+
    '<div class="wb-library-head"><button id="studiowb-local-library" class="subtle" type="button" aria-pressed="'+(!showLocalTrash)+'">Archivos ('+assets.length+')</button><button id="studiowb-local-trash" class="subtle" type="button" aria-pressed="'+showLocalTrash+'">Papelera ('+trash.length+')</button></div><div class="wb-media-list">'+(showLocalTrash?(trash.length?trash.map(a=>mediaCard(a,true)).join(''):'<p class="studio-help">Papelera vacía.</p>'):(assets.filter(a=>(activeBin!=='audio'||a.kind==='audio')&&a.name.toLowerCase().includes(mediaQuery.toLowerCase())).length?assets.filter(a=>(activeBin!=='audio'||a.kind==='audio')&&a.name.toLowerCase().includes(mediaQuery.toLowerCase())).map(a=>mediaCard(a,false)).join(''):'<p class="studio-help">No hay medios con ese filtro. Puedes importar o recuperar originales desde Nube.</p>'))+'</div></div><div class="wb-bin-text"><p class="wb-pane-kicker">TÍTULOS Y CAPAS</p><p class="studio-help">Agrega títulos en el cabezal; cambia el contenido en el inspector.</p><button type="button" class="wb-title-quick" id="studiowb-title">＋ Añadir título al montaje</button><div class="wb-title-sample">CASO 066 <small>Texto editable · V2</small></div></div><div id="studiowb-cloud" class="wb-cloud-wrap"></div><div class="wb-source-pane" id="studiowb-source-pane"><span class="wb-pane-kicker">ORIGEN · VISTA PREVIA</span><div class="wb-source-frame" id="studiowb-source-frame">Selecciona una miniatura para inspeccionarla</div><button id="studiowb-source-add" class="subtle" type="button"'+(!sourceAssetId?' disabled':'')+'>＋ Insertar en cabezal</button></div></aside>'+
    '<div class="wb-stage"><div class="wb-monitor-bar"><span class="wb-pane-kicker"><span class="wb-dot"></span> PROGRAMA · '+e(workspace.name)+'</span><span class="wb-monitor-status">Vista previa local · Sin créditos</span></div>'+(workspace.clips.some(c=>c.kind!=='text'&&!findAsset(c.assetId))?'<p class="studio-help wb-media-warning" role="status">Este montaje incluye medios que faltan en este navegador. Recupera los originales desde Biblioteca privada antes de exportar.</p>':'')+'<div class="wb-preview-box"><canvas id="studiowb-canvas" aria-label="Vista previa de composición"></canvas></div><div class="wb-controls"><button type="button" class="subtle" id="studiowb-stop" title="Volver al inicio" aria-label="Volver al inicio">⏮</button><button type="button" class="wb-play-primary" id="studiowb-play">▶ Reproducir</button><strong id="studiowb-time"></strong><button type="button" id="studiowb-export">⇧ Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button></div><input id="studiowb-seek" type="range" min="0" max="5" step=".05" value="'+workspace.playhead+'" aria-label="Posición en montaje"><p class="studio-help">1080p y calidad Máster son opciones reales de codificación del navegador, pero no garantizan detalle extra del original. MP4 solo si Chrome permite H.264; el audio MP4 requiere AAC. 2K/4K y MP4 profesional universal requerirán render remoto.</p></div>'+
-   propertyPanel()+'</div><div class="wb-timeline-panel"><div class="wb-timeline-heading"><strong>◫ Timeline multitrack</strong><span>'+workspace.clips.length+' clips · '+workspace.fps+' FPS · '+e(workspace.aspect)+'</span></div>'+timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · Generación y render remoto todavía no conectados</p></div>';
+   propertyPanel()+'</div><div class="wb-timeline-panel"><div class="wb-timeline-heading"><strong>◫ Timeline multitrack</strong><span>'+workspace.clips.length+' clips · '+workspace.fps+' FPS · '+e(workspace.aspect)+'</span></div>'+
+   '<div class="wb-edit-toolbar" role="toolbar" aria-label="Herramientas de edición de línea de tiempo"><span class="wb-tool-section">HERRAMIENTAS</span>'+
+    '<button type="button" id="studiowb-select-tool" title="Selección (V). Arrastra clips para moverlos." aria-label="Herramienta Selección, tecla V" aria-pressed="'+(editingTool==='select')+'">↖ <span>Selección</span> <kbd>V</kbd></button>'+
+    '<button type="button" id="studiowb-blade-tool" title="Cuchilla (C). Haz clic en un clip para dividir justo donde apunta el cursor." aria-label="Herramienta Cuchilla, tecla C" aria-pressed="'+(editingTool==='blade')+'">✂ <span>Cuchilla</span> <kbd>C</kbd></button>'+
+    '<span class="wb-tool-separator" aria-hidden="true"></span>'+
+    '<button type="button" id="studiowb-split" title="Divide el clip seleccionado en el cabezal (S)">⌁ <span>Dividir en cabezal</span> <kbd>S</kbd></button>'+
+    '<button type="button" id="studiowb-toolbar-duplicate" title="Duplicar clip seleccionado">⧉ <span>Duplicar</span></button>'+
+    '<button type="button" id="studiowb-toolbar-remove" title="Quitar clip seleccionado de la secuencia">⌫ <span>Quitar</span></button>'+
+    '<span class="wb-tool-separator" aria-hidden="true"></span>'+
+    '<button type="button" id="studiowb-snap" title="Activar o desactivar ajuste magnético" aria-pressed="'+snapping+'">⌕ <span>Imán '+(snapping?'activo':'inactivo')+'</span></button>'+
+    '<label class="wb-tool-zoom">Zoom <input id="studiowb-zoom" aria-label="Zoom de la línea de tiempo" type="range" min=".5" max="5" step=".25" value="'+timelineZoom+'"></label>'+
+    '<button type="button" id="studiowb-timeline-fit" title="Ajustar la escala al contenido">▣ <span>Ajustar</span></button>'+
+    '<div id="studiowb-tool-hint" class="wb-tool-hint" role="status">'+(editingTool==='blade'?'CUCHILLA · Haz clic en un clip para cortarlo exactamente aquí':'SELECCIÓN · Arrastra, recorta o elige un clip')+'</div></div>'+
+timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · Generación y render remoto todavía no conectados</p></div>';
  }
  async function updateSourceViewer(){
   const frame=root.querySelector('#studiowb-source-frame'),button=root.querySelector('#studiowb-source-add');
@@ -313,6 +325,11 @@ export function studioWorkbenchView(root,notice,project=null){
    const bounds=event.currentTarget.getBoundingClientRect();pause();seek((event.clientX-bounds.left)/bounds.width*rulerSpan());
   });
   el('studiowb-zoom').onchange=ev=>{const current=root.querySelector('.wb-timeline'),ratio=current?.scrollLeft/Math.max(1,current?.scrollWidth||1)||0;timelineZoom=Number(ev.target.value);render();const next=root.querySelector('.wb-timeline');if(next)next.scrollLeft=ratio*next.scrollWidth;};
+  el('studiowb-timeline-fit').onclick=()=>{
+   const view=root.querySelector('.wb-timeline'),available=Math.max(350,(view?.clientWidth||1050)-125);
+   timelineZoom=number(Math.round((available/(rulerSpan()*80))*4)/4,.5,5);
+   render();const next=root.querySelector('.wb-timeline');if(next)next.scrollLeft=0;
+  };
   el('studiowb-split').onclick=splitSelected;
   el('studiowb-toolbar-duplicate').onclick=()=>{const b=el('studiowb-duplicate');if(b)b.click();else notice('Selecciona un clip para duplicar.');};
   el('studiowb-toolbar-remove').onclick=()=>{const b=el('studiowb-delete');if(b)b.click();else notice('Selecciona un clip para quitar.');};
@@ -374,9 +391,29 @@ export function studioWorkbenchView(root,notice,project=null){
   });
   el('studiowb-title').onclick=()=>{checkpoint();const c={id:crypto.randomUUID(),assetId:'',kind:'text',track:'V2',start:workspace.playhead,duration:4,sourceStart:0,text:'CASO 066',volume:0,opacity:1};workspace.clips.push(c);selected=c.id;mobilePane='timeline';save();render();};
   root.querySelectorAll('[data-select-clip]').forEach(b=>{
-   b.onclick=()=>{selected=b.dataset.selectClip;inspectorTab='clip';if(editingTool==='blade'){splitSelected();return;}render();};
+   b.onclick=ev=>{
+     if(editingTool==='blade'){
+      const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
+      if(!clip)return;
+      if(!trackIsEditable(trackState,clip.track)){notice('Desbloquea la pista para cortar este clip.');return;}
+      const lane=b.parentElement,rect=lane.getBoundingClientRect();
+      // Teclado: cuando no existe coordenada de puntero, usa el cabezal actual.
+      const at=ev.detail===0||rect.width<=0?workspace.playhead:pointerCutTime(ev.clientX,rect.left,rect.width,rulerSpan(),workspace.fps);
+      const pieces=splitClipAt(workspace.clips,clip.id,at);
+      if(!pieces){notice('Coloca la cuchilla dentro del clip, lejos de sus extremos.');return;}
+      pause();checkpoint();workspace.clips=pieces;selected=pieces.at(-1).id;workspace.playhead=at;save();render();syncPlayback(true);paint();
+      return;
+     }
+     selected=b.dataset.selectClip;inspectorTab='clip';render();
+    };
+    b.onpointermove=ev=>{
+     if(editingTool!=='blade')return;
+     const rect=b.getBoundingClientRect();
+     if(rect.width>0)b.style.setProperty('--blade-x',Math.max(0,Math.min(rect.width,ev.clientX-rect.left))+'px');
+    };
+    b.onpointerleave=()=>b.style.removeProperty('--blade-x');
    b.onpointerdown=ev=>{
-    if(ev.button!==0||rendering)return;
+    if(ev.button!==0||rendering||editingTool==='blade')return;
     const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
     if(!clip||!trackIsEditable(trackState,clip.track))return;
     const lane=b.parentElement,rect=lane.getBoundingClientRect();
@@ -416,7 +453,9 @@ export function studioWorkbenchView(root,notice,project=null){
    const key=(ev.key||'').toLowerCase();
    if((ev.ctrlKey||ev.metaKey)&&key==='z'){ev.preventDefault();restoreFrom(ev.shiftKey?future:history,ev.shiftKey?history:future);}
    else if((ev.ctrlKey||ev.metaKey)&&key==='y'){ev.preventDefault();restoreFrom(future,history);}
-   else if(key==='s'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();splitSelected();}
+   else if(key==='v'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();editingTool='select';render();}
+    else if(key==='c'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();editingTool='blade';render();}
+    else if(key==='s'&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();splitSelected();}
    else if(key===' '&&!ev.ctrlKey&&!ev.metaKey){ev.preventDefault();play();}
    else if((key==='delete'||key==='backspace')&&selected){ev.preventDefault();const clip=workspace.clips.find(x=>x.id===selected);if(clip&&trackIsEditable(trackState,clip.track)){checkpoint();workspace.clips=workspace.clips.filter(x=>x.id!==selected);selected=null;save();render();}}
   };
