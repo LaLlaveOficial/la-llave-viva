@@ -65,6 +65,7 @@ export function parseWorkspace(value){
   if(c.prompt!==undefined&&String(c.prompt).length>3000)return null;
   const id=String(c.id||'').slice(0,100),assetId=String(c.assetId||'').slice(0,100);
   if(!id||(!assetId&&c.kind!=='text'))return null;
+  if(items.some(item=>item.id===id)||!Number.isFinite(Number(c.sourceStart??0))||!Number.isFinite(Number(c.volume??1)))return null;
   const fades=Object.fromEntries(['videoFadeIn','videoFadeOut','audioFadeIn','audioFadeOut'].map(k=>[k,Math.min(c.duration/2,Math.max(0,Number(c[k])||0))]));
   items.push({...c,...fades,id,assetId,start:c.start,duration:c.duration,text:String(c.text||'').slice(0,500),sourceStart:Math.max(0,Number(c.sourceStart)||0),volume:Math.min(2,Math.max(0,Number(c.volume??1))),opacity:Math.min(1,Math.max(0,Number(c.opacity??1))),brightness:Math.min(200,Math.max(0,Number(c.brightness??100))),contrast:Math.min(200,Math.max(0,Number(c.contrast??100))),saturation:Math.min(200,Math.max(0,Number(c.saturation??100))),blur:Math.min(20,Math.max(0,Number(c.blur)||0))});
  }

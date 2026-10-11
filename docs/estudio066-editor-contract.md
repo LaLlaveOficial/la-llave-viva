@@ -53,7 +53,7 @@ Contrato geométrico:
 
 **P2 — premium real y servicios:** media panel y búsqueda, markers, multi-selección, atajos, waveform seek, subtítulos, plantillas, keyframes, colas de render, MP4 H.264/AAC verificable y salida remota alta resolución, roles/permisos de medios; motores de video externos y voz ElevenLabs conectados solo tras aprobación y pruebas de costo.
 
-**Estado comprobado en rama al 11-oct-2026:** pruebas DOM y Chrome cubren importación, movimiento, cambio de duración, undo, cuchilla, desplazamiento horizontal, y split de un clip desplazado; validación de exportación y rendimiento premium completo **pendiente**. Los cambios en Preview no implican aprobación para producción.
+**Estado comprobado en rama al 11-oct-2026:** pruebas DOM y Chrome cubren importación, movimiento, cambio de duración, undo, cuchilla, desplazamiento horizontal y split de un clip desplazado. Exportación WebM comprobada con archivos reales: imagen, transiciones, sonido, recortes, silencios y audio extraído. Rendimiento con proyectos largos, compatibilidad entre dispositivos y render universal siguen pendientes. Los cambios en Preview no implican aprobación para producción.
 
 ## Criterio para pasar a producción
 
@@ -84,3 +84,21 @@ Contrato geométrico:
 - Exportación: se bloquea la edición mientras captura, se permite cancelar, y se restaura/guarda el cabezal previo. Las transiciones se ejecutan mediante el mismo compositor y mezcla de preview.
 - QA real: PNG rojo/azul y dos WAV originales de 440/880 Hz; lectura del pixel del visor, región de timeline, bloqueo, undo/redo, recuperación al recargar, cancelación y descarga de WebM. FFmpeg decodifica el archivo y verifica la mezcla de colores y ambas frecuencias en el tramo cruzado.
 - Alcance: WebM validado con Chromium. No declara validación de MP4/AAC, Windows, Safari, exportación remota ni equivalencia con render offline de precisión constante.
+
+## Originales reales, reproducción y extracción de audio
+
+- Video/audio: al insertar se obtiene la duración del decodificador. Duración y Entrada original del inspector, y el trim por extremos, se limitan al material disponible. Imágenes y títulos siguen siendo extensibles.
+- Antes de exportar se valida **cada fragmento** del original, aunque otros clips utilicen el mismo archivo. Un recorte fuera de rango o una duración ilegible bloquea la descarga y señala la corrección.
+- Se espera a que los medios decodifiquen su entrada original antes de iniciar la captura. Al restaurar un clip con el mismo ID y otro original, se desconecta y libera la fuente anterior. Undo/redo y recarga preparan las fuentes del montaje vigente.
+- Extraer audio (Shift+E): crea un clip A con el mismo original, posición, entrada, duración, volumen y fundidos de audio; el video se silencia para evitar duplicación. Busca una pista A libre y desbloqueada; si falta, crea una hasta el máximo de doce. La extracción es reversible; no modifica ni duplica los bytes del original.
+- Después de extraer, imagen y sonido se editan de forma independiente. No se declara vinculación automática ni reproducción de sonido para un video que no lo contiene. No se trasladan automáticamente crossfades entre pistas.
+- El límite de 120 clips se comprueba al insertar, cortar, duplicar, extraer sonido y añadir títulos. Impide crear montajes que el parser rechazaría después de recargar. También se rechazan identificadores de clip duplicados y valores no finitos.
+- QA real: video WebM VP8/Opus de seis segundos con tres segmentos rojo/verde/azul y sonidos 440/880/1320 Hz. Entrada 2 s; duración 3 s; corte a 1,5 s; segundo fragmento movido a 3 s; recuperación del original, undo/redo, extracción de audio y volumen independiente; recarga; descarga; decodificación FFmpeg de colores y frecuencias, con silencio durante el hueco.
+- Prueba MP4 condicional: solo se ejecuta si el navegador anuncia H.264 **y AAC**; comprueba ambos códecs con FFprobe. Que otro navegador admita el formato no establece compatibilidad universal.
+
+## Pendientes para cerrar el estudio completo
+
+1. Render MP4 H.264/AAC independiente del navegador, control de sincronía por fotograma y pruebas con material de producción largo. Render remoto no conectado.
+2. Edición avanzada: subtítulos, keyframes, multiselección, vincular imagen/audio, medidores y control de picos.
+3. Generación IA y voz: las funciones que necesitan proveedor/créditos permanecen deshabilitadas hasta conexión autorizada. No se presentan como operativas.
+4. Prueba humana con clips reales del Caso 066 y dispositivos de destino antes de aprobar producción.

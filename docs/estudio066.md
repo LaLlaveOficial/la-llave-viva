@@ -195,3 +195,10 @@ Se implementan disolución de imágenes/video y fundido cruzado de audio, con he
 El compositor procesa medios y títulos según el orden de pistas. Las transiciones de imagen usan una superficie de mezcla ponderada para evitar un descenso a negro en el centro. La mezcla de sonido utiliza curvas seno/coseno independientes del efecto visual. Guardado, JSON, backups y Deshacer/Rehacer preservan relaciones válidas; separar o borrar una fuente elimina la relación inválida.
 
 Se bloquean los controles durante una exportación y se incorpora Cancelar exportación. Finalizar o cancelar restaura el cabezal y la edición. Se valida con un archivo WebM real descargado en Chrome, decodificado con FFmpeg: dos imágenes de colores conocidos y dos tonos originales distintos. MP4/AAC y compatibilidad completa entre dispositivos siguen requiriendo validación específica.
+# Montaje con originales reales
+
+Video/audio ya usan su duración real como límite al insertar y recortar. La exportación valida todos los fragmentos y espera la preparación de su fotograma inicial. Restaurar un proyecto prepara sus originales y libera fuentes que ya no pertenecen al montaje.
+
+El icono **Extraer audio del video (Shift+E)** crea sonido editable en una pista A libre, conservando posición e In/Out, y silencia el video. Deshacer devuelve la mezcla previa. Video y audio pueden moverse y ajustarse por separado.
+
+La prueba Chrome descarga una secuencia de video real con audio separado y verifica colores, frecuencias, volumen y un intervalo en silencio mediante FFmpeg. MP4 H.264/AAC se verifica solo cuando el navegador anuncia ambos códecs; WebM es la salida comprobada localmente. Este hito no habilita render remoto, proveedores de generación ni producción.

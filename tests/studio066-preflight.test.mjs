@@ -53,3 +53,10 @@ test('repeated reference to the same original checks its blob only once',async()
  const result=await preflightExportMedia({clips:[imageClip,{...imageClip,id:'duplicate',track:'V2'}],assets:[img],...handlers,read:async()=>{reads++;return {blob:new Blob(['0123456789'])};}});
  assert.equal(result.ok,true);assert.equal(reads,1);
 });
+test('every use of an original validates its own trim including duplicate and split clips',async()=>{
+ const clips=[{id:'first',kind:'video',assetId:id,duration:2,sourceStart:0},{id:'second',kind:'video',assetId:id,duration:2,sourceStart:5}];
+ let reads=0;
+ const result=await preflightExportMedia({clips,assets:[{...img,kind:'video'}],...handlers,read:async()=>{reads++;return handlers.read();},loadMedia:async()=>({element:{readyState:2,duration:6,videoWidth:64,videoHeight:64}})});
+ assert.equal(reads,1);assert.equal(result.ok,false);assert.equal(result.problems[0].reason,'source-range');
+ assert.match(formatExportPreflightError(result),/excede su duración original/);
+});
