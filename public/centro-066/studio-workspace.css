@@ -504,3 +504,22 @@
  .wb-root .wb-source-pane{max-height:155px!important}
  .wb-root .wb-source-frame{height:75px!important}
 }
+
+/* Mobile: panel switching must not hide the real media card hit targets. */
+@media(max-width:850px){
+ .wb-root[data-mobile-pane=timeline] .wb-library,
+ .wb-root[data-mobile-pane=inspector] .wb-library{display:none!important}
+ .wb-root[data-mobile-pane=media] .wb-library{
+   display:flex!important;min-height:425px!important;height:425px!important;max-height:none!important;
+   overflow:hidden!important;flex-direction:column
+ }
+ .wb-root[data-mobile-pane=media] .wb-bin-local{flex:1 1 auto!important;min-height:290px!important;overflow:hidden}
+ .wb-root[data-mobile-pane=media] .wb-media-list{flex:1 1 auto!important;min-height:150px!important;max-height:none!important;overflow-y:auto!important}
+ .wb-root[data-mobile-pane=timeline] .wb-inspector,
+ .wb-root[data-mobile-pane=media] .wb-inspector{display:none!important}
+ .wb-root[data-mobile-pane=inspector] .wb-inspector{
+   display:grid!important;min-height:250px!important;height:auto!important;max-height:510px!important;
+ }
+ .wb-root[data-mobile-pane=media] .wb-timeline-panel,
+ .wb-root[data-mobile-pane=inspector] .wb-timeline-panel{display:none!important}
+}

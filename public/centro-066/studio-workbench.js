@@ -508,7 +508,13 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    else if(['text','prompt'].includes(key))c[key]=value.slice(0,key==='text'?180:3000);
    else {const ranges={start:[0,600],duration:[.1,120],sourceStart:[0,600],volume:[0,2],brightness:[0,200],contrast:[0,200],saturation:[0,200],blur:[0,20],opacity:[0,1],scale:[.25,4],x:[-1,1],y:[-1,1]};if(ranges[key])c[key]=number(value,...ranges[key]);}
    if(c.start+c.duration>600)c.duration=Math.max(.1,600-c.start);
-   save();render();if(key==='start'||key==='duration')revealSelectedClip(selected);
+   save();
+   // Never replace the focused inspector field while Chrome is dispatching its change/blur event.
+   const clipId=selected,reveal=key==='start'||key==='duration';
+   const afterChange=()=>{if(!root.isConnected)return;render();if(reveal)revealSelectedClip(clipId);};
+   const view=root.ownerDocument.defaultView;
+   if(view?.requestAnimationFrame)view.requestAnimationFrame(afterChange);
+   else setTimeout(afterChange,0);
   });
   const selectedClip=workspace.clips.find(c=>c.id===selected);
   if(selectedClip){

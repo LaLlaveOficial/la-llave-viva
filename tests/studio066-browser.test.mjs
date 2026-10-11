@@ -116,6 +116,7 @@ try{
      workareaHeight:document.querySelector('.wb-workarea')?.getBoundingClientRect().height};
  });
  console.log('MOBILE_LAYOUT_DIAGNOSTICS',JSON.stringify(mobileGeometry));
+ assert.ok(mobileGeometry.mediaHeight>=100,'Mobile library needs actual scroll space, not a clipped 8px strip');
  await mobile.locator('[data-add-asset]').first().click();
  assert.equal(await mobile.locator('.wb-timeline [data-select-clip]').count(),1,'Mobile user can add a real asset to timeline');
  await mobile.locator('[data-mobile-pane="inspector"]').click();
