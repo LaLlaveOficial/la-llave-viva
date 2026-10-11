@@ -65,6 +65,35 @@ try{
   return {relativePx:r.left-lane.left,laneWidth:lane.width,left:el.style.left};
  });
  assert.ok(movedPosition.relativePx>25,'Dragged clip must actually move visually, not just in the inspector: '+JSON.stringify(movedPosition));
+ // Real vertical-only gestures: move between tracks, insert on a gap, undo/redo.
+ const dragTo=async selector=>{
+  await page.locator('.wb-timeline [data-select-clip]').first().scrollIntoViewIfNeeded();
+  const from=await page.locator('.wb-timeline [data-select-clip]').first().boundingBox();
+  const target=await page.locator(selector).boundingBox();
+  const x=from.x+Math.min(45,from.width/2),y=from.y+from.height/2;
+  await page.mouse.move(x,y);await page.mouse.down();
+  await page.mouse.move(x,target.y+target.height/2,{steps:10});await page.mouse.up();
+ };
+ await dragTo('[data-timeline-seek="V2"]');
+ assert.equal(await page.locator('[data-property=track]').inputValue(),'V2','Upward drag commits new video track');
+ await dragTo('[data-timeline-seek="V1"]');
+ assert.equal(await page.locator('[data-property=track]').inputValue(),'V1','Downward drag commits new video track');
+ await dragTo('[data-track-gap="video"][data-before-track="V1"]');
+ assert.equal(await page.locator('[data-property=track]').inputValue(),'V3','Gap drop creates a new stable video track');
+ assert.equal(await page.locator('[data-timeline-seek]').count(),5);
+ await page.locator('#studiowb-undo').click();
+ assert.equal(await page.locator('[data-timeline-seek]').count(),4,'Undo removes inserted track and restores clip');
+ await page.locator('#studiowb-redo').click();
+ assert.equal(await page.locator('[data-timeline-seek]').count(),5,'Redo restores inserted track');
+ await page.locator('#studiowb-undo').click();
+ await page.locator('[data-select-clip]').first().click();
+ await page.locator('[data-edit-effect="videoFadeIn"]').click();
+ assert.equal(Number(await page.locator('[data-property="videoFadeIn"]').inputValue()),1);
+ assert.equal(await page.locator('.wb-fade-entry').count(),1,'Video fade appears on edited clip');
+ await page.locator('[data-edit-effect="videoFadeOut"]').click();
+ assert.equal(Number(await page.locator('[data-property="videoFadeOut"]').inputValue()),1);
+ await page.locator('#studiowb-undo').click();await page.locator('#studiowb-undo').click();
+ await page.locator('[data-select-clip]').first().click();
  await page.locator('#studiowb-blade-tool').click();
  const bladeCursor=await page.locator('.wb-timeline [data-select-clip]').first().evaluate(el=>getComputedStyle(el).cursor);
  assert.ok(bladeCursor.includes('data:image/svg+xml'),'Blade mode must show the scissor cursor, got '+bladeCursor);

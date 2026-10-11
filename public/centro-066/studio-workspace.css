@@ -642,3 +642,18 @@
 .wb-root[data-editor-tool=blade] .wb-timeline .wb-track-content {
   cursor:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctext x=%220%22 y=%2219%22 font-size=%2219%22 fill=%22%23ffe4a5%22%3E%26%239986%3B%3C/text%3E%3C/svg%3E") 2 2,crosshair!important;
 }
+
+/* Track insertion is an explicit drop target; it never creates empty tracks on hover. */
+.wb-track-gap{height:12px;position:relative;min-width:var(--wb-lane-min);margin-left:89px;border-top:1px solid transparent;box-sizing:border-box}
+.wb-track-gap span{display:none;position:absolute;left:12px;top:-6px;z-index:8;background:#322916;color:#ffdf98;padding:1px 8px;font-size:10px;pointer-events:none}
+.wb-track-gap.wb-drop-ready{border-color:#f5c55d;background:#f5c55d30}
+.wb-track-gap.wb-drop-ready span{display:block}
+.wb-root .wb-edit-toolbar button{width:38px;min-width:38px;padding:7px 2px!important;font-size:17px}
+.wb-edit-toolbar{flex-wrap:wrap}
+.wb-edit-toolbar .wb-tool-section{display:none}
+.wb-gesture-active{z-index:20!important;pointer-events:none;box-shadow:0 0 0 2px #efc55d!important}
+.wb-track:has(.wb-gesture-active),.wb-track-content:has(.wb-gesture-active){overflow:visible!important}
+
+.wb-fade-marker{position:absolute;z-index:3;top:1px;color:#ffd87a;font-size:16px;pointer-events:none}.wb-fade-entry{left:18px}.wb-fade-exit{right:18px}
+
+.wb-root .wb-edit-toolbar button{display:inline-flex;align-items:center;justify-content:center}.wb-edit-toolbar svg{flex-shrink:0}
