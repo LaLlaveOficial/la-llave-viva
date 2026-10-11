@@ -58,7 +58,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Probar arrastre, recorte y cuchilla en Chrome real
         run: |
-          npm run dev -- --host 127.0.0.1 --port 4173 >/tmp/studio066-vite.log 2>&1 &
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/studio066-http.log 2>&1 &
           for i in $(seq 1 35); do
             curl -fsS http://127.0.0.1:4173/tests/studio066-browser-harness.html >/dev/null && break
             sleep 1
