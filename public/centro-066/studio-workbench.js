@@ -311,8 +311,19 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   timelineEl.dataset.rulerStep=String(step);
   const position=time=>(Math.max(0,Number(time)||0)/seconds*100).toFixed(4)+'%';
   const ruler=timelineEl.querySelector('.wb-ruler-times');
-  if(ruler)ruler.style.width=width+'px';
-  timelineEl.querySelectorAll('[data-timeline-seek]').forEach(lane=>{lane.style.width=width+'px';});
+  const setLaneWidth=lane=>{
+   if(!lane)return;
+   lane.style.setProperty('width',width+'px','important');
+   lane.style.setProperty('min-width',width+'px','important');
+  };
+  setLaneWidth(ruler);
+  timelineEl.querySelectorAll('[data-timeline-seek]').forEach(setLaneWidth);
+  timelineEl.querySelectorAll('.wb-ruler,.wb-track').forEach(row=>{
+   const labelWidth=parseFloat(getComputedStyle(row).gridTemplateColumns)||115;
+   row.style.setProperty('grid-template-columns',labelWidth+'px '+width+'px','important');
+   row.style.setProperty('width',(labelWidth+width)+'px','important');
+   row.style.setProperty('min-width',(labelWidth+width)+'px','important');
+  });
   timelineEl.querySelectorAll('[data-time-tick]').forEach(tick=>{tick.style.left=position(tick.dataset.timeTick);});
   timelineEl.querySelectorAll('[data-select-clip]').forEach(block=>{
    const clip=workspace.clips.find(item=>item.id===block.dataset.selectClip);
