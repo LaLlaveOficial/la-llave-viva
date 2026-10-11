@@ -48,6 +48,19 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.ok(root.querySelector('#studiowb-zoom'));
   assert.ok(root.querySelector('#studiowb-local-trash'));
   assert.ok(root.querySelector('#studiowb-snap'));
+  assert.ok(root.querySelector('#studiowb-toolbar-duplicate'));
+  assert.ok(root.querySelector('#studiowb-toolbar-remove'));
+  assert.equal(root.querySelectorAll('[data-track-flag]').length,8);
+  assert.ok(root.querySelector('#studiowb-ruler-cursor'));
+  const beforeWidth=parseInt(root.querySelector('.wb-ruler-times').style.width,10);
+  root.querySelector('#studiowb-zoom').value='2';
+  root.querySelector('#studiowb-zoom').dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+  assert.ok(parseInt(root.querySelector('.wb-ruler-times').style.width,10)>beforeWidth);
+  root.querySelector('[data-track-flag="A1:muted"]').click();
+  assert.equal(root.querySelector('[data-track-flag="A1:muted"]').getAttribute('aria-pressed'),'true');
+  root.querySelector('[data-track-flag="V2:locked"]').click();
+  assert.equal(root.querySelector('[data-track-flag="V2:locked"]').getAttribute('aria-pressed'),'true');
+  root.querySelector('[data-track-flag="V2:locked"]').click();
   assert.ok(root.querySelector('[data-bin-switch="cloud"]'));
   assert.ok(root.querySelector('[data-bin-switch="text"]'));
   assert.ok(root.querySelector('#studiowb-source-frame'));
@@ -66,6 +79,10 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.equal(root.querySelectorAll('[data-select-clip]').length,1);
   assert.ok(root.querySelector('[data-property="prompt"]'));
   assert.ok(root.querySelector('[data-property="start"]'));
+  root.querySelector('[data-inspector-tab="color"]').click();
+  assert.equal(root.querySelector('.wb-inspector').dataset.inspectorTab,'color');
+  assert.ok(root.querySelector('[data-property="brightness"]'));
+  root.querySelector('[data-inspector-tab="prompt"]').click();
   clean();
  }finally{
   for(const [k,v] of Object.entries(old)){if(v===undefined)delete globalThis[k];else globalThis[k]=v;}

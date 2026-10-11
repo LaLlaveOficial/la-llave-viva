@@ -40,6 +40,7 @@ jobs:
           node --check public/centro-066/studio-export-preflight.js
           node --check public/centro-066/studio-media.js
           node --check public/centro-066/studio-timeline-tools.js
+          node --check public/centro-066/studio-timeline-visuals.js
           node --check public/centro-066/studio.js
           test -s public/centro-066/studio-workspace.css
           grep -q 'studio-workspace.css' public/centro-066/index.html
@@ -48,6 +49,6 @@ jobs:
           node --check public/centro-066/studio-portable.js
           node --check public/centro-066/studio-cloud066.js
           node --check lib/studio-cloud066.js
-          node --test tests/studio066-editor-tools.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
+          node --test tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
