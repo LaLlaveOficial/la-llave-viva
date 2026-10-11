@@ -114,8 +114,8 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   const resizeBlock=()=>root.querySelector('[data-select-clip]');
   const bindRect=()=>resizeBlock().closest('[data-timeline-seek]').getBoundingClientRect=()=>({left:0,width:1920,right:1920,top:0,bottom:70,height:70});
   const fire=(el,type,x)=>el.dispatchEvent(new dom.window.MouseEvent(type,{bubbles:true,cancelable:true,button:0,clientX:x}));
-  bindRect();
   resizeBlock().click();
+  bindRect();
   const beforeTrim=Number(root.querySelector('[data-property="duration"]').value);
   fire(resizeBlock().querySelector('.wb-trim-right'),'pointerdown',640);
   fire(dom.window,'pointermove',960);
