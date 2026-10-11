@@ -99,8 +99,24 @@ try{
  const afterRect=await page.locator('.wb-timeline [data-select-clip].selected').boundingBox();
  await page.mouse.click(afterRect.x+Math.min(afterRect.width/2,90),afterRect.y+afterRect.height/2);
  assert.equal(await page.locator('.wb-timeline [data-select-clip]').count(),3,'Blade must split relocated long clip at visible click');
+ // Mobile viewport must keep the library/editor/inspector connected, not stack
+ // unusable panes or lose an imported original after switching views.
+ const mobileContext=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+ const mobile=await mobileContext.newPage();
+ mobile.on('pageerror',err=>errors.push('Mobile: '+err.message));
+ await mobile.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});
+ await mobile.locator('#studiowb-upload').waitFor();
+ await mobile.locator('#studiowb-upload').setInputFiles({name:'mobile-image.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
+ await mobile.locator('[data-mobile-pane="media"]').click();
+ await mobile.locator('[data-add-asset]').first().click();
+ assert.equal(await mobile.locator('.wb-timeline [data-select-clip]').count(),1,'Mobile user can add a real asset to timeline');
+ await mobile.locator('[data-mobile-pane="inspector"]').click();
+ assert.equal(await mobile.locator('[data-property=duration]').count(),1,'Mobile inspector edits same selected clip');
+ await mobile.locator('[data-mobile-pane="timeline"]').click();
+ assert.equal(await mobile.locator('.wb-timeline [data-select-clip]').count(),1,'Mobile pane switching preserves clips');
+ await mobileContext.close();
  if(errors.length)throw new Error('Uncaught JS errors: '+errors.join(' | '));
- console.log(JSON.stringify({result:'BROWSER_EDITOR_PASS',imageImported:true,originalDuration,resized,moved,bladeClips:count,handleWidth:edge.width}));
+ console.log(JSON.stringify({result:'BROWSER_EDITOR_PASS',imageImported:true,originalDuration,resized,moved,bladeClips:count,handleWidth:edge.width,mobileSmoke:true}));
 }catch(error){
  fs.mkdirSync('/tmp/studio066-browser',{recursive:true});
  if(page)await page.screenshot({path:'/tmp/studio066-browser/failed.png',fullPage:true}).catch(()=>{});
