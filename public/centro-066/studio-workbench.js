@@ -223,7 +223,7 @@ export function studioWorkbenchView(root,notice,project=null){
       asset&&clip.kind==='video'?'<video class="wb-block-thumbnail" data-clip-video="'+e(asset.id)+'" muted playsinline preload="metadata" aria-hidden="true"></video>':'';
     const wave=asset&&clip.kind==='audio'?'<canvas class="wb-waveform" data-waveform-id="'+e(asset.id)+'" aria-hidden="true"></canvas>':'';
     return '<button type="button" data-select-clip="'+e(clip.id)+'" class="wb-block wb-pro-clip '+(selected===clip.id?'selected ':'')+'wb-'+e(clip.kind)+'" style="left:'+left.toFixed(4)+'%;width:'+Math.max(.65,wide).toFixed(4)+'%" title="'+e(name)+'">'+thumb+wave+'<span class="wb-clip-inner"><b>'+e(name)+'</b><small>'+mediaTimecode(clip.duration,workspace.fps)+'</small></span>'+
-    (!asset&&clip.kind!=='text'?'<span class="wb-clip-missing">Falta original</span>':'')+'<span class="wb-trim-left" title="Ajustar entrada"></span><span class="wb-trim-right" title="Ajustar salida"></span></button>';
+    (!asset&&clip.kind!=='text'?'<span class="wb-clip-missing">Falta original</span>':'')+'<span class="wb-trim-left" title="Arrastra para cambiar entrada del clip" style="width:16px!important;min-width:16px!important;max-width:16px!important"></span><span class="wb-trim-right" title="Arrastra para estirar o recortar el clip" style="width:16px!important;min-width:16px!important;max-width:16px!important"></span></button>';
    }).join('')+'<div class="wb-cursor" style="left:'+(workspace.playhead/seconds*100).toFixed(4)+'%"></div></div></div>').join('')+'</div>';
  }
  async function fillTimelineMedia(){
