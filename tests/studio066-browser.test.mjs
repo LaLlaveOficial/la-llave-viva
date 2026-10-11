@@ -78,6 +78,18 @@ try{
  await page.locator('[data-property=start]').dispatchEvent('change');
  await page.locator('[data-property=duration]').fill('20.67');
  await page.locator('[data-property=duration]').dispatchEvent('change');
+ // The inspector commits on the next animation frame; wait for the rendered
+ // block geometry to catch up before measuring the relocated clip.
+ await page.waitForFunction(()=>{
+  const clip=document.querySelector('.wb-timeline [data-select-clip].selected');
+  const start=Number(document.querySelector('[data-property=start]')?.value);
+  const duration=Number(document.querySelector('[data-property=duration]')?.value);
+  const lane=clip?.parentElement;
+  if(!clip||!lane||lane.getBoundingClientRect().width<100||!Number.isFinite(start)||!Number.isFinite(duration))return false;
+  const expectedSpan=start+duration+2;
+  const left=parseFloat(clip.style.left)/100,width=parseFloat(clip.style.width)/100;
+  return Math.abs(left-start/expectedSpan)<.025&&Math.abs(width-duration/expectedSpan)<.025;
+ },null,{timeout:5000});
  const pos=await page.locator('.wb-timeline [data-select-clip].selected').evaluate(el=>{
   const lane=el.parentElement,cr=el.getBoundingClientRect(),lr=lane.getBoundingClientRect();
   return {start:Number(document.querySelector('[data-property=start]').value),duration:Number(document.querySelector('[data-property=duration]').value),
