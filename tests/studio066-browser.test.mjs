@@ -160,14 +160,16 @@ try{
  assert.equal(await page.locator('.wb-cut-seam').count(),1,'The relocated split must show its cut seam; the separated original piece is no longer joined');
  const movedCutJoin=await page.locator('.wb-timeline [data-select-clip]').evaluateAll(nodes=>Math.abs(nodes[nodes.length-2].getBoundingClientRect().right-nodes[nodes.length-1].getBoundingClientRect().left));
  assert.ok(movedCutJoin<3,'Relocated split parts must meet at the exact visible cut, gap='+movedCutJoin);
+ fs.mkdirSync('/tmp/studio066-browser',{recursive:true});
  // Independent audio project verifies type restrictions, new audio tracks and persisted fades.
  const audioContext=await browser.newContext({viewport:{width:1440,height:1000}});
  const audioPage=await audioContext.newPage();
  audioPage.on('pageerror',err=>errors.push('Audio: '+err.message));
  await audioPage.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});
- const wav=Buffer.alloc(44+44100*2);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(44100,24);wav.writeUInt32LE(88200,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);
+ const wav=Buffer.alloc(44+44100*2*5);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(44100,24);wav.writeUInt32LE(88200,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);for(let i=0;i<44100*5;i++)wav.writeInt16LE(Math.round(8000*Math.sin(i*2*Math.PI*440/44100)),44+i*2);
  await audioPage.locator('#studiowb-upload').setInputFiles({name:'voice.wav',mimeType:'audio/wav',buffer:wav});
  await audioPage.locator('[data-add-asset]').first().click();
+ await audioPage.locator('[data-select-clip]').first().waitFor();
  const dragAudio=async selector=>{
   await audioPage.locator(selector).scrollIntoViewIfNeeded();
   await audioPage.locator('[data-select-clip]').first().scrollIntoViewIfNeeded();
@@ -184,7 +186,7 @@ try{
  await dragAudio('[data-track-gap="audio"][data-before-track="A2"]');
  assert.equal(await audioPage.locator('[data-property=track]').inputValue(),'A3');
  await audioPage.locator('[data-edit-effect="audioFadeIn"]').click();
- assert.equal(Number(await audioPage.locator('[data-property="audioFadeIn"]').inputValue()),.5);
+ assert.equal(Number(await audioPage.locator('[data-property="audioFadeIn"]').inputValue()),1);
  await audioPage.locator('[data-edit-effect="volume"]').click();
  await audioPage.locator('[data-property="volume"]').fill('0.4');await audioPage.locator('[data-property="volume"]').press('Tab');
  await audioPage.waitForFunction(()=>document.querySelector('[data-property="volume"]')?.value==='0.4');
@@ -192,7 +194,7 @@ try{
  assert.equal(await audioPage.locator('[data-property=track]').inputValue(),'A3','Reload restores inserted audio track');
  await audioPage.locator('[data-edit-effect="volume"]').click();
  assert.equal(Number(await audioPage.locator('[data-property="volume"]').inputValue()),.4);
- assert.equal(Number(await audioPage.locator('[data-property="audioFadeIn"]').inputValue()),.5,'Reload restores audio fade');
+ assert.equal(Number(await audioPage.locator('[data-property="audioFadeIn"]').inputValue()),1,'Reload restores audio fade');
  // Insert by dragging between tracks until the project has exactly twelve tracks.
  for(let i=0;i<7;i++){
   const track=await audioPage.locator('[data-property=track]').inputValue();
@@ -204,6 +206,7 @@ try{
  assert.equal(await audioPage.locator('[data-timeline-seek]').count(),12,'Thirteenth track is rejected without losing clip');
  await audioPage.locator('#studiowb-undo').click();assert.equal(await audioPage.locator('[data-timeline-seek]').count(),11);
  await audioPage.locator('#studiowb-redo').click();assert.equal(await audioPage.locator('[data-timeline-seek]').count(),12);
+ await audioPage.screenshot({path:'/tmp/studio066-browser/audio-twelve-tracks.png',fullPage:true});
  await audioContext.close();
  fs.mkdirSync('/tmp/studio066-browser',{recursive:true});
  await page.screenshot({path:'/tmp/studio066-browser/desktop.png',fullPage:true});

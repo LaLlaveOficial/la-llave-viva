@@ -389,11 +389,12 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
  function render(){
   syncTracks();
   const oldTimelineScroll=root.querySelector('.wb-timeline')?.scrollLeft||0;
+  const oldTimelineScrollTop=root.querySelector('.wb-timeline')?.scrollTop||0;
   const oldMediaScroll=root.querySelector('.wb-media-list')?.scrollTop||0;
   pause();if(cloudDispose){cloudDispose();cloudDispose=null;}
   root.innerHTML=page();applyTimelineGeometry();wire();
   const timelineEl=root.querySelector('.wb-timeline');
-  if(timelineEl)timelineEl.scrollLeft=oldTimelineScroll;
+  if(timelineEl){timelineEl.scrollLeft=oldTimelineScroll;timelineEl.scrollTop=oldTimelineScrollTop;}
   const mediaList=root.querySelector('.wb-media-list');
   if(mediaList)mediaList.scrollTop=oldMediaScroll;
   paint();drawTime();updateSourceViewer();fillTimelineMedia().catch(()=>{});
