@@ -286,7 +286,7 @@ export function studioWorkbenchView(root,notice,project=null){
  }
  function wire(){
   const el=(id)=>root.querySelector('#'+id);
-  root.querySelectorAll('[data-inspector-tab]').forEach(b=>b.onclick=()=>{inspectorTab=b.dataset.inspectorTab;render();});
+  root.querySelectorAll('button[data-inspector-tab]').forEach(b=>b.onclick=()=>{inspectorTab=b.dataset.inspectorTab;render();});
   root.querySelectorAll('[data-bin-switch]').forEach(b=>b.onclick=()=>{activeBin=b.dataset.binSwitch;render();});
   root.querySelectorAll('button[data-mobile-pane]').forEach(b=>b.onclick=()=>{mobilePane=b.dataset.mobilePane;render();});
   el('studiowb-media-search').oninput=ev=>{mediaQuery=ev.target.value;root.querySelectorAll('[data-drag-asset]').forEach(card=>{const asset=findAsset(card.dataset.dragAsset);card.hidden=!asset?.name.toLowerCase().includes(mediaQuery.toLowerCase());});};
