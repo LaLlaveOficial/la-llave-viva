@@ -523,3 +523,56 @@
  .wb-root[data-mobile-pane=media] .wb-timeline-panel,
  .wb-root[data-mobile-pane=inspector] .wb-timeline-panel{display:none!important}
 }
+
+
+/* Generation workspace responsive grid correction.
+   The base editor switches to a two-column layout below 1450px and sets
+   .gen-form to span both columns. At the actual content width of the 066
+   console, that legacy rule was leaving an empty third column above the form.
+   Keep all three panels together on desktop and collapse to two columns only
+   when the usable viewport is too narrow for comfortable controls. */
+@media (min-width:1060px) {
+  #studio-generation-host .gen-workspace {
+    display:grid !important;
+    grid-template-columns:minmax(220px,.82fr) minmax(340px,1.55fr) minmax(320px,1.08fr) !important;
+    grid-template-rows:minmax(0,1fr);
+    min-height:clamp(650px,76vh,930px);
+    align-items:stretch;
+  }
+  #studio-generation-host .gen-history,
+  #studio-generation-host .gen-preview-panel,
+  #studio-generation-host .gen-form {
+    grid-column:auto !important;
+    grid-row:1;
+    min-width:0;
+  }
+  #studio-generation-host .gen-history,
+  #studio-generation-host .gen-form {
+    max-height:clamp(650px,76vh,930px);
+    overflow-y:auto;
+  }
+  #studio-generation-host .gen-history {
+    border-right:1px solid #44443e !important;
+  }
+  #studio-generation-host .gen-preview-panel {
+    border-right:1px solid #44443e !important;
+  }
+  #studio-generation-host .gen-form {
+    border-top:0 !important;
+  }
+}
+@media (min-width:851px) and (max-width:1059px) {
+  #studio-generation-host .gen-workspace {
+    display:grid !important;
+    grid-template-columns:minmax(185px,.82fr) minmax(320px,1.4fr) !important;
+  }
+  #studio-generation-host .gen-history,
+  #studio-generation-host .gen-preview-panel {
+    grid-column:auto !important;
+  }
+  #studio-generation-host .gen-form {
+    grid-column:1 / -1 !important;
+    max-height:none !important;
+    border-top:1px solid #45443b !important;
+  }
+}
