@@ -10,12 +10,14 @@ const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&g
 const number=(n,lo,hi)=>Math.min(hi,Math.max(lo,Number(n)||0));
 const fmt=s=>Math.floor(s/60).toString().padStart(2,'0')+':'+Math.floor(s%60).toString().padStart(2,'0');
 const tracks=['V2','V1','A1','A2'];
+let studio066RuntimeSequence=0;
 const tracksNames={V2:'Títulos / capas',V1:'Video / fotogramas',A1:'Voz / diálogos',A2:'Foley / música'};
 const allowedTracks={image:['V1','V2'],video:['V1','V2'],audio:['A1','A2'],text:['V2']};
 const option=(value,actual,label)=>'<option value="'+e(value)+'"'+(String(actual)===String(value)?' selected':'')+'>'+e(label??value)+'</option>';
 const ctrl=(name,label,value,min,max,step)=>'<label>'+label+'<input data-property="'+name+'" type="number" min="'+min+'" max="'+max+'" step="'+step+'" value="'+e(value)+'"></label>';
 export function studioWorkbenchView(root,notice,project=null){
  let db,assets=[],workspace=defaultWorkspace(),selected=null,isPlaying=false,rendering=false,startTick=0,startTime=0;
+ const runtimeId='s'+(++studio066RuntimeSequence),runtimeRules=new Map();let runtimeSheet=null;
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  const history=[],future=[],waveforms=new Map();
@@ -112,7 +114,8 @@ export function studioWorkbenchView(root,notice,project=null){
   const l=root.querySelector('#studiowb-time');if(l)l.textContent=mediaTimecode(workspace.playhead,workspace.fps)+' / '+mediaTimecode(timelineDuration(workspace.clips),workspace.fps);
   const input=root.querySelector('#studiowb-seek');if(input){input.max=String(timelineDuration(workspace.clips));input.value=String(workspace.playhead);}
   const pos=(workspace.playhead/rulerSpan()*100).toFixed(4)+'%';
-  root.querySelectorAll('.wb-cursor,#studiowb-ruler-cursor').forEach(el=>el.style.left=pos);
+  runtimeRules.get('playhead')?.style.setProperty('left',pos);
+  runtimeRules.get('ruler-playhead')?.style.setProperty('left',pos);
  }
  function tick(){
   if(!isPlaying)return;
@@ -301,38 +304,57 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   const pixelStart=clip.start/rulerSpan()*rulerWidth();
   timelineEl.scrollLeft=revealClipScroll(pixelStart,timelineEl.clientWidth,timelineEl.scrollWidth,timelineEl.scrollLeft);
  }
+ function getRuntimeStylesheet(){
+  if(runtimeSheet)return runtimeSheet;
+  const doc=root.ownerDocument;
+  for(const sheet of Array.from(doc.styleSheets||[])){
+   if(!sheet.href||!sheet.href.includes('studio-workspace.css'))continue;
+   try{void sheet.cssRules.length;runtimeSheet=sheet;return sheet;}catch{}
+  }
+  return null;
+ }
+ function clearRuntimeGeometry(){
+  const sheet=getRuntimeStylesheet();runtimeRules.clear();if(!sheet)return;
+  const scope='[data-studio-runtime="'+runtimeId+'"]';
+  for(let i=sheet.cssRules.length-1;i>=0;i--)if(sheet.cssRules[i].selectorText?.includes(scope))sheet.deleteRule(i);
+ }
+ function addRuntimeRule(key,selector,declarations){
+  const sheet=getRuntimeStylesheet();if(!sheet)return null;
+  const full='.wb-root[data-studio-runtime="'+runtimeId+'"] '+selector;
+  const index=sheet.cssRules.length;sheet.insertRule(full+'{}',index);
+  const rule=sheet.cssRules[index];for(const [property,value] of Object.entries(declarations))rule.style.setProperty(property,String(value));
+  runtimeRules.set(key,rule);return rule;
+ }
  function applyTimelineGeometry(){
-  const timelineEl=root.querySelector('.wb-timeline');
-  if(!timelineEl)return;
+  const timelineEl=root.querySelector('.wb-timeline'),wbRoot=root.querySelector('.wb-root');
+  if(!timelineEl||!wbRoot)return;
+  wbRoot.dataset.studioRuntime=runtimeId;
+  clearRuntimeGeometry();
   const seconds=rulerSpan(),width=rulerWidth(),step=rulerStep(seconds);
-  timelineEl.style.setProperty('--wb-lane-min',width+'px');
-  timelineEl.style.setProperty('--wb-grid-step',(width*step/seconds).toFixed(2)+'px');
-  timelineEl.dataset.rulerSpan=String(seconds);
-  timelineEl.dataset.rulerStep=String(step);
   const position=time=>(Math.max(0,Number(time)||0)/seconds*100).toFixed(4)+'%';
+  addRuntimeRule('timeline','.wb-timeline',{'--wb-lane-min':width+'px','--wb-grid-step':(width*step/seconds).toFixed(2)+'px'});
   const ruler=timelineEl.querySelector('.wb-ruler-times');
-  const setLaneWidth=lane=>{
-   if(!lane)return;
-   lane.style.setProperty('width',width+'px','important');
-   lane.style.setProperty('min-width',width+'px','important');
-  };
-  setLaneWidth(ruler);
-  timelineEl.querySelectorAll('[data-timeline-seek]').forEach(setLaneWidth);
-  timelineEl.querySelectorAll('.wb-ruler,.wb-track').forEach(row=>{
-   const labelWidth=parseFloat(timelineEl.ownerDocument.defaultView.getComputedStyle(row).gridTemplateColumns)||115;
-   row.style.setProperty('grid-template-columns',labelWidth+'px '+width+'px','important');
-   row.style.setProperty('width',(labelWidth+width)+'px','important');
-   row.style.setProperty('min-width',(labelWidth+width)+'px','important');
+  const doc=timelineEl.ownerDocument,view=doc.defaultView;
+  const labelWidth=row=>parseFloat(view?.getComputedStyle?.(row)?.gridTemplateColumns)||115;
+  if(ruler)addRuntimeRule('ruler','.wb-ruler-times',{width:width+'px', 'min-width':width+'px'});
+  timelineEl.querySelectorAll('[data-timeline-seek]').forEach((lane,index)=>addRuntimeRule('lane:'+index,'[data-timeline-seek="'+lane.dataset.timelineSeek+'"]',{width:width+'px','min-width':width+'px'}));
+  timelineEl.querySelectorAll('.wb-ruler,.wb-track').forEach((row,index)=>{
+   const label=labelWidth(row),total=label+width;
+   row.dataset.wbGeometryRow=String(index);
+   addRuntimeRule('row:'+index,(row.classList.contains('wb-ruler')?'.wb-ruler':'.wb-track[data-wb-geometry-row="'+index+'"]'),{'grid-template-columns':label+'px '+width+'px',width:total+'px','min-width':total+'px'});
   });
-  timelineEl.querySelectorAll('[data-time-tick]').forEach(tick=>{tick.style.left=position(tick.dataset.timeTick);});
-  timelineEl.querySelectorAll('[data-select-clip]').forEach(block=>{
-   const clip=workspace.clips.find(item=>item.id===block.dataset.selectClip);
-   if(!clip)return;
-   block.style.left=position(clip.start);
-   block.style.width=Math.max(.65,clip.duration/seconds*100).toFixed(4)+'%';
+  timelineEl.querySelectorAll('[data-time-tick]').forEach((tick,index)=>{
+   tick.dataset.wbGeometryTick=String(index);
+   addRuntimeRule('tick:'+index,'.wb-time-tick[data-wb-geometry-tick="'+index+'"]',{left:position(tick.dataset.timeTick)});
   });
-  const playhead=position(workspace.playhead);
-  timelineEl.querySelectorAll('.wb-cursor,#studiowb-ruler-cursor').forEach(cursor=>{cursor.style.left=playhead;});
+  timelineEl.querySelectorAll('[data-select-clip]').forEach((block,index)=>{
+   const clip=workspace.clips.find(item=>item.id===block.dataset.selectClip);if(!clip)return;
+   block.dataset.wbGeometryClip=String(index);
+   addRuntimeRule('clip:'+index,'[data-wb-geometry-clip="'+index+'"]',{left:position(clip.start),width:Math.max(.65,clip.duration/seconds*100).toFixed(4)+'%'});
+  });
+  addRuntimeRule('playhead','.wb-timeline .wb-cursor',{left:position(workspace.playhead)});
+  const cursor=timelineEl.querySelector('#studiowb-ruler-cursor');
+  if(cursor)addRuntimeRule('ruler-playhead','.wb-ruler-times #studiowb-ruler-cursor',{left:position(workspace.playhead)});
  }
  function render(){
   const oldTimelineScroll=root.querySelector('.wb-timeline')?.scrollLeft||0;
@@ -460,9 +482,9 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     b.onpointermove=ev=>{
      if(editingTool!=='blade')return;
      const rect=b.getBoundingClientRect();
-     if(rect.width>0)b.style.setProperty('--blade-x',Math.max(0,Math.min(rect.width,ev.clientX-rect.left))+'px');
+     if(rect.width>0)runtimeRules.get('clip:'+b.dataset.wbGeometryClip)?.style.setProperty('--blade-x',Math.max(0,Math.min(rect.width,ev.clientX-rect.left))+'px');
     };
-    b.onpointerleave=()=>b.style.removeProperty('--blade-x');
+    b.onpointerleave=()=>runtimeRules.get('clip:'+b.dataset.wbGeometryClip)?.style.removeProperty('--blade-x');
    b.onpointerdown=ev=>{
      if(ev.button!==0||rendering||editingTool==='blade')return;
      const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
@@ -482,7 +504,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
       env.removeEventListener('pointerup',up,true);
       env.removeEventListener('pointercancel',cancel,true);
       b.classList.remove('wb-gesture-active','wb-gesture-trim');
-      b.style.removeProperty('z-index');
+
       try{if(pid!==undefined&&b.hasPointerCapture?.(pid))b.releasePointerCapture(pid);}catch{}
      };
      const move=pe=>{
@@ -493,9 +515,9 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
       const seconds=pixels/Math.max(1,rulerWidth()/rulerSpan());
       preview=previewClipDrag(original,mode,seconds,{fps:workspace.fps,clips:workspace.clips,snapping});
       if(!preview)return;
-      const visibleSpan=rulerSpan();
-      b.style.left=(preview.start/visibleSpan*100).toFixed(5)+'%';
-      b.style.width=(preview.duration/visibleSpan*100).toFixed(5)+'%';
+      const visibleSpan=rulerSpan(),clipRule=runtimeRules.get('clip:'+b.dataset.wbGeometryClip);
+      clipRule?.style.setProperty('left',(preview.start/visibleSpan*100).toFixed(5)+'%');
+      clipRule?.style.setProperty('width',(preview.duration/visibleSpan*100).toFixed(5)+'%');
       b.classList.add('wb-gesture-active');
       const time=b.querySelector('.wb-clip-inner small');
       if(time)time.textContent=mediaTimecode(preview.duration,workspace.fps);
@@ -514,7 +536,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
      env.addEventListener('pointerup',up,true);
      env.addEventListener('pointercancel',cancel,true);
      b.classList.add('wb-gesture-trim');
-     b.style.zIndex='12';
+
      try{if(pid!==undefined)b.setPointerCapture?.(pid);}catch{}
      // Browser must not start text selection or native dragging instead of trimming.
      ev.preventDefault();
