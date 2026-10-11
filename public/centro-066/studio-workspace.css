@@ -623,3 +623,22 @@
     height:20px !important;
   }
 }
+
+
+/* Timeline ruler and lane grid use the exact same frame-time scale. */
+.wb-root .wb-ruler-times,
+.wb-root .wb-track-content {
+  background-image:linear-gradient(to right,#ffffff12 1px,transparent 1px),linear-gradient(#ffffff03,#ffffff03)!important;
+  background-size:var(--wb-grid-step,120px) 100%,100% 100%!important;
+}
+.wb-root .wb-cut-seam {
+  position:absolute;z-index:30;top:0;right:0;bottom:0;width:3px;
+  border-left:1px solid #ffe4a5;border-right:1px solid #ffe4a5;
+  background:#e9b85b;box-shadow:0 0 7px #ffd274;
+  pointer-events:none;
+}
+.wb-root[data-editor-tool=blade] .wb-timeline .wb-pro-clip,
+.wb-root[data-editor-tool=blade] .wb-timeline .wb-pro-clip *,
+.wb-root[data-editor-tool=blade] .wb-timeline .wb-track-content {
+  cursor:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctext x=%220%22 y=%2219%22 font-size=%2219%22 fill=%22%23ffe4a5%22%3E%26%239986%3B%3C/text%3E%3C/svg%3E") 2 2,crosshair!important;
+}
