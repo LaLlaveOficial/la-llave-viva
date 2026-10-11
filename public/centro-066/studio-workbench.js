@@ -166,7 +166,7 @@ export function studioWorkbenchView(root,notice,project=null){
   }
  }
  function mediaCard(a,discarded=false){
-  return '<div class="wb-media-item" '+(discarded?'':'draggable="true" data-drag-asset="'+e(a.id)+'"')+'><div class="wb-media-tile"><button type="button" class="wb-source-select" data-source-asset="'+e(a.id)+'" title="Ver original" aria-label="Previsualizar '+e(a.name)+'"><div class="wb-thumb">'+(a.kind==='image'?'<img loading="lazy" data-media-thumb="'+e(a.id)+'" alt="'+e(a.name)+'">':a.kind==='video'?'▶':'♫')+'</div></button><div><b>'+e(a.name)+'</b><small>'+e(a.kind.toUpperCase())+' · '+(a.size/1048576).toFixed(1)+' MB</small></div></div><div class="wb-row">'+(discarded?'<button type="button" class="subtle" data-revive-asset="'+e(a.id)+'">↶ Restaurar</button>':'<button type="button" class="subtle" data-add-asset="'+e(a.id)+'">+ Al final</button><button type="button" class="subtle" data-insert-asset="'+e(a.id)+'">+ En cabezal</button><button type="button" class="subtle" data-remove-asset="'+e(a.id)+'">Papelera</button>')+'</div></div>';
+  return '<div class="wb-media-item" '+(discarded?'':'draggable="true" data-drag-asset="'+e(a.id)+'"')+'><div class="wb-media-tile"><button type="button" class="wb-source-select" data-source-asset="'+e(a.id)+'" title="Ver original" aria-label="Previsualizar '+e(a.name)+'"><div class="wb-thumb">'+(a.kind==='image'?'<img loading="lazy" data-media-thumb="'+e(a.id)+'" alt="'+e(a.name)+'">':a.kind==='video'?'<video muted playsinline preload="metadata" data-media-thumb="'+e(a.id)+'" aria-label="'+e(a.name)+'"></video>':'♫')+'</div></button><div><b>'+e(a.name)+'</b><small>'+e(a.kind.toUpperCase())+' · '+(a.size/1048576).toFixed(1)+' MB</small></div></div><div class="wb-row">'+(discarded?'<button type="button" class="subtle" data-revive-asset="'+e(a.id)+'">↶ Restaurar</button>':'<button type="button" class="subtle" data-add-asset="'+e(a.id)+'">+ Al final</button><button type="button" class="subtle" data-insert-asset="'+e(a.id)+'">+ En cabezal</button><button type="button" class="subtle" data-remove-asset="'+e(a.id)+'">Papelera</button>')+'</div></div>';
  }
  function propertyPanel(){
   const c=workspace.clips.find(x=>x.id===selected);
@@ -257,7 +257,7 @@ export function studioWorkbenchView(root,notice,project=null){
    const clip=addTimelineClip(asset,workspace.clips);
    try{
     const next=start===null?clip:insertClipAt(asset,clip,snapToEdges(start,workspace.clips,null,{enabled:snapping}),track||clip.track);
-    checkpoint();workspace.clips.push(next);selected=next.id;save();await prime();render();
+    checkpoint();workspace.clips.push(next);selected=next.id;mobilePane='timeline';save();await prime();render();
    }catch(error){notice(error.message);}
   };
   root.querySelectorAll('[data-insert-asset]').forEach(b=>b.onclick=()=>addFromLibrary(b.dataset.insertAsset,{start:workspace.playhead}));
@@ -302,7 +302,7 @@ export function studioWorkbenchView(root,notice,project=null){
      cache.delete(id);save();render();notice('Original en la papelera. «Restaurar» permite deshacerlo.');
    }
   });
-  el('studiowb-title').onclick=()=>{checkpoint();const c={id:crypto.randomUUID(),assetId:'',kind:'text',track:'V2',start:workspace.playhead,duration:4,sourceStart:0,text:'CASO 066',volume:0,opacity:1};workspace.clips.push(c);selected=c.id;save();render();};
+  el('studiowb-title').onclick=()=>{checkpoint();const c={id:crypto.randomUUID(),assetId:'',kind:'text',track:'V2',start:workspace.playhead,duration:4,sourceStart:0,text:'CASO 066',volume:0,opacity:1};workspace.clips.push(c);selected=c.id;mobilePane='timeline';save();render();};
   root.querySelectorAll('[data-select-clip]').forEach(b=>{
    b.onclick=()=>{selected=b.dataset.selectClip;if(editingTool==='blade'){splitSelected();return;}render();};
    b.onpointerdown=ev=>{

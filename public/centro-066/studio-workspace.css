@@ -266,3 +266,6 @@
  #studio-generation-host .gen-form .gen-ref-slots{grid-template-columns:repeat(2,minmax(0,1fr))}
  #studio-generation-host .gen-mode{flex-wrap:wrap}
 }
+
+/* Real video-preview tiles are generated only from the user's original media. */
+.wb-thumb video{height:100%;width:100%;object-fit:cover;display:block;pointer-events:none}
