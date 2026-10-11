@@ -103,7 +103,10 @@ try{
   const lane=el.parentElement,cr=el.getBoundingClientRect(),lr=lane.getBoundingClientRect();
   return {start:Number(document.querySelector('[data-property=start]').value),duration:Number(document.querySelector('[data-property=duration]').value),
     visualStart:(cr.left-lr.left)/lr.width,styleLeft:el.style.left,visualDuration:cr.width/lr.width,
-    laneWidth:lr.width,elWidth:cr.width,rootScroll:document.querySelector('.wb-timeline').scrollLeft};
+    laneWidth:lr.width,elWidth:cr.width,rootScroll:document.querySelector('.wb-timeline').scrollLeft,
+    laneStyle:{width:lane.style.width,minWidth:lane.style.minWidth,computedWidth:getComputedStyle(lane).width,minWidthComputed:getComputedStyle(lane).minWidth,display:getComputedStyle(lane).display},
+    row:{className:lane.parentElement?.className,rect:lane.parentElement?.getBoundingClientRect().toJSON?.(),width:lane.parentElement?.style.width,grid:lane.parentElement?getComputedStyle(lane.parentElement).gridTemplateColumns:''},
+    timeline:{width:lane.closest('.wb-timeline')?.clientWidth,scrollWidth:lane.closest('.wb-timeline')?.scrollWidth,vars:lane.closest('.wb-timeline')?getComputedStyle(lane.closest('.wb-timeline')).getPropertyValue('--wb-lane-min'):''}};
  });
  console.log('USER_MOVE_SCENARIO',JSON.stringify(pos));
  const viewBeforeCut=await page.locator('.wb-timeline').evaluate(el=>({left:el.scrollLeft,clientWidth:el.clientWidth,scrollWidth:el.scrollWidth}));
