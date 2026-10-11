@@ -52,6 +52,14 @@ test('generator DOM has reference slots, preview, disabled real generation and a
   await new Promise(r=>setTimeout(r,100));
   assert.match(root.textContent,/Generar medios/);
   assert.equal(root.querySelectorAll('[data-ref-asset]').length,2);
+  assert.ok(root.querySelector('.gen-mobile-dock'));
+  assert.ok(root.querySelector('.gen-media-bin'));
+  root.querySelector('button[data-gen-mobile-tab="history"]').click();
+  assert.equal(root.querySelector('.gen-workspace').dataset.genMobilePane,'history');
+  root.querySelector('button[data-gen-mobile-tab="preview"]').click();
+  assert.equal(root.querySelector('.gen-workspace').dataset.genMobilePane,'preview');
+  root.querySelector('button[data-gen-mobile-tab="configure"]').click();
+  assert.equal(root.querySelector('.gen-workspace').dataset.genMobilePane,'configure');
   assert.ok(root.querySelector('button[disabled]'),'Real generation must remain disabled');
   assert.ok(root.querySelector('#gen-upload-result').disabled,'Cannot import a result until request saved');
   const radio=root.querySelector('input[name=mode][value=images]');

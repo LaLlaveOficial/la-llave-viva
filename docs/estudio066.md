@@ -168,3 +168,9 @@ El nuevo timeline utiliza una escala de tiempo real y zoom efectivo en el ancho 
 Cada pista conserva su estado de Bloqueo (impide mover/cortar/insertar/editar clips), Oculto para vídeo (afecta el visor y la exportación local) o Silencio para audio (afecta la reproducción y mezcla). Los estados se guardan en el almacenamiento local del proyecto, separado de las estructuras existentes. Inspector contextual Clip/Color/Audio/Guion-IA, accesos rápidos de duplicación y eliminación, contador de fotogramas y cabezal visible. Está restringido a la rama Preview; jamás simular rendimiento GPU o motor generativo.
 
 Pendiente de revisión humana: arrastre horizontal largo, waveforms en archivos reales, PWA Android e iOS, sincronía A1/A2 y codec final MP4, cuadros a 24fps, interacción accesible por teclado y pantallas pequeñas. Pruebas automatizadas no sustituyen el QA audiovisual real.
+
+## Generación IA: galería de referencias y móvil (Preview 11 octubre 2026)
+
+La pantalla de generación suma un explorador visual de imágenes locales para añadir referencias con un toque y marcarlas como seleccionadas, conservando los dos modos exactos: 1–2 fotogramas ordenados de inicio/fin o 1–3 imágenes con roles configurables. Se permite tocar una referencia seleccionada para quitarla. La vista previa solo muestra medios reales y los prompts siguen sin enviarse a motores externos. En móvil el dock alterna Biblioteca / Visor / Prompts; el visor permanece visible, con espacio adicional cuando está seleccionado. Las pruebas DOM validan los modos sin alterar preparaciones previas.
+
+Los motores Firefly, Veo, Kling, Wan y LTX siguen desconectados: **NO** se generan videos ni se gastan créditos. Las imágenes remotas de Neon no descargadas en este navegador no aparecen aquí automáticamente; su sincronización y control de permisos requiere desarrollo adicional.
