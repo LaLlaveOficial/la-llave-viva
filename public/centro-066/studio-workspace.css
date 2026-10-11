@@ -576,3 +576,28 @@
     border-top:1px solid #45443b !important;
   }
 }
+
+
+/* Desktop vertical balance: make the multitrack timeline visible sooner while
+   preserving a useful program monitor. Height rules stay out of touch layouts. */
+@media (min-width:851px) and (min-height:760px) {
+  .wb-workarea {
+    height:clamp(310px,36vh,520px) !important;
+  }
+  .wb-timeline-panel {
+    height:clamp(370px,44vh,510px) !important;
+    min-height:350px !important;
+  }
+  .wb-timeline {
+    overscroll-behavior:contain;
+  }
+}
+@media (min-width:851px) and (max-height:759px) {
+  .wb-workarea {
+    height:clamp(290px,34vh,410px) !important;
+  }
+  .wb-timeline-panel {
+    height:clamp(315px,40vh,390px) !important;
+    min-height:315px !important;
+  }
+}
