@@ -52,10 +52,10 @@ jobs:
           node --test tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
-      - name: Instalar Chromium real para verificar interacciones
+      - name: Preparar navegador Chrome preinstalado para pruebas reales
         run: |
+          command -v google-chrome
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright
-          npx playwright install --with-deps chromium
       - name: Probar arrastre, recorte y cuchilla en Chrome real
         run: |
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/studio066-http.log 2>&1 &
