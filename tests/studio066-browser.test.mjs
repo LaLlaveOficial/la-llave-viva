@@ -28,6 +28,14 @@ try{
  const handle=page.locator('.wb-timeline [data-select-clip] .wb-trim-right').first();
  await handle.scrollIntoViewIfNeeded();
  const edge=await handle.boundingBox();
+ const trimCss=await handle.evaluate(el=>({
+  width:getComputedStyle(el).width,height:getComputedStyle(el).height,
+  display:getComputedStyle(el).display,cursor:getComputedStyle(el).cursor,
+  parent:el.closest('[data-select-clip]')?.className,
+  sheets:[...document.styleSheets].map(sheet=>({href:sheet.href,rules:(()=>{try{return sheet.cssRules.length}catch{return 'blocked'}})()})),
+  rect:{width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}
+ }));
+ console.log('TRIM_CSS_DIAGNOSTICS',JSON.stringify({edge,trimCss}));
  assert.ok(edge?.width>=14&&edge?.height>=35,'Trim handle has usable hit target');
  await page.mouse.move(edge.x+edge.width/2,edge.y+edge.height/2);
  await page.mouse.down();
