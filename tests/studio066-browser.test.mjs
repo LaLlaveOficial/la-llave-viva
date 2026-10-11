@@ -108,6 +108,14 @@ try{
  await mobile.locator('#studiowb-upload').waitFor({state:'attached'});
  await mobile.locator('#studiowb-upload').setInputFiles({name:'mobile-image.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});
  await mobile.locator('[data-mobile-pane="media"]').click();
+ const mobileGeometry=await mobile.locator('[data-add-asset]').first().evaluate(el=>{
+   const parent=el.closest('.wb-media-list'),rect=el.getBoundingClientRect();
+   return {pane:document.querySelector('.wb-root')?.dataset.mobilePane,display:getComputedStyle(el).display,
+     library:getComputedStyle(el.closest('.wb-library')).display,
+     cardHeight:rect.height,cardY:rect.y,mediaHeight:parent?.getBoundingClientRect().height,
+     workareaHeight:document.querySelector('.wb-workarea')?.getBoundingClientRect().height};
+ });
+ console.log('MOBILE_LAYOUT_DIAGNOSTICS',JSON.stringify(mobileGeometry));
  await mobile.locator('[data-add-asset]').first().click();
  assert.equal(await mobile.locator('.wb-timeline [data-select-clip]').count(),1,'Mobile user can add a real asset to timeline');
  await mobile.locator('[data-mobile-pane="inspector"]').click();
