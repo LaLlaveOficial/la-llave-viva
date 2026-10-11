@@ -92,6 +92,7 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   assert.equal(root.querySelector('#studiowb-blade-tool').getAttribute('aria-pressed'),'true');
   const block=root.querySelector('[data-select-clip]'),lane=block.closest('[data-timeline-seek]');
   lane.getBoundingClientRect=()=>({left:0,width:960,right:960,top:0,bottom:70,height:70});
+  block.getBoundingClientRect=()=>({left:0,width:320,right:320,top:0,bottom:70,height:70});
   block.dispatchEvent(new dom.window.MouseEvent('click',{bubbles:true,clientX:80,detail:1}));
   assert.equal(root.querySelectorAll('[data-select-clip]').length,2,'blade cuts under pointer, not at stale playhead');
   assert.match(root.querySelector('#studiowb-time').textContent,/00:00:01:00/);
