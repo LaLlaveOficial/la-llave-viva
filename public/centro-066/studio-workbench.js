@@ -3,7 +3,7 @@ import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
 import {mountStudioCloud} from './studio-cloud066.js';
 import {exportCanvasRecording,exportFormatCapabilities,recordingBitrate} from './studio-recording.js';
 import {preflightExportMedia,formatExportPreflightError} from './studio-export-preflight.js';
-import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,previewClipDrag,clipDragChanged} from './studio-timeline-tools.js';
+import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,pointerCutWithinClip,revealClipScroll,previewClipDrag,clipDragChanged} from './studio-timeline-tools.js';
 import {extractPeaks,timelineSpan,mediaTimecode,trackIsEditable,trackIsAudible,trackIsVisible} from './studio-timeline-visuals.js';
 // Editor en navegador, sin llamadas a proveedores ni consumo de créditos.
 const e=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -290,9 +290,23 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    frame.append(elem);
   }catch{if(frame.isConnected)frame.textContent='No se pudo abrir el original';}
  }
+ function revealSelectedClip(id){
+  const timelineEl=root.querySelector('.wb-timeline');
+  const clip=workspace.clips.find(c=>c.id===id);
+  if(!clip||!timelineEl)return;
+  const pixelStart=clip.start/rulerSpan()*rulerWidth();
+  timelineEl.scrollLeft=revealClipScroll(pixelStart,timelineEl.clientWidth,timelineEl.scrollWidth,timelineEl.scrollLeft);
+ }
  function render(){
+  const oldTimelineScroll=root.querySelector('.wb-timeline')?.scrollLeft||0;
+  const oldMediaScroll=root.querySelector('.wb-media-list')?.scrollTop||0;
   pause();if(cloudDispose){cloudDispose();cloudDispose=null;}
-  root.innerHTML=page();wire();paint();drawTime();updateSourceViewer();fillTimelineMedia().catch(()=>{});
+  root.innerHTML=page();wire();
+  const timelineEl=root.querySelector('.wb-timeline');
+  if(timelineEl)timelineEl.scrollLeft=oldTimelineScroll;
+  const mediaList=root.querySelector('.wb-media-list');
+  if(mediaList)mediaList.scrollTop=oldMediaScroll;
+  paint();drawTime();updateSourceViewer();fillTimelineMedia().catch(()=>{});
   root.querySelectorAll('[data-media-thumb]').forEach(async image=>{const id=image.dataset.mediaThumb;try{const url=await getUrl(id);if(root.isConnected&&image.isConnected&&url)image.src=url;}catch{}});
   if(project?.id&&db)cloudDispose=mountStudioCloud(root.querySelector('#studiowb-cloud'),{projectId:Number(project.id),db,workspace,notice,onMediaAdded:async()=>{assets=await listMedia(db);trash=await listTrashedMedia(db);await prime();render();}});
  }
@@ -396,12 +410,12 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
       const clip=workspace.clips.find(c=>c.id===b.dataset.selectClip);
       if(!clip)return;
       if(!trackIsEditable(trackState,clip.track)){notice('Desbloquea la pista para cortar este clip.');return;}
-      const lane=b.parentElement,rect=lane.getBoundingClientRect();
-      // Teclado: cuando no existe coordenada de puntero, usa el cabezal actual.
-      const at=ev.detail===0||rect.width<=0?workspace.playhead:pointerCutTime(ev.clientX,rect.left,rect.width,rulerSpan(),workspace.fps);
+      const rect=b.getBoundingClientRect();
+      // The cut is relative to what the editor shows as this clip, even after scrolling.
+      const at=ev.detail===0||rect.width<=0?workspace.playhead:pointerCutWithinClip(ev.clientX,rect.left,rect.width,clip,workspace.fps);
       const pieces=splitClipAt(workspace.clips,clip.id,at);
       if(!pieces){notice('Coloca la cuchilla dentro del clip, lejos de sus extremos.');return;}
-      pause();checkpoint();workspace.clips=pieces;selected=pieces.at(-1).id;workspace.playhead=at;save();render();syncPlayback(true);paint();
+      pause();checkpoint();workspace.clips=pieces;selected=pieces.at(-1).id;workspace.playhead=at;save();render();revealSelectedClip(selected);syncPlayback(true);paint();
       return;
      }
      selected=b.dataset.selectClip;inspectorTab='clip';render();
@@ -456,7 +470,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
       // Commit once on pointerup. No DOM replacement or timeline data mutation during drag.
       checkpoint();
       Object.assign(clip,{start:preview.start,duration:preview.duration,sourceStart:preview.sourceStart});
-      selected=clip.id;inspectorTab='clip';save();render();paint();
+      selected=clip.id;inspectorTab='clip';save();render();revealSelectedClip(selected);paint();
      };
      const cancel=pe=>{if(!matching(pe))return;cleanup();if(moved)render();};
      env.addEventListener('pointermove',move,true);
@@ -494,7 +508,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    else if(['text','prompt'].includes(key))c[key]=value.slice(0,key==='text'?180:3000);
    else {const ranges={start:[0,600],duration:[.1,120],sourceStart:[0,600],volume:[0,2],brightness:[0,200],contrast:[0,200],saturation:[0,200],blur:[0,20],opacity:[0,1],scale:[.25,4],x:[-1,1],y:[-1,1]};if(ranges[key])c[key]=number(value,...ranges[key]);}
    if(c.start+c.duration>600)c.duration=Math.max(.1,600-c.start);
-   save();render();
+   save();render();if(key==='start'||key==='duration')revealSelectedClip(selected);
   });
   const selectedClip=workspace.clips.find(c=>c.id===selected);
   if(selectedClip){

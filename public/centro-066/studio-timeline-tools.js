@@ -68,3 +68,23 @@ export function previewClipDrag(clip,mode,delta,{fps=24,clips=[],snapping=true}=
 export function clipDragChanged(before,after){
  return Boolean(before&&after&&(before.start!==after.start||before.duration!==after.duration||before.sourceStart!==after.sourceStart));
 }
+
+/**
+ * A razor click is defined by its location WITHIN the visible clip.
+ * Using the whole-track bounding box caused user-visible cuts to be rejected
+ * after timeline zoom, clipping and horizontal scrolling.
+ */
+export function pointerCutWithinClip(clientX,blockLeft,blockWidth,clip,fps=24){
+ if(!clip||![clientX,blockLeft,blockWidth,clip.start,clip.duration,fps].every(Number.isFinite)||
+    blockWidth<=0||clip.duration<=0||fps<1||fps>120)return NaN;
+ const ratio=Math.max(0,Math.min(1,(clientX-blockLeft)/blockWidth));
+ return Math.round((clip.start+ratio*clip.duration)*fps)/fps;
+}
+/** Scroll distance for selected clip at a comfortable point of the viewport. */
+export function revealClipScroll(startPx,viewportWidth,scrollWidth,oldScroll,{sidebarWidth=115,anchor=.32}={}){
+ if(![startPx,viewportWidth,scrollWidth,oldScroll].every(Number.isFinite)||viewportWidth<=0)return 0;
+ const left=Math.max(0,oldScroll),right=left+Math.max(0,viewportWidth-sidebarWidth);
+ const wants=startPx<left+sidebarWidth+25||startPx>right-120;
+ const desired=wants?startPx-viewportWidth*anchor:left;
+ return Math.min(Math.max(0,scrollWidth-viewportWidth),Math.max(0,desired));
+}

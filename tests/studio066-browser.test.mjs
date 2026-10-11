@@ -80,6 +80,9 @@ try{
     laneWidth:lr.width,elWidth:cr.width,rootScroll:document.querySelector('.wb-timeline').scrollLeft};
  });
  console.log('USER_MOVE_SCENARIO',JSON.stringify(pos));
+ const viewBeforeCut=await page.locator('.wb-timeline').evaluate(el=>({left:el.scrollLeft,clientWidth:el.clientWidth,scrollWidth:el.scrollWidth}));
+ console.log('USER_MOVE_VIEW',JSON.stringify(viewBeforeCut));
+ assert.ok(viewBeforeCut.left>0,'Timeline auto-scroll follows selected clip after a distant move');
  assert.ok(Math.abs(pos.visualStart-pos.start/(pos.start+pos.duration+2))<.025,'DOM clip position must agree with inspector: '+JSON.stringify(pos));
  assert.ok(Math.abs(pos.visualDuration-pos.duration/(pos.start+pos.duration+2))<.025,'DOM clip width must agree with inspector: '+JSON.stringify(pos));
  const movingBlock=page.locator('.wb-timeline [data-select-clip].selected');

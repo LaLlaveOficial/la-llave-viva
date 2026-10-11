@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,previewClipDrag,clipDragChanged} from '../public/centro-066/studio-timeline-tools.js';
+import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,pointerCutWithinClip,revealClipScroll,previewClipDrag,clipDragChanged} from '../public/centro-066/studio-timeline-tools.js';
 import {mediaDB,addMedia,listMedia,readMedia,listTrashedMedia,trashMedia,restoreMedia} from '../public/centro-066/studio-media.js';
 
 const image={id:'a',kind:'image',assetId:'id1',track:'V1',start:0,duration:6,sourceStart:1.5,prompt:'Cinematic',opacity:1};
@@ -93,4 +93,18 @@ test('body drag is bounded, frame-snapped and does not mutate source',()=>{
  assert.equal(clamped.start,595);
  assert.equal(clipDragChanged(before,moved),true);
  assert.equal(clipDragChanged(before,before),false);
+});
+
+test('razor cuts exactly under pointer within relocated clip regardless of ruler origin',()=>{
+ const clip={...image,start:17.63,duration:20.67};
+ const time=pointerCutWithinClip(620,500,1200,clip,24);
+ assert.equal(time,Math.round((17.63+20.67*.1)*24)/24);
+ assert.ok(splitClipAt([clip],clip.id,time,()=> 'right'));
+ assert.ok(Number.isNaN(pointerCutWithinClip(10,0,0,clip,24)));
+});
+test('timeline viewport reveals edited clip and respects saved scroll position',()=>{
+ assert.equal(revealClipScroll(1450,1200,3400,0),1066);
+ assert.equal(revealClipScroll(500,1200,3400,100),100);
+ assert.equal(revealClipScroll(100,1200,3400,500),0);
+ assert.equal(revealClipScroll(3000,1200,3400,500),2200);
 });
