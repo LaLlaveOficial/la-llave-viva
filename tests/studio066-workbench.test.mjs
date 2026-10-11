@@ -37,6 +37,12 @@ test('editor mounts local library, timeline, inspector and export in jsdom',asyn
   const clean=studioWorkbenchView(root,()=>{});
   await new Promise(resolve=>setTimeout(resolve,150));
   assert.match(root.textContent,/Estudio de montaje 066/);
+  // Critical DOM contract: the toolbar, library, monitor, inspector and timeline
+  // must all be descendants of the same root for responsive CSS/tool cursors.
+  const sceneRoot=root.querySelector('.wb-root');
+  for(const sel of ['.wb-settings','.wb-workarea','.wb-library','.wb-stage','.wb-inspector','.wb-timeline-panel','.wb-mobile-dock']){
+   assert.ok(sceneRoot.contains(root.querySelector(sel)),'Workspace root must own '+sel);
+  }
   assert.ok(root.querySelector('#studiowb-upload'));
   assert.ok(root.querySelector('#studiowb-canvas'));
   assert.ok(root.querySelector('#studiowb-export'));
