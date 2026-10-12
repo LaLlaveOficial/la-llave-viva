@@ -202,3 +202,8 @@ Video/audio ya usan su duración real como límite al insertar y recortar. La ex
 El icono **Extraer audio del video (Shift+E)** crea sonido editable en una pista A libre, conservando posición e In/Out, y silencia el video. Deshacer devuelve la mezcla previa. Video y audio pueden moverse y ajustarse por separado.
 
 La prueba Chrome descarga una secuencia de video real con audio separado y verifica colores, frecuencias, volumen y un intervalo en silencio mediante FFmpeg. MP4 H.264/AAC se verifica solo cuando el navegador anuncia ambos códecs; WebM es la salida comprobada localmente. Este hito no habilita render remoto, proveedores de generación ni producción.
+# Subtítulos SRT/VTT
+
+En Biblioteca → Texto se pueden importar archivos SRT/WebVTT y exportar subtítulos SRT. Cada cue se agrega como bloque de texto en V2; seleccionar permite editar texto (hasta 500 caracteres), inicio, duración, tamaño, posición y fondo. El icono **Añadir subtítulo (Shift+L)** crea una cue manual en el cabezal.
+
+Los subtítulos se dibujan dentro del video exportado y se guardan en el proyecto. Importación, tiempos, estilo, recuperación y exportación SRT/WebM se verifican en Chrome con archivos reales. La importación respeta el bloqueo de V2 y los límites del montaje; no hace transcripción automática ni consume créditos.

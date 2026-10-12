@@ -99,6 +99,16 @@ Contrato geométrico:
 ## Pendientes para cerrar el estudio completo
 
 1. Render MP4 H.264/AAC independiente del navegador, control de sincronía por fotograma y pruebas con material de producción largo. Render remoto no conectado.
-2. Edición avanzada: subtítulos, keyframes, multiselección, vincular imagen/audio, medidores y control de picos.
+2. Edición avanzada: keyframes, multiselección, vincular imagen/audio, medidores y control de picos. Transcripción automática de voz pendiente; subtítulos manuales y SRT/VTT ya operativos.
 3. Generación IA y voz: las funciones que necesitan proveedor/créditos permanecen deshabilitadas hasta conexión autorizada. No se presentan como operativas.
 4. Prueba humana con clips reales del Caso 066 y dispositivos de destino antes de aprobar producción.
+
+## Subtítulos locales — 11-oct-2026
+
+- Icono Añadir subtítulo (Shift+L): crea un bloque de dos segundos en V2 en el cabezal. La pestaña Texto de Biblioteca permite importar SRT/WebVTT y descargar SRT.
+- La importación respeta tiempos absolutos del montaje y saltos de línea; elimina etiquetas de formato conocidas, no interpreta HTML ni ejecuta scripts. NOTE/STYLE/REGION de VTT se ignoran. Posicionamiento VTT se sustituye por el estilo local editable.
+- Cada cue admite hasta 500 caracteres; máximo 120 cues y 250 KB por archivo, sin superar los 120 clips del proyecto. Duración 0,1–120 s; tiempos hasta 600 s, con el límite de exportación local de 120 s todavía vigente. Errores de formato, capacidad o bloqueo de V2 cancelan la operación sin modificar el montaje.
+- Inspector: texto, Inicio, Duración, pista, tamaño relativo al lado corto, posición vertical y opacidad del fondo. El renderer ajusta líneas al ancho seguro y reduce el tamaño en textos largos; mismo compositor para visor y video exportado.
+- JSON/respaldo portable y undo/redo conservan texto, tiempos y estilo. El SRT exportado utiliza los tiempos actuales y solo bloques marcados como subtítulo; no incluye estilos ni títulos normales. El archivo SRT no incluye medios.
+- QA Chrome: importación, 269 caracteres sin truncar, ajustes de estilo/tiempo, vertical/horizontal, bloqueo de pista, rechazo atómico de archivo inválido, creación manual, undo/redo, recuperación al recargar y lectura de SRT descargado. FFmpeg cuenta píxeles de texto blanco en el WebM para confirmar presencia durante ambas cues y ausencia antes, entre ellas y después.
+- Sin transcripción automática, generación de voz ni llamadas a proveedores.
