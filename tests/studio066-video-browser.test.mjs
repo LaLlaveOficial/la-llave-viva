@@ -21,6 +21,13 @@ try{
  const seek=async t=>{await page.locator('#studiowb-seek').evaluate((el,value)=>{el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));},t);await page.waitForTimeout(180);};
  const pixel=()=>page.locator('#studiowb-canvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(c.width/2,c.height/2,1,1).data));
  await property('duration',100);assert.ok((await state()).clips[0].duration<=6.05,'Duration cannot extend beyond source');
+ if(server){
+  await property('sourceStart',1);await property('duration',5);await page.locator('#studiowb-format').selectOption('mp4');
+  const promise=page.waitForEvent('download',{timeout:30000});await page.locator('#studiowb-top-export').click();const result=await promise,trimmed=dir+'/non-keyframe-trim.mp4';await result.saveAs(trimmed);
+  const sample=t=>Array.from(execFileSync('ffmpeg',['-v','error','-ss',String(t),'-i',trimmed,'-frames:v','1','-vf','crop=16:16:352:632,scale=1:1','-f','rawvideo','-pix_fmt','rgb24','pipe:1']));
+  const colors=[sample(.5),sample(1.5),sample(3.5)];assert.ok(colors[0][0]>200&&colors[0][1]<20&&colors[1][1]>90&&colors[1][0]<20&&colors[2][2]>200,'Non-keyframe source trim must preserve decoded video timing: '+JSON.stringify(colors));
+  console.log(JSON.stringify({result:'NON_KEYFRAME_TRIM_MP4_PASS',colors}));await page.locator('#studiowb-cancel-export').waitFor({state:'detached'});await page.locator('#studiowb-format').selectOption('webm');
+ }
  await property('sourceStart',2);assert.ok((await state()).clips[0].duration<=4.05);await property('duration',3);
  await seek(.5);let p=await pixel();assert.ok(p[1]>90&&p[0]<20&&p[2]<20,'Source In previews the green segment: '+p);
  await seek(2.5);p=await pixel();assert.ok(p[2]>220&&p[0]<20&&p[1]<20,'Source time advances to blue: '+p);

@@ -111,7 +111,8 @@ export function studioWorkbenchView(root,notice,project=null){
    const m=media.get(c.id);if(!m)continue;
    const on=activeClip(c,t);
    const target=Math.max(0,clipSource(c,t));
-   if(on&&(force||Math.abs(m.element.currentTime-target)>.35))try{m.element.currentTime=target;}catch{}
+   // Reassigning the same currentTime restarts video decoding after export preflight.
+   if(on&&Math.abs(m.element.currentTime-target)>(force ? .001 : .35))try{m.element.currentTime=target;}catch{}
    m.element.muted=!trackIsAudible(trackState,c.track);
    const volume=animationValue(c,'volume',t-c.start);
     if(m.gain)m.gain.gain.value=on&&trackIsAudible(trackState,c.track)?number(volume,0,2)*fadeEnvelope(c,t,'audio')*audioTransitionGain(workspace.clips,c,t,audioWindows):0;

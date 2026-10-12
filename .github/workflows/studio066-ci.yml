@@ -6,6 +6,7 @@ on:
       - release/studio066-approved
       - feature/studio066-server-mp4
       - fix/studio066-pending-media
+      - fix/studio066-stable-seek
   workflow_dispatch:
 
 permissions:
