@@ -1,0 +1,36 @@
+import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs';import {execFileSync} from 'node:child_process';
+import {parseSubtitles} from '../public/centro-066/studio-subtitles.js';
+const dir='/tmp/studio066-browser';fs.mkdirSync(dir,{recursive:true});
+const browser=await chromium.launch({executablePath:process.env.CHROME_BIN||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});let page;
+try{
+ page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ await page.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();
+ const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('llave-studio066-workspace-v1:scratch')));
+ const seek=async t=>{await page.locator('#studiowb-seek').evaluate((el,value)=>{el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));},t);};
+ const whites=()=>page.locator('#studiowb-canvas').evaluate(c=>{const ctx=c.getContext('2d'),data=ctx.getImageData(0,Math.floor(c.height*.65),c.width,Math.floor(c.height*.34)).data;let count=0;for(let i=0;i<data.length;i+=4)if(data[i]>210&&data[i+1]>210&&data[i+2]>210)count++;return count;});
+ const srt='1\n00:00:00,500 --> 00:00:01,500\n¿Dónde está Paula?\nEn Ciudad Central.\n\n2\n00:00:02,500 --> 00:00:03,500\nCASO 066';
+ await page.locator('[data-bin-switch=text]').click();await page.locator('#studiowb-subtitles-import').setInputFiles({name:'dialogos.srt',mimeType:'application/x-subrip',buffer:Buffer.from(srt)});
+ await page.waitForFunction(()=>document.querySelectorAll('.wb-timeline [data-select-clip]').length===2);assert.equal((await state()).clips[0].textRole,'subtitle');
+ await seek(.1);assert.equal(await whites(),0);await seek(1);assert.ok(await whites()>300,'Vertical preview renders both Spanish lines');await seek(2);assert.equal(await whites(),0);
+ await page.locator('#studiowb-undo').click();assert.equal((await state()).clips.length,0);await page.locator('#studiowb-redo').click();assert.equal((await state()).clips.length,2);
+ const first=(await state()).clips[0];await page.locator('[data-select-clip="'+first.id+'"] .wb-clip-inner').click();
+ const property=async(key,value)=>{const field=page.locator('[data-property="'+key+'"]');await field.fill(String(value));await field.press('Tab');await page.waitForTimeout(100);};
+ const longText='Paula y Rosa atraviesan Ciudad Central. La investigación continúa entre sombras y lluvia. '.repeat(3).trim();assert.ok(longText.length>180);
+ await property('text',longText);await property('start',.75);await property('duration',1.25);await property('subtitleSize',6);await property('subtitleY',85);await property('subtitleBackground',.4);
+ assert.equal((await state()).clips.find(c=>c.id===first.id).text,longText,'Subtitles preserve more than 180 characters');
+ await seek(1);assert.ok(await whites()>500,'Long text wraps instead of disappearing');
+ await page.locator('#studiowb-aspect').selectOption('16:9');await seek(1);assert.ok(await whites()>500,'Horizontal preview wraps the same complete text');
+ const snapshot=await state();await page.locator('[data-track-flag="V2:locked"]').click();
+ await page.locator('.wb-timeline').focus();await page.keyboard.press('Shift+L');assert.equal((await state()).clips.length,2,'Locked V2 rejects adding subtitles');
+ await page.locator('#studiowb-subtitles-import').setInputFiles({name:'locked.vtt',mimeType:'text/vtt',buffer:Buffer.from('WEBVTT\n\n00:04.000 --> 00:05.000\nNo se agrega')});await page.waitForTimeout(100);assert.equal((await state()).clips.length,2);
+ await page.locator('[data-track-flag="V2:locked"]').click();
+ await page.locator('#studiowb-subtitles-import').setInputFiles({name:'invalid.srt',mimeType:'text/plain',buffer:Buffer.from('no tiene tiempos')});await page.waitForTimeout(100);assert.deepEqual((await state()).clips,snapshot.clips,'Invalid import leaves the montage intact');
+ await seek(4);await page.locator('.wb-timeline').focus();await page.keyboard.press('Shift+L');assert.equal((await state()).clips.length,3);await page.locator('#studiowb-undo').click();assert.equal((await state()).clips.length,2);
+ await page.reload({waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();await seek(1);assert.ok(await whites()>500);assert.equal((await state()).clips[0].subtitleBackground,.4);
+ await page.locator('[data-bin-switch=text]').click();const downloadPromise=page.waitForEvent('download');await page.locator('#studiowb-subtitles-export').click();const download=await downloadPromise;const path=dir+'/subtitulos.srt';await download.saveAs(path);const exported=parseSubtitles(fs.readFileSync(path,'utf8'));assert.equal(exported[0].text,longText);assert.equal(exported[0].start,.75);assert.equal(exported[0].duration,1.25);
+ await page.screenshot({path:dir+'/subtitles.png',fullPage:true});
+ const videoPromise=page.waitForEvent('download',{timeout:30000});await page.locator('#studiowb-top-export').click();const video=await videoPromise;const output=dir+'/subtitles.webm';await video.saveAs(output);
+ const countAt=t=>{const frame=execFileSync('ffmpeg',['-v','error','-ss',String(t),'-i',output,'-frames:v','1','-vf','crop=1280:240:0:470','-f','rawvideo','-pix_fmt','rgb24','pipe:1'],{maxBuffer:2000000});let count=0;for(let i=0;i<frame.length;i+=3)if(frame[i]>200&&frame[i+1]>200&&frame[i+2]>200)count++;return count;};
+ const counts={before:countAt(.2),first:countAt(1),gap:countAt(2.2),second:countAt(3),after:countAt(4)};assert.equal(counts.before,0);assert.ok(counts.first>500);assert.equal(counts.gap,0);assert.ok(counts.second>200);assert.equal(counts.after,0);
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({result:'SUBTITLES_BROWSER_EXPORT_PASS',cueCount:exported.length,longTextLength:longText.length,encodedWhitePixels:counts,bytes:fs.statSync(output).size}));
+}catch(error){console.error(error.stack);await page?.screenshot({path:dir+'/subtitles-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();}

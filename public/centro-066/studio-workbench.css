@@ -1,0 +1,127 @@
+
+/* Estudio multimedia: layout de montaje aislado de la consola CRM. */
+.shell.studio-mode{grid-template-columns:210px minmax(0,1fr)}
+.shell.studio-mode main{max-width:none;padding:22px clamp(14px,2vw,30px) 14px}
+.shell.studio-mode .topbar{margin-bottom:16px}
+.shell.studio-mode .topbar h1{font-size:clamp(23px,2vw,31px)}
+.studio-root{max-width:none!important}
+.wb-root{background:#101416;border:1px solid #ffffff20;border-radius:14px;padding:16px;display:grid;gap:13px;color:#eaece9;min-width:0}
+.wb-root button,.wb-root input,.wb-root select,.wb-root textarea{font-family:inherit}
+.wb-root button:disabled{opacity:.4}
+.wb-top,.wb-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.wb-top{justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #ffffff17}
+.wb-top h3{font-size:21px;margin:3px 0}
+.wb-root label{color:#c9c9c5;font-size:11px;display:grid;gap:5px;font-weight:600}
+.wb-root input:not([type=file]):not([type=range]),.wb-root select,.wb-root textarea{width:100%;border:1px solid #ffffff27;background:#0a0d0e;color:#f1efeb;border-radius:8px;padding:9px;font-size:12px;min-width:0}
+.wb-root textarea{resize:vertical;line-height:1.5}
+.wb-settings{display:grid;grid-template-columns:minmax(170px,2fr) repeat(3,minmax(85px,1fr));gap:12px}
+.wb-workarea{display:grid;grid-template-columns:minmax(210px,260px) minmax(330px,1fr) minmax(250px,330px);gap:12px;min-height:450px}
+.wb-library,.wb-stage,.wb-inspector{border:1px solid #ffffff18;background:#161a1c;border-radius:11px;padding:14px;min-width:0;overflow:auto}
+.wb-library h3,.wb-inspector h3{font-size:15px;margin:0 0 12px}
+.wb-media-list{display:grid;gap:8px;margin:12px 0;max-height:375px;overflow:auto}
+.wb-media-item{display:grid;gap:8px;padding:10px;border:1px solid #ffffff24;border-radius:9px;background:#0e1112;overflow-wrap:anywhere}
+.wb-media-item b{display:block;font-size:11px;line-height:1.4}
+.wb-media-item small{display:block;color:#a9aaa6;font-size:10px;margin-top:3px}
+.wb-media-item button{padding:6px 9px;font-size:10px;min-height:30px}
+.wb-file-label{display:inline-flex!important;background:#353328;border:1px solid #9f8647;color:#edd391!important;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:11px!important;max-width:100%}
+.wb-file-label input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.wb-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;background:#0c0e10}
+.wb-preview-box{flex:1;display:flex;align-items:center;justify-content:center;min-height:245px;max-height:410px;width:100%;background:radial-gradient(ellipse at center,#1a2023,#070808);border:1px solid #ffffff21;border-radius:9px;padding:7px;overflow:hidden}
+.wb-preview-box canvas{max-width:100%;max-height:395px;width:auto;height:auto;aspect-ratio:9/16;object-fit:contain;background:#101417;box-shadow:0 8px 24px #000b}
+.wb-controls{display:flex;gap:9px;justify-content:center;align-items:center;flex-wrap:wrap;width:100%}
+.wb-controls button{min-height:32px;padding:8px 11px;font-size:11px}
+.wb-controls strong{font-size:11px;color:#d8ceac;font-variant-numeric:tabular-nums}
+.wb-stage input[type=range]{width:100%;accent-color:#f1c15a}
+.wb-inspector{display:grid;gap:10px;align-content:start;max-height:640px}
+.wb-inspector h4{font-size:12px;margin:7px 0 0}
+.wb-inspector .studio-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.wb-inspector .wb-row button{font-size:10px;min-height:32px;padding:7px 9px}
+.wb-timeline{background:#0a0d0e;border:1px solid #ffffff20;border-radius:10px;padding:8px;overflow-x:auto}
+.wb-ruler,.wb-track{display:grid;grid-template-columns:125px minmax(500px,1fr);align-items:center;gap:5px}
+.wb-track{margin-top:5px}
+.wb-track-label{font-size:11px;color:#dcd5bf;padding:7px 5px}
+.wb-track-label strong{color:#efc263;font-size:12px;display:block}
+.wb-track-label small{color:#999f9f;display:block;font-size:9px;margin-top:4px}
+.wb-ruler-times,.wb-track-content{position:relative;min-height:46px;background:repeating-linear-gradient(90deg,#ffffff05 0,#ffffff05 1px,transparent 1px,transparent 10%);border:1px solid #ffffff14;border-radius:5px;overflow:hidden}
+.wb-ruler-times{min-height:24px}
+.wb-ruler-times span{position:absolute;top:4px;font-size:9px;color:#9b9e9b;transform:translateX(3px)}
+.wb-track-content{cursor:crosshair}
+.wb-block{position:absolute;z-index:1;top:8px;height:29px;min-height:29px!important;border-radius:5px;border:1px solid #d1b15a85!important;background:#826d318c!important;color:#fff!important;padding:4px 6px!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;font-size:10px!important;transform:none!important;cursor:pointer}
+.wb-block.wb-audio{background:#1f654f9a!important;border-color:#48a27b!important}
+.wb-block.wb-text{background:#4b4e8daa!important;border-color:#9594d2!important}
+.wb-block.selected{outline:2px solid #ffdc7d;outline-offset:1px}
+.wb-cursor{position:absolute;height:100%;top:0;border-left:2px solid #ff6448;z-index:2;pointer-events:none}
+@media(max-width:1320px){.wb-workarea{grid-template-columns:minmax(185px,220px) minmax(300px,1fr)}.wb-inspector{grid-column:1/-1;max-height:unset}.wb-settings{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.shell.studio-mode{grid-template-columns:1fr}.wb-workarea{grid-template-columns:1fr}.wb-settings{grid-template-columns:1fr 1fr}.wb-library,.wb-stage,.wb-inspector{grid-column:1/-1}.wb-ruler,.wb-track{grid-template-columns:96px minmax(440px,1fr)}.wb-root{padding:10px}}
+
+.wb-block{touch-action:none}.wb-trim-right{position:absolute;right:0;top:0;bottom:0;width:9px;border-left:2px solid #ffe9ab80;cursor:ew-resize;background:#ffffffe8}
+
+/* Keep actual editing controls and tracks in sight without giant blank preview. */
+.wb-workarea{min-height:0;align-items:start}
+.wb-stage{align-self:start;justify-content:flex-start;min-height:0;overflow:hidden}
+.wb-preview-box{flex:none;height:clamp(235px,35vh,340px);min-height:0;max-height:none}
+.wb-preview-box canvas{max-height:clamp(220px,34vh,326px)}
+.wb-library,.wb-inspector{max-height:560px}
+.wb-root{gap:10px}
+.wb-stage>.studio-help{margin:0;text-align:center}
+@media(max-width:760px){.wb-preview-box{height:clamp(230px,34vh,310px)}.wb-library,.wb-inspector{max-height:none}}
+
+/* Portable project transfer controls: make controls fit without crowding preview. */
+.wb-top .wb-row{justify-content:flex-end}
+.wb-top .wb-row>button,.wb-top .wb-row>.wb-file-label{font-size:10px!important;padding:8px 10px;min-height:32px}
+@media(max-width:760px){.wb-top .wb-row{justify-content:flex-start}}
+
+/* Manual private-cloud controls. Remain informative while connector is disabled. */
+.wb-cloud-wrap{margin-top:14px;padding-top:12px;border-top:1px solid #ffffff28;display:grid;gap:7px}
+.wb-cloud-title{display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap;align-items:center}
+.wb-cloud-title b{font-size:12px;color:#e2cd9b}
+.wb-cloud-title small{font-size:9px;color:#adb5b4}
+.wb-cloud-files{max-height:205px;overflow:auto;display:grid;gap:7px}
+.wb-cloud-entry{border:1px solid #ffffff24;border-radius:7px;padding:9px;display:grid;gap:7px;overflow-wrap:anywhere}
+.wb-cloud-entry span{font-size:10px;color:#ddd}
+.wb-cloud-wrap button{padding:8px 10px;font-size:10px;min-height:32px}
+
+/* Export format controls: compact on desktop, readable on mobile. */
+.wb-settings{grid-template-columns:minmax(170px,2fr) repeat(5,minmax(95px,1fr));gap:10px}
+@media(max-width:1350px){.wb-settings{grid-template-columns:repeat(3,minmax(0,1fr))}.wb-settings>label:first-child{grid-column:span 3}}
+@media(max-width:760px){.wb-settings{grid-template-columns:repeat(2,minmax(0,1fr))}.wb-settings>label:first-child{grid-column:span 2}}
+
+/* A missing local original must be visible in the editor, not hidden in export. */
+.wb-media-warning{padding:9px 12px!important;margin:0 0 9px!important;border:1px solid #a37b33;border-radius:8px;color:#efcc80!important;background:rgba(131,88,11,.12);line-height:1.4}
+
+/* 066: visual media bins, reversible trash, magnetic timeline tools. */
+.wb-library-head{display:flex;gap:6px;margin:10px 0}
+.wb-library-head button{flex:1;min-width:0;padding:8px 5px;font-size:10px}
+.wb-library-head button[aria-pressed="true"],.wb-edit-toolbar button[aria-pressed="true"]{border-color:#dfb760;color:#ffdd8d;background:#b083311e}
+.wb-media-item{cursor:grab}
+.wb-media-item:active{cursor:grabbing}
+.wb-media-tile{display:flex;align-items:center;gap:9px;min-width:0}
+.wb-media-tile>div:last-child{flex:1;min-width:0}
+.wb-media-item .wb-row button{flex:1;white-space:nowrap;padding:5px 4px}
+.wb-thumb{flex:0 0 72px;height:76px;display:grid;place-items:center;overflow:hidden;border-radius:7px;background:#212626;border:1px solid #ffffff22;font-size:23px;color:#e6be66}
+.wb-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.wb-edit-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#0a0d0e;border:1px solid #ffffff22;border-radius:9px;padding:9px}
+.wb-edit-toolbar button{padding:9px 11px;font-size:11px;border-radius:7px;min-height:34px}
+.wb-edit-toolbar label{display:flex;gap:10px;flex-direction:row;align-items:center}
+.wb-edit-toolbar input[type=range]{width:90px;accent-color:#e7b754}
+.wb-edit-toolbar small{color:#acb4b0;font-size:10px}
+.wb-timeline{--wb-lane-min:500px}
+.wb-ruler,.wb-track{grid-template-columns:125px minmax(var(--wb-lane-min),1fr)}
+.wb-track-content.wb-drop-ready{outline:2px dashed #efca74;outline-offset:-3px;background:#edb95918}
+.wb-block{cursor:grab;touch-action:none}
+.wb-cloud-files{max-height:360px}
+.wb-cloud-commands{display:flex;flex-wrap:wrap;gap:6px}
+.wb-cloud-commands button{flex:1;min-width:85px}
+.wb-cloud-entry{display:flex;gap:8px;align-items:flex-start;padding:8px}
+.wb-cloud-cover{flex:0 0 66px;width:66px;height:74px;border-radius:7px;overflow:hidden;background:#0a0d0f;display:grid;place-items:center;border:1px solid #ffffff23}
+.wb-cloud-cover img,.wb-cloud-cover video{display:block;width:100%;height:100%;object-fit:cover}
+.wb-cloud-icon{font-size:25px;color:#b5a172}
+.wb-cloud-meta{display:grid;gap:6px;flex:1;min-width:0}
+.wb-cloud-meta b{font-size:11px;overflow-wrap:anywhere}
+.wb-cloud-meta small{color:#b5b9b7;font-size:10px}
+.wb-cloud-actions{display:flex;gap:5px;flex-wrap:wrap}
+.wb-cloud-actions button{flex:1;min-width:65px;padding:6px 4px;font-size:10px}
+@media(max-width:760px){.wb-ruler,.wb-track{grid-template-columns:96px minmax(var(--wb-lane-min),1fr)}.wb-thumb{flex-basis:84px;height:84px}.wb-edit-toolbar small{flex-basis:100%}}
+
+.wb-trim-left{position:absolute;left:0;top:0;bottom:0;width:9px;border-right:2px solid #ffe9ab80;cursor:ew-resize;background:#ffffffe8}
+.wb-block .wb-trim-left,.wb-block .wb-trim-right{z-index:2}
