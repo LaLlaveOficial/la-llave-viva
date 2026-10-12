@@ -8,6 +8,7 @@ import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
 import {videoRequest} from '../lib/video-066.js';
+import {managerReport} from '../lib/manager-report.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonUsage,houstonStatus} from '../lib/houston-status.js';
@@ -127,6 +128,12 @@ export function makeHandler(connect = neon, env = process.env) {
       if(op==='houston-routines'){
         try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
         catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(op==='manager-report'&&req.method==='GET'){
+        const text=await managerReport(sql,()=>videoRequest('list',{},env));
+        res.setHeader('Content-Type','text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition','attachment; filename="la-llave-gerente-24h.txt"');
+        return res.status(200).send(text);
       }
       if(op==='agent-outputs'&&req.method==='GET'){
         const rows=await sql`SELECT id,detail,created_at FROM console066_audit WHERE entity='agent-output' ORDER BY id DESC LIMIT 40`;
