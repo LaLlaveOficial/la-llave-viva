@@ -165,6 +165,7 @@ export function studioWorkbenchView(root,notice,project=null){
   const duration=timelineDuration(workspace.clips);
   if(duration>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
   const before=workspace.playhead;
+  let exportSilence=null;
   const outputFormat=workspace.exportFormat||'webm';
   rendering=true;
   exportAbort=new AbortController();
@@ -183,14 +184,15 @@ export function studioWorkbenchView(root,notice,project=null){
    if(!preflight.ok){notice(formatExportPreflightError(preflight));return;}
    for(const c of workspace.clips)for(const channel of ['video','audio']){const pair=transitionWindow(workspace.clips,c,channel);if(pair&&transitionSourceLimit(pair)+.001<pair.duration)throw new Error('La transición excede el material original disponible. Acorta su duración o ajusta el solape.');}
    const useAudio=workspace.clips.some(c=>c.kind==='audio'||c.kind==='video');
-   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();}
+   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();if(audioCtx&&mix){exportSilence=audioCtx.createConstantSource();exportSilence.offset.value=0;exportSilence.connect(mix);exportSilence.start();}}
    await Promise.all(workspace.clips.filter(c=>['audio','video'].includes(c.kind)).map(c=>prepareMediaFrame(media.get(c.id).element,c.sourceStart||0,{signal:exportAbort.signal})));
-   isPlaying=true;syncPlayback();paint();
-   let {blob,format}=await exportCanvasRecording({
+   isPlaying=outputFormat!=='mp4';syncPlayback(true);paint();
+   let {blob,format,leadSeconds}=await exportCanvasRecording({
     canvas:canvas(),seconds:duration,fps:workspace.fps,format:'webm',
     audioTracks:useAudio&&mix?mix.stream.getAudioTracks():[],
     bitrate:recordingBitrate(workspace.quality,workspace.encodingQuality||'high'),
     signal:exportAbort.signal,
+    onStart:outputFormat==='mp4'?()=>{isPlaying=true;syncPlayback(true);}:undefined,
     onProgress:value=>{if(button)button.textContent='Capturando montaje · '+Math.round(value*100)+'%';},
     onFrame:async elapsed=>{
      workspace.playhead=Math.min(elapsed,Math.max(0,duration-1/(workspace.fps*4)));
@@ -198,7 +200,7 @@ export function studioWorkbenchView(root,notice,project=null){
     }
    });
    if(outputFormat==='mp4'){
-    pause();blob=await encodeStudioMP4(blob,{seconds:duration,fps:workspace.fps,quality:workspace.encodingQuality||'high',resolution:workspace.quality,signal:exportAbort.signal,onProgress:(stage,percent)=>{if(button)button.textContent=stage+' · '+percent+'%';}});format='mp4';
+    pause();blob=await encodeStudioMP4(blob,{seconds:duration,fps:workspace.fps,quality:workspace.encodingQuality||'high',resolution:workspace.quality,leadSeconds,signal:exportAbort.signal,onProgress:(stage,percent)=>{if(button)button.textContent=stage+' · '+percent+'%';}});format='mp4';
    }
    if(exportAbort.signal.aborted)return;
    const url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -209,6 +211,7 @@ export function studioWorkbenchView(root,notice,project=null){
   }catch(error){
    if(!exportAbort?.signal.aborted)notice('No se pudo exportar: '+error.message);
   }finally{
+   exportSilence?.stop();exportSilence?.disconnect();
    pause();workspace.playhead=before;save();syncPlayback(true);paint();drawTime();
    rendering=false;exportAbort=null;cancelButton.remove();exportControls.forEach(([node,disabled])=>{if(node.isConnected)node.disabled=disabled;});
    if(button){button.disabled=false;button.textContent='Exportar '+outputFormat.toUpperCase();}
@@ -340,7 +343,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<label class="wb-tool-zoom">Zoom <input id="studiowb-zoom" aria-label="Zoom de la línea de tiempo" type="range" min=".5" max="5" step=".25" value="'+timelineZoom+'"></label>'+
     '<button type="button" id="studiowb-timeline-fit" title="Ajustar (F)" aria-label="Ajustar (F)">'+toolIcon('fit')+'</button>'+
     '<div id="studiowb-tool-hint" class="wb-tool-hint" role="status">'+(editingTool==='blade'?'CUCHILLA · Haz clic en un clip para cortarlo exactamente aquí':'SELECCIÓN · Arrastra, recorta o elige un clip')+'</div></div>'+
-timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · Generación y render remoto todavía no conectados</p></div>';
+timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · MP4 con Houston · Generación IA pendiente</p></div>';
  }
  async function updateSourceViewer(){
   const frame=root.querySelector('#studiowb-source-frame'),button=root.querySelector('#studiowb-source-add');

@@ -7,7 +7,7 @@ const pause=(ms,signal)=>new Promise((resolve,reject)=>{
  const abort=()=>{clearTimeout(timer);reject(new Error('Exportación cancelada.'));};
  const timer=setTimeout(()=>{signal?.removeEventListener('abort',abort);resolve();},ms);signal?.addEventListener('abort',abort,{once:true});
 });
-export async function encodeStudioMP4(blob,{seconds,fps=24,quality='high',resolution='720p',signal,onProgress,fetcher=fetch,pollMs=1000}={}){
+export async function encodeStudioMP4(blob,{seconds,fps=24,quality='high',resolution='720p',leadSeconds=0,signal,onProgress,fetcher=fetch,pollMs=1000}={}){
  if(blob.size>MAX||!await isWebMData(blob))throw Error('La captura debe ser WebM y no superar 128 MB.');
  const id=crypto.randomUUID();let created=false;
  const call=async(action,body,get=false,useSignal=true)=>{
@@ -19,7 +19,7 @@ export async function encodeStudioMP4(blob,{seconds,fps=24,quality='high',resolu
  };
  try{
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
-  created=true;await call('init',{bytes:blob.size,seconds,fps,quality,resolution,sha256:hash});
+  created=true;await call('init',{bytes:blob.size,seconds,fps,quality,resolution,leadSeconds,sha256:hash});
   for(let offset=0,index=0;offset<blob.size;offset+=CHUNK,index++){
    await call('chunk',{index,data:encode(new Uint8Array(await blob.slice(offset,offset+CHUNK).arrayBuffer()))});
    onProgress?.('Subiendo montaje',Math.round(Math.min(offset+CHUNK,blob.size)/blob.size*100));

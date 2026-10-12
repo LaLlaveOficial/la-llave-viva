@@ -4,7 +4,7 @@ import {studioEncodeRequest} from '../lib/studio-encode066.js';
 import {EventEmitter} from 'node:events';
 test('upload contract rejects paths, malformed hashes, oversized media and unsupported profiles',()=>{
  const valid={id:randomUUID(),bytes:16,seconds:6,fps:24,quality:'high',resolution:'720p',sha256:'a'.repeat(64)};assert.ok(validateStudioUpload(valid));
- for(const change of [{id:'../../path'},{bytes:129*1024*1024},{seconds:121},{fps:60},{quality:'arbitrary command'},{sha256:'url'}])assert.equal(validateStudioUpload({...valid,...change}),null);
+ for(const change of [{id:'../../path'},{bytes:129*1024*1024},{seconds:121},{fps:60},{quality:'arbitrary command'},{sha256:'url'},{leadSeconds:-1},{leadSeconds:9}])assert.equal(validateStudioUpload({...valid,...change}),null);
 });
 test('worker enforces authentication, ordered parts, full-file integrity, serialization and cancellation',async()=>{
  const old=process.env.HOUSTON_HOST_TOKEN,key='studio-unit-test-private-key-only';process.env.HOUSTON_HOST_TOKEN=key;const resources={busy:true};
