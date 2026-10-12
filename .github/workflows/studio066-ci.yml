@@ -4,6 +4,7 @@ on:
     branches:
       - feature/estudio-creativo-066-fase1
       - release/studio066-approved
+      - feature/studio066-server-mp4
   workflow_dispatch:
 
 permissions:
@@ -37,6 +38,9 @@ jobs:
       - name: Validar editor multimedia e interfaz
         run: |
           node --check public/centro-066/studio-workbench.js
+          node --check public/centro-066/studio-server-export.js
+          node --check deploy/console066-houston/studio-encoder.mjs
+          node --test tests/studio066-server-mp4.test.mjs tests/video-066-renderer.test.mjs
           node --check public/centro-066/studio-playback.js
           node --check public/centro-066/studio-subtitles.js
           node --check public/centro-066/studio-keyframes.js
@@ -79,6 +83,12 @@ jobs:
           node tests/studio066-subtitles-browser.test.mjs
           node tests/studio066-keyframes-browser.test.mjs
           node tests/studio066-shortcuts-browser.test.mjs
+      - name: MP4 real del montaje con H.264 y AAC en el servidor
+        run: |
+          STUDIO_SERVER_MP4_TEST=1 node tests/studio066-transitions-browser.test.mjs
+          STUDIO_SERVER_MP4_TEST=1 node tests/studio066-subtitles-browser.test.mjs
+          STUDIO_SERVER_MP4_TEST=1 node tests/studio066-keyframes-browser.test.mjs
+          STUDIO_SERVER_MP4_TEST=1 node tests/studio066-video-browser.test.mjs
       - name: Capturas de interacción
         if: always()
         uses: actions/upload-artifact@v4
@@ -93,4 +103,8 @@ jobs:
             /tmp/studio066-browser/subtitulos.srt
             /tmp/studio066-browser/keyframes.webm
             /tmp/studio066-browser/keyframe-title.webm
+            /tmp/studio066-browser/transitions.mp4
+            /tmp/studio066-browser/subtitles.mp4
+            /tmp/studio066-browser/keyframes.mp4
+            /tmp/studio066-browser/keyframe-title.mp4
           if-no-files-found: ignore

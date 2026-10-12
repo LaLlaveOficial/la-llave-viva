@@ -5,11 +5,15 @@ import {resolve,extname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {bootstrapAgents} from './bootstrap.mjs';
 import {createVideoRenderer} from './video-renderer.mjs';
+import {createStudioEncoder} from './studio-encoder.mjs';
 
 const root=resolve(process.env.HOUSTON_WEB_ROOT || '/houston/packages/web/dist');
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.ico':'image/x-icon'};
 
-export function createGateway({webRoot=root,enginePort=4318,agentRelay=relayAgentData,videoHandler=createVideoRenderer()}={}) {
+export function createGateway({webRoot=root,enginePort=4318,agentRelay=relayAgentData,videoHandler,studioHandler}={}) {
+  const resources={busy:false};
+  videoHandler ||= createVideoRenderer({resources});
+  studioHandler ||= createStudioEncoder({resources});
   return http.createServer(async(req,res)=>{
     res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -18,6 +22,7 @@ export function createGateway({webRoot=root,enginePort=4318,agentRelay=relayAgen
     try {
       const url=new URL(req.url,'http://localhost');
       if(url.pathname==='/video-066'){await videoHandler(req,res,url);return;}
+      if(url.pathname==='/studio-encode-066'){await studioHandler(req,res,url);return;}
       if(url.pathname==='/agent-data'){
         // Only runtimes in this container may use the bridge. Proxy headers
         // cannot turn a public request into an internal request.

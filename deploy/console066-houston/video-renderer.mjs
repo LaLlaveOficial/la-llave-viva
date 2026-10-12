@@ -7,7 +7,7 @@ const validId=id=>/^[a-f0-9-]{36}$/.test(id||'');
 const publicJob=j=>({id:j.id,title:j.title,format:j.format,duration:j.duration,status:j.status,stage:j.stage||null,progress:j.progress??null,createdAt:j.createdAt,updatedAt:j.updatedAt||j.createdAt,completedAt:j.completedAt||null,error:j.error||null});
 export const renderTimeoutMs=duration=>Math.min(1200000,240000+duration*60000);
 export function videoAuth(req,key){if(typeof key!=='string'||key.length<32)return false;const a=Buffer.from(req.headers.authorization||''),b=Buffer.from('Bearer '+key);return a.length===b.length&&timingSafeEqual(a,b);}
-export function createVideoRenderer({root='/data/video-066',assets='/houston/video-assets',cli='/opt/llave-render/node_modules/hyperframes/bin/hyperframes.mjs',runProcess=spawn}={}){
+export function createVideoRenderer({root='/data/video-066',assets='/houston/video-assets',cli='/opt/llave-render/node_modules/hyperframes/bin/hyperframes.mjs',runProcess=spawn,resources={busy:false}}={}){
  let busy=false;
  const save=async j=>{const dir=join(root,j.id);await mkdir(dir,{recursive:true});await writeFile(join(dir,'job.tmp'),JSON.stringify(j));await rename(join(dir,'job.tmp'),join(dir,'job.json'));};
  const read=async id=>{if(!validId(id))throw Error('Video inválido.');return JSON.parse(await readFile(join(root,id,'job.json'),'utf8'));};
@@ -42,7 +42,7 @@ export function createVideoRenderer({root='/data/video-066',assets='/houston/vid
    if((await stat(output)).size>4000000)throw Error('El archivo supera el límite de descarga de esta consola.');
    await writes;await copyFile(output,join(saved,'video.mp4'));j.status='ready';j.completedAt=new Date().toISOString();await update('ready',100);
   }catch(e){console.error('[video-066] '+String(e.message||'Fallo sin diagnóstico').slice(0,1500));await writes.catch(()=>{});j.status='failed';j.stage='failed';j.updatedAt=new Date().toISOString();j.error=e.message?.includes('límite de tiempo')?'El render alcanzó su límite de tiempo. El proyecto editable se conserva; no se publicó nada.':'El servidor no terminó el render. El proyecto editable se conserva; no se publicó nada.';await save(j);}
-  finally{if(work)await rm(work,{recursive:true,force:true}).catch(()=>{});busy=false;}
+  finally{if(work)await rm(work,{recursive:true,force:true}).catch(()=>{});busy=false;resources.busy=false;}
  };
 
  return async(req,res,url)=>{
@@ -51,7 +51,7 @@ export function createVideoRenderer({root='/data/video-066',assets='/houston/vid
   try{await mkdir(root,{recursive:true});const op=url.searchParams.get('op')||'list';
    if(req.method==='GET'&&op==='list'){const jobs=[];for(const id of (await readdir(root)).filter(validId)){try{const j=await read(id);if(j.status==='rendering'&&!busy){j.status='failed';j.error='El servidor reinició durante el render; crea una nueva versión para reintentarlo.';await save(j);}jobs.push(publicJob(j));}catch{}}return json(200,{engine:'HyperFrames',version:VIDEO_VERSION,workerLimit:1,busy,jobs:jobs.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0,20)});}
    if(req.method==='GET'&&op==='file'){const id=url.searchParams.get('id'),j=await read(id);if(j.status!=='ready')return json(409,{error:'El video todavía no está listo.'});const bytes=await readFile(join(root,id,'video.mp4'));res.writeHead(200,{'Content-Type':'video/mp4','Content-Length':bytes.length,'Cache-Control':'private, no-store','Content-Disposition':'inline; filename="llave-066-'+id+'.mp4"'});res.end(bytes);return;}
-   if(req.method==='POST'&&op==='render'){let bytes='';for await(const chunk of req){bytes+=chunk;if(bytes.length>6000)return json(413,{error:'Texto demasiado largo.'});}const j=validateVideo(JSON.parse(bytes));try{return json(200,{job:publicJob(await read(j.id)),existing:true});}catch{}if(busy)return json(409,{error:'Hay un video en proceso. Espera su resultado.'});if((await readdir(root)).filter(validId).length>=60)return json(409,{error:'Se alcanzó el límite de proyectos del servidor. Revisa almacenamiento antes de crear más.'});busy=true;j.status='rendering';j.createdAt=new Date().toISOString();try{await save(j);}catch(e){busy=false;throw e;}void produce(j);return json(202,{job:publicJob(j),published:false});}
+   if(req.method==='POST'&&op==='render'){let bytes='';for await(const chunk of req){bytes+=chunk;if(bytes.length>6000)return json(413,{error:'Texto demasiado largo.'});}const j=validateVideo(JSON.parse(bytes));try{return json(200,{job:publicJob(await read(j.id)),existing:true});}catch{}if(busy||resources.busy)return json(409,{error:'Hay un video en proceso. Espera su resultado.'});if((await readdir(root)).filter(validId).length>=60)return json(409,{error:'Se alcanzó el límite de proyectos del servidor. Revisa almacenamiento antes de crear más.'});busy=true;resources.busy=true;j.status='rendering';j.createdAt=new Date().toISOString();try{await save(j);}catch(e){busy=false;resources.busy=false;throw e;}void produce(j);return json(202,{job:publicJob(j),published:false});}
    return json(405,{error:'Operación no permitida.'});
   }catch{return json(400,{error:'No se pudo procesar el proyecto de video.'});}
  };

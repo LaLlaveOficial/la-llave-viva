@@ -1,3 +1,5 @@
+import {startStudioTestServer} from './studio066-server-test-support.mjs';
+const server=process.env.STUDIO_SERVER_MP4_TEST==='1'?await startStudioTestServer():null;
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,7 +13,7 @@ try{
  page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await page.addInitScript(()=>{window.__mediaElements=[];const create=document.createElement.bind(document);document.createElement=(tag,...args)=>{const el=create(tag,...args);if(tag==='audio'||tag==='video')window.__mediaElements.push(el);return el;};});
- await page.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();
+ await page.goto((server?.origin||'http://127.0.0.1:4173')+'/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();
  await page.locator('#studiowb-upload').setInputFiles([source,replacement]);await page.waitForFunction(()=>document.querySelectorAll('[data-drag-asset]').length===2);
  await page.locator('[data-drag-asset]').filter({hasText:'source-sequence.webm'}).locator('[data-add-asset]').click();await page.locator('[data-property=duration]').waitFor();
  const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('llave-studio066-workspace-v1:scratch')));
@@ -45,7 +47,7 @@ try{
  const green=frame(.5),gap=frame(2),blue=frame(3.8);assert.ok(green[1]>90&&green[0]<20);assert.ok(gap.every(x=>x<30));assert.ok(blue[2]>210&&blue[1]<20);
  const spectrum=t=>{const pcm=execFileSync('ffmpeg',['-v','error','-i',output,'-ss',String(t),'-t','0.1','-f','f32le','-ac','1','-ar','48000','pipe:1']);const n=pcm.length/4;return [880,1320].map(hz=>{let re=0,im=0;for(let i=0;i<n;i++){const s=pcm.readFloatLE(i*4),phase=2*Math.PI*hz*i/48000;re+=s*Math.cos(phase);im+=s*Math.sin(phase);}return 2*Math.hypot(re,im)/n;});};
  const a=spectrum(.5),b=spectrum(2),c=spectrum(3.8);assert.ok(a[0]>.04&&a[0]<.12&&a[1]<.015,'Extracted sound preserves trim and independent half-volume without doubling');assert.ok(b.every(x=>x<.015),'Gap is silent');assert.ok(c[1]>.05&&c[0]<.015,'Moved split preserves sound of blue');
- const mp4Available=await page.evaluate(()=>['video/mp4;codecs="avc1.42E01E,mp4a.40.2"','video/mp4;codecs="avc1.4D401F,mp4a.40.2"'].some(type=>MediaRecorder.isTypeSupported(type)));
+ const mp4Available=!!server;
  if(mp4Available){
   await page.locator('#studiowb-cancel-export').waitFor({state:'detached'});await page.locator('#studiowb-format').selectOption('mp4');
   const mp4Download=page.waitForEvent('download',{timeout:30000});await page.locator('#studiowb-top-export').click();const downloaded=await mp4Download;const path=dir+'/video-montage.mp4';await downloaded.saveAs(path);
@@ -57,4 +59,4 @@ try{
  await page.locator('.wb-timeline [data-select-clip]').first().click();await page.locator('.wb-timeline').focus();await page.keyboard.press('Delete');await page.waitForTimeout(100);
  assert.equal(await page.evaluate(()=>window.__mediaElements.filter(el=>el.src?.startsWith('blob:')&&!el.paused).length),0,'Removed sources cannot remain playing');
  assert.deepEqual(errors,[]);console.log(JSON.stringify({result:'VIDEO_MONTAGE_EXPORT_PASS',mp4Available,frames:{green,gap,blue},audio:{green:a,gap:b,blue:c},bytes:fs.statSync(output).size}));
-}catch(error){console.error(error.stack);await page?.screenshot({path:dir+'/video-montage-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();}
+}catch(error){console.error(error.stack);await page?.screenshot({path:dir+'/video-montage-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();await server?.stop();}

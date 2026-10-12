@@ -8,6 +8,7 @@ import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
 import {videoRequest} from '../lib/video-066.js';
+import {studioEncodeRequest} from '../lib/studio-encode066.js';
 import {managerReport} from '../lib/manager-report.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import {validateStudioProject,validateStudioShot} from '../lib/studio066.js';
@@ -30,7 +31,7 @@ export function makeHandler(connect = neon, env = process.env) {
     if (req.method === 'POST' && !sameOrigin(req,config)) return res.status(403).json({error:'Origen no permitido.'});
     const op = req.query?.op || 'data';
     const body = req.body;
-    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 12000)) return res.status(400).json({error:'Solicitud inválida.'});
+    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > (op==='studio-encode-chunk'?750000:12000))) return res.status(400).json({error:'Solicitud inválida.'});
     try {
       const sql = connect(config.databaseUrl);
       if (op === 'login' && req.method === 'POST') {
@@ -54,6 +55,12 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(op.startsWith('studio-encode-')){
+        const action=op.slice('studio-encode-'.length),get=['status','file'].includes(action);
+        if(!['init','chunk','start','status','file','cancel'].includes(action)||req.method!==(get?'GET':'POST'))return res.status(405).json({error:'Operación de exportación no permitida.'});
+        try{return res.status(200).json(await studioEncodeRequest(action,get?{id:req.query.id,index:req.query.index}:body,env));}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
       if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
       if(op==='google-ads-reports'&&req.method==='GET')return res.status(200).json({...await googleAdsReports(sql),changes:await adsChangeHistory(sql),missions:await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-analysis' ORDER BY id DESC LIMIT 5`,capabilities:(await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-capabilities' ORDER BY id DESC LIMIT 1`)[0]?.detail||{approvedChanges:false}});
       if(op==='google-ads-discard'&&req.method==='POST'){
