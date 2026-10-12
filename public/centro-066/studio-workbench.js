@@ -55,7 +55,14 @@ export function studioWorkbenchView(root,notice,project=null){
  const lanePosition=(clientX,lane)=>{const bounds=lane.getBoundingClientRect();return trackPosition(clientX,bounds.left+lane.clientLeft,lane.clientWidth,rulerSpan());};
  const checkpoint=()=>{history.push(JSON.stringify(workspace));if(history.length>30)history.shift();future.length=0;};
  const canAddClip=()=>{if(workspace.clips.length<120)return true;notice('Máximo de 120 clips por montaje. Divide la pieza en proyectos para conservar el trabajo.');return false;};
- const restoreFrom=(source,dest)=>{if(!source.length)return;dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();selected=null;syncTracks();save();render();};
+ const restoreFrom=(source,dest)=>{
+  if(!source.length)return;
+  const previousIds=new Set(workspace.clips.map(c=>c.id));
+  dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();
+  // Preserve the editing context; undoing deletion selects its restored clip.
+  if(!workspace.clips.some(c=>c.id===selected))selected=workspace.clips.find(c=>!previousIds.has(c.id))?.id||null;
+  syncTracks();save();render();syncPlayback(true);paint();
+ };
  const localKey=workspaceKey+':'+(project&&Number.isSafeInteger(Number(project.id))?Number(project.id):'scratch');
  const firstWorkspace=()=>({...defaultWorkspace(),name:project?.name||defaultWorkspace().name});
  const safeLoad=()=>{try{return parseWorkspace(JSON.parse(localStorage.getItem(localKey)||'null'))||firstWorkspace();}catch{return firstWorkspace();}};

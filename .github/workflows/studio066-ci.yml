@@ -8,6 +8,7 @@ on:
       - fix/studio066-pending-media
       - fix/studio066-stable-seek
       - feature/studio066-audio-envelope
+      - fix/studio066-undo-selection
   workflow_dispatch:
 
 permissions:
