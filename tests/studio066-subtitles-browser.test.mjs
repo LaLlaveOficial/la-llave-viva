@@ -1,10 +1,12 @@
+import {startStudioTestServer} from './studio066-server-test-support.mjs';
+const server=process.env.STUDIO_SERVER_MP4_TEST==='1'?await startStudioTestServer():null;
 import {chromium} from 'playwright';import assert from 'node:assert/strict';import fs from 'node:fs';import {execFileSync} from 'node:child_process';
 import {parseSubtitles} from '../public/centro-066/studio-subtitles.js';
 const dir='/tmp/studio066-browser';fs.mkdirSync(dir,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROME_BIN||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});let page;
 try{
  page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
- await page.goto('http://127.0.0.1:4173/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();
+ await page.goto((server?.origin||'http://127.0.0.1:4173')+'/tests/studio066-browser-harness.html',{waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();
  const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('llave-studio066-workspace-v1:scratch')));
  const seek=async t=>{await page.locator('#studiowb-seek').evaluate((el,value)=>{el.value=String(value);el.dispatchEvent(new Event('input',{bubbles:true}));},t);};
  const whites=()=>page.locator('#studiowb-canvas').evaluate(c=>{const ctx=c.getContext('2d'),data=ctx.getImageData(0,Math.floor(c.height*.65),c.width,Math.floor(c.height*.34)).data;let count=0;for(let i=0;i<data.length;i+=4)if(data[i]>210&&data[i+1]>210&&data[i+2]>210)count++;return count;});
@@ -29,8 +31,8 @@ try{
  await page.reload({waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();await seek(1);assert.ok(await whites()>500);assert.equal((await state()).clips[0].subtitleBackground,.4);
  await page.locator('[data-bin-switch=text]').click();const downloadPromise=page.waitForEvent('download');await page.locator('#studiowb-subtitles-export').click();const download=await downloadPromise;const path=dir+'/subtitulos.srt';await download.saveAs(path);const exported=parseSubtitles(fs.readFileSync(path,'utf8'));assert.equal(exported[0].text,longText);assert.equal(exported[0].start,.75);assert.equal(exported[0].duration,1.25);
  await page.screenshot({path:dir+'/subtitles.png',fullPage:true});
- const videoPromise=page.waitForEvent('download',{timeout:30000});await page.locator('#studiowb-top-export').click();const video=await videoPromise;const output=dir+'/subtitles.webm';await video.saveAs(output);
+ const videoPromise=page.waitForEvent('download',{timeout:30000});if(server)await page.locator('#studiowb-format').selectOption('mp4');await page.locator('#studiowb-top-export').click();const video=await videoPromise;const output=dir+'/subtitles'+(server?'.mp4':'.webm');await video.saveAs(output);
  const countAt=t=>{const frame=execFileSync('ffmpeg',['-v','error','-ss',String(t),'-i',output,'-frames:v','1','-vf','crop=1280:240:0:470','-f','rawvideo','-pix_fmt','rgb24','pipe:1'],{maxBuffer:2000000});let count=0;for(let i=0;i<frame.length;i+=3)if(frame[i]>200&&frame[i+1]>200&&frame[i+2]>200)count++;return count;};
  const counts={before:countAt(.2),first:countAt(1),gap:countAt(2.2),second:countAt(3),after:countAt(4)};assert.equal(counts.before,0);assert.ok(counts.first>500);assert.equal(counts.gap,0);assert.ok(counts.second>200);assert.equal(counts.after,0);
- assert.deepEqual(errors,[]);console.log(JSON.stringify({result:'SUBTITLES_BROWSER_EXPORT_PASS',cueCount:exported.length,longTextLength:longText.length,encodedWhitePixels:counts,bytes:fs.statSync(output).size}));
-}catch(error){console.error(error.stack);await page?.screenshot({path:dir+'/subtitles-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();}
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({serverMP4:!!server,result:'SUBTITLES_BROWSER_EXPORT_PASS',cueCount:exported.length,longTextLength:longText.length,encodedWhitePixels:counts,bytes:fs.statSync(output).size}));
+}catch(error){console.error(error.stack);await page?.screenshot({path:dir+'/subtitles-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();await server?.stop();}

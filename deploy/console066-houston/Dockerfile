@@ -24,6 +24,7 @@ COPY deploy/console066-houston/gateway.mjs /houston/gateway.mjs
 COPY deploy/console066-houston/bootstrap.mjs /houston/bootstrap.mjs
 COPY deploy/console066-houston/llave-context.mjs /houston/llave-context.mjs
 COPY deploy/console066-houston/video-renderer.mjs /houston/video-renderer.mjs
+COPY deploy/console066-houston/studio-encoder.mjs /houston/studio-encoder.mjs
 COPY deploy/console066-houston/video-composition.mjs /houston/video-composition.mjs
 COPY public/assets/muestra/muestra-cover-front.webp /houston/video-assets/cover.webp
 RUN cp /opt/llave-render/node_modules/gsap/dist/gsap.min.js /houston/video-assets/gsap.min.js
