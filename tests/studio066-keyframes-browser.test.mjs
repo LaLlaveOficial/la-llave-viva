@@ -23,8 +23,19 @@ try{
  await page.locator('[data-track-flag="V1:locked"]').click();const saved=await state();await property('x',-.9);assert.deepEqual((await state()).clips,saved.clips,'Locked tracks reject keyframe edits');await page.locator('[data-track-flag="V1:locked"]').click();
  await seek(4);await page.locator('#studiowb-keyframe-remove').click();assert.equal((await state()).clips[0].keyframes.x.length,1);await page.locator('#studiowb-undo').click();assert.equal((await state()).clips[0].keyframes.x.length,2);
  await page.locator('[data-select-clip="'+imageId+'"] .wb-clip-inner').click();await seek(2);await page.locator('#studiowb-keyframe-clear').click();assert.equal((await state()).clips[0].keyframes,undefined);assert.equal((await state()).clips[0].opacity,.5);await page.locator('#studiowb-undo').click();
- await page.locator('[data-drag-asset]').filter({hasText:'tone.wav'}).locator('[data-add-asset]').click();await page.locator('[data-property=duration]').waitFor();await seek(0);await page.locator('#studiowb-keyframe').click();await page.locator('[data-inspector-tab=sound]').click();await property('volume',0);await seek(4);await property('volume',1);
+ await page.locator('[data-drag-asset]').filter({hasText:'tone.wav'}).locator('[data-add-asset]').click();await page.locator('[data-property=duration]').waitFor();await seek(0);await page.locator('#studiowb-keyframe').click();await page.locator('button[data-inspector-tab=sound]').click();await property('volume',0);await seek(4);await property('volume',1);
  assert.equal((await state()).clips[1].keyframes.volume.length,2);
+ const envelope=page.locator('[data-volume-envelope]');await envelope.waitFor();
+ const secondPoint=page.locator('[data-volume-node="1"]');await secondPoint.focus();await secondPoint.press('ArrowDown');
+ assert.equal((await state()).clips[1].keyframes.volume[1].value,.99,'Arrow keys adjust the focused volume point');
+ await page.locator('[data-volume-node="1"]').press('Delete');assert.equal((await state()).clips.length,2,'Delete on a volume point must not delete the clip');assert.equal((await state()).clips[1].keyframes.volume.length,1);
+ await page.locator('#studiowb-undo').click();await page.locator('#studiowb-undo').click();await page.locator('[data-select-clip="'+(await state()).clips[1].id+'"] .wb-clip-inner').click();await page.locator('button[data-inspector-tab=sound]').click();
+ await page.locator('[data-volume-node="1"]').scrollIntoViewIfNeeded();
+ const nodeBox=await page.locator('[data-volume-node="1"]').boundingBox(),curveBox=await page.locator('[data-volume-envelope]').boundingBox();
+ await page.mouse.move(nodeBox.x+nodeBox.width/2,nodeBox.y+nodeBox.height/2);await page.mouse.down();await page.mouse.move(curveBox.x+curveBox.width*.6,curveBox.y+curveBox.height*.7,{steps:8});await page.mouse.up();
+ const movedPoint=(await state()).clips[1].keyframes.volume[1];assert.ok(movedPoint.time<4&&movedPoint.value<1,'Dragging changes point time and volume');
+ await page.locator('#studiowb-undo').click();assert.equal((await state()).clips[1].keyframes.volume[1].value,1);
+
  await page.reload({waitUntil:'networkidle'});await page.locator('.wb-root[data-ready=true]').waitFor();assert.equal((await state()).clips[0].keyframes.opacity.length,2);
  await page.locator('[data-select-clip="'+imageId+'"] .wb-clip-inner').click();await seek(2);await page.screenshot({path:dir+'/keyframes.png',fullPage:true});
  const downloadPromise=page.waitForEvent('download',{timeout:30000});if(server)await page.locator('#studiowb-format').selectOption('mp4');await page.locator('#studiowb-top-export').click();const download=await downloadPromise;const output=dir+'/keyframes'+(server?'.mp4':'.webm');await download.saveAs(output);

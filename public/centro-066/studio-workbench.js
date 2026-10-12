@@ -1,3 +1,4 @@
+import {volumeEnvelopeView,volumePointerPoint,moveVolumePoint} from './studio-volume-envelope.js';
 import {createTransition,transitionWindow,sanitizeTransitions,audioTransitionGain} from './studio-transitions.js';
 import {renderVisualFrame} from './studio-compositor.js';
 import {constrainSourceRange,prepareMediaFrame,extractVideoAudio} from './studio-playback.js';
@@ -37,7 +38,7 @@ export function studioWorkbenchView(root,notice,project=null){
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  let inspectorRenderFrame=0,pendingInspectorRefresh=null;
- let editorActive=false,keyboardHandler=null,scrubCleanup=null;
+ let editorActive=false,keyboardHandler=null,scrubCleanup=null,envelopeCleanup=null;
  const pendingInsertions=new Set();
  const editorDocument=root.ownerDocument;
  const keyboardListener=event=>{if(root.isConnected&&(editorActive||root.contains(event.target)))keyboardHandler?.(event);};
@@ -161,7 +162,7 @@ export function studioWorkbenchView(root,notice,project=null){
  }
  async function saveExport(){
   if(rendering)return;
-  scrubCleanup?.();
+  scrubCleanup?.();envelopeCleanup?.();
   if(workspace.clips.length===0){notice('Agrega al menos un clip al timeline.');return;}
   const duration=timelineDuration(workspace.clips);
   if(duration>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
@@ -239,7 +240,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<div class="wb-row wb-clip-actions"><button type="button" class="subtle" id="studiowb-duplicate">Duplicar</button><button type="button" class="subtle" id="studiowb-delete">Eliminar clip</button></div></div>'+
     '<div class="wb-inspector-section" data-inspector-panel="color">'+(c.kind==='audio'?'<p class="studio-help">Los clips de audio no tienen ajustes visuales.</p>':
     '<h4>Corrección básica</h4><div class="studio-fields">'+ctrl('brightness','Brillo %',c.brightness??100,0,200,5)+ctrl('contrast','Contraste %',c.contrast??100,0,200,5)+ctrl('saturation','Saturación %',c.saturation??100,0,200,5)+ctrl('blur','Desenfoque',c.blur??0,0,20,1)+ctrl('opacity','Opacidad',c.opacity??1,0,1,.1)+ctrl('scale','Escala',c.scale??1,.25,4,.1)+ctrl('x','Posición X',c.x??0,-1,1,.1)+ctrl('y','Posición Y',c.y??0,-1,1,.1)+ctrl('videoFadeIn','Fundido de video · entrada (s)',c.videoFadeIn||0,0,c.duration/2,.1)+ctrl('videoFadeOut','Fundido de video · salida (s)',c.videoFadeOut||0,0,c.duration/2,.1)+'</div>'+transitionControls(c,'video'))+'</div>'+
-    '<div class="wb-inspector-section" data-inspector-panel="sound"><h4>Mezcla de audio</h4><div class="studio-fields">'+ctrl('volume','Volumen (0–2)',c.volume??1,0,2,.1)+ctrl('audioFadeIn','Fundido de audio · entrada (s)',c.audioFadeIn||0,0,c.duration/2,.1)+ctrl('audioFadeOut','Fundido de audio · salida (s)',c.audioFadeOut||0,0,c.duration/2,.1)+'</div><p class="studio-help">Silencia o activa una pista desde sus controles. Los fundidos ajustan el volumen al inicio y al final del clip.</p>'+transitionControls(c,'audio')+'</div>'+
+    '<div class="wb-inspector-section" data-inspector-panel="sound"><h4>Mezcla de audio</h4><div class="studio-fields">'+ctrl('volume','Volumen (0–2)',c.volume??1,0,2,.1)+ctrl('audioFadeIn','Fundido de audio · entrada (s)',c.audioFadeIn||0,0,c.duration/2,.1)+ctrl('audioFadeOut','Fundido de audio · salida (s)',c.audioFadeOut||0,0,c.duration/2,.1)+'</div><p class="studio-help">Silencia o activa una pista desde sus controles. Los fundidos ajustan el volumen al inicio y al final del clip.</p>'+transitionControls(c,'audio')+volumeEnvelopeView(c)+'</div>'+
     '<div class="wb-inspector-section" data-inspector-panel="prompt"><label>Prompt técnico<textarea data-property="prompt" rows="8" maxlength="3000" placeholder="Camera, lens, motion, lighting, continuity...">'+e(c.prompt||'')+'</textarea></label><button type="button" class="subtle" id="studiowb-copy">Copiar prompt</button><p class="studio-help">Guarda instrucciones de producción. No consume créditos ni envía datos a motores IA.</p></div></div>';
  }
  function keyframePanel(c){
@@ -444,7 +445,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   timelineEl.dataset.runtimeStylesheet=runtimeSheet?'ready':'missing';
  }
  function render(){
-  scrubCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
+  scrubCleanup?.();envelopeCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
   syncTracks();
   const oldTimelineScroll=root.querySelector('.wb-timeline')?.scrollLeft||0;
   const oldTimelineScrollTop=root.querySelector('.wb-timeline')?.scrollTop||0;
@@ -750,6 +751,44 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    scheduleInspectorRefresh(clipId,reveal);
   });
   const selectedClip=workspace.clips.find(c=>c.id===selected);
+  const envelope=root.querySelector('[data-volume-envelope]');
+  if(envelope&&selectedClip){
+   const editable=()=>!rendering&&trackIsEditable(trackState,selectedClip.track);
+   const commit=(keyframes)=>{checkpoint();selectedClip.keyframes=keyframes;save();render();syncPlayback(false);paint();};
+   envelope.onclick=ev=>{
+    if(ev.target.closest('[data-volume-node]')||!editable())return;
+    try{const point=volumePointerPoint(selectedClip,envelope.getBoundingClientRect(),ev.clientX,ev.clientY,workspace.fps);commit(putKeyframe(selectedClip,'volume',point.time,point.value,workspace.fps));}catch(error){notice(error.message);}
+   };
+   envelope.querySelectorAll('[data-volume-node]').forEach(node=>{
+    const index=Number(node.dataset.volumeNode);
+    node.onkeydown=ev=>{
+     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Delete','Backspace'].includes(ev.key))return;
+     ev.preventDefault();ev.stopPropagation();if(!editable())return;
+     const current=selectedClip.keyframes.volume[index];
+     try{
+      if(['Delete','Backspace'].includes(ev.key)){commit({...selectedClip.keyframes,volume:selectedClip.keyframes.volume.filter((_,i)=>i!==index)});return;}
+      const step=ev.shiftKey ? .1 : .01,point={...current};
+      if(ev.key==='ArrowUp')point.value=Math.min(2,Math.round((point.value+step)*100)/100);
+      if(ev.key==='ArrowDown')point.value=Math.max(0,Math.round((point.value-step)*100)/100);
+      if(ev.key==='ArrowLeft')point.time=Math.max(0,point.time-(ev.shiftKey?10:1)/workspace.fps);
+      if(ev.key==='ArrowRight')point.time=Math.min(selectedClip.duration,point.time+(ev.shiftKey?10:1)/workspace.fps);
+      commit(moveVolumePoint(selectedClip,index,point,workspace.fps));
+      root.querySelector('[data-volume-node="'+selectedClip.keyframes.volume.findIndex(n=>Math.abs(n.time-point.time)<.000001)+'"]')?.focus();
+     }catch(error){notice(error.message);}
+    };
+    node.onpointerdown=ev=>{
+     if(ev.button!==0||!editable())return;ev.preventDefault();ev.stopPropagation();pause();
+     const rect=envelope.getBoundingClientRect(),env=root.ownerDocument.defaultView,original=selectedClip.keyframes.volume[index];let point=original,moved=false;
+     const matching=event=>event.pointerId===ev.pointerId;
+     const cleanup=()=>{env.removeEventListener('pointermove',move,true);env.removeEventListener('pointerup',up,true);env.removeEventListener('pointercancel',cancel,true);envelopeCleanup=null;};
+     const move=event=>{if(!matching(event))return;point=volumePointerPoint(selectedClip,rect,event.clientX,event.clientY,workspace.fps);moved=true;node.setAttribute('cx',String(10+point.time/selectedClip.duration*980));node.setAttribute('cy',String(110-point.value*50));const nodes=selectedClip.keyframes.volume.map((n,i)=>i===index?point:n).sort((a,b)=>a.time-b.time);const points=[{time:0,value:nodes[0].value},...nodes,{time:selectedClip.duration,value:nodes.at(-1).value}];envelope.querySelector('polyline').setAttribute('points',points.map(n=>(10+n.time/selectedClip.duration*980)+','+(110-n.value*50)).join(' '));};
+     const up=event=>{if(!matching(event))return;cleanup();if(moved){try{commit(moveVolumePoint(selectedClip,index,point,workspace.fps));}catch(error){notice(error.message);render();}}};
+     const cancel=event=>{if(!matching(event))return;cleanup();render();};
+     envelopeCleanup?.();envelopeCleanup=cleanup;env.addEventListener('pointermove',move,true);env.addEventListener('pointerup',up,true);env.addEventListener('pointercancel',cancel,true);
+     try{node.setPointerCapture?.(ev.pointerId);}catch{}
+    };
+   });
+  }
   if(selectedClip){
    el('studiowb-delete').onclick=()=>{if(!trackIsEditable(trackState,selectedClip.track)){notice('Pista bloqueada.');return;}checkpoint();workspace.clips=workspace.clips.filter(c=>c.id!==selected);releaseMedia(selected);selected=null;save();render();};
    el('studiowb-duplicate').onclick=()=>{if(!canAddClip())return;if(!trackIsEditable(trackState,selectedClip.track)){notice('Pista bloqueada.');return;}if(selectedClip.start+selectedClip.duration*2>600){notice('La copia supera el límite de la línea de tiempo.');return;}checkpoint();const copy={...selectedClip,id:crypto.randomUUID(),start:selectedClip.start+selectedClip.duration};workspace.clips.push(copy);selected=copy.id;save();render();};
@@ -796,7 +835,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
  root.innerHTML='<div class="studio-pane"><p>Preparando biblioteca multimedia local…</p></div>';
  init();
  return ()=>{
-  scrubCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
+  scrubCleanup?.();envelopeCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
   editorDocument.removeEventListener('keydown',keyboardListener);
   editorDocument.removeEventListener('pointerdown',editorActivation,true);
   editorDocument.removeEventListener('focusin',editorActivation);
