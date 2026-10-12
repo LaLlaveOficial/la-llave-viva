@@ -38,6 +38,7 @@ export function studioWorkbenchView(root,notice,project=null){
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  let inspectorRenderFrame=0,pendingInspectorRefresh=null;
  let editorActive=false,keyboardHandler=null,scrubCleanup=null;
+ const pendingInsertions=new Set();
  const editorDocument=root.ownerDocument;
  const keyboardListener=event=>{if(root.isConnected&&(editorActive||root.contains(event.target)))keyboardHandler?.(event);};
  const editorActivation=event=>{editorActive=root.contains(event.target);};
@@ -89,7 +90,7 @@ export function studioWorkbenchView(root,notice,project=null){
   await Promise.all(workspace.clips.map(async c=>{try{if(c.kind==='image')await getPicture(c);else if(c.kind!=='text')await getMedia(c);}catch{}}));
  }
  function releaseMedia(id){const item=media.get(id);if(!item)return;item.element.pause();item.element.removeEventListener('seeked',paint);item.element.removeEventListener('loadeddata',paint);item.source?.disconnect();item.gain?.disconnect();item.element.removeAttribute('src');item.element.load();media.delete(id);}
- function reconcileMedia(){for(const [id,item] of media){const clip=workspace.clips.find(c=>c.id===id);if(!clip||clip.assetId!==item.assetId)releaseMedia(id);}}
+ function reconcileMedia(){for(const [id,item] of media){if(pendingInsertions.has(id))continue;const clip=workspace.clips.find(c=>c.id===id);if(!clip||clip.assetId!==item.assetId)releaseMedia(id);}}
  function audioGraph(){
   if(audioCtx)return;
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
@@ -524,10 +525,12 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     if(added)track=added.id;
     const next=start===null?clip:insertClipAt(asset,clip,snapToEdges(start,workspace.clips,null,{enabled:snapping}),track||clip.track);
     if(!trackIsEditable(trackState,next.track)){notice('Pista bloqueada: desbloquéala para insertar medios.');return;}
+    pendingInsertions.add(next.id);
     if(['audio','video'].includes(next.kind)){const decoded=await getMedia(next);if(!Number.isFinite(decoded?.element.duration)||decoded.element.duration<.1){releaseMedia(next.id);throw new Error('Este navegador no puede leer la duración del archivo. Importa un MP4/WebM o WAV compatible.');}Object.assign(next,constrainSourceRange(next,decoded.element.duration));}
     if(rendering||!root.isConnected||!canAddClip()){releaseMedia(next.id);return;}
     checkpoint();if(added)workspace.tracks=added.tracks;workspace.clips.push(next);selected=next.id;inspectorTab='clip';mobilePane='timeline';save();await prime();render();
    }catch(error){notice(error.message);}
+   finally{pendingInsertions.delete(clip.id);if(!workspace.clips.some(c=>c.id===clip.id))releaseMedia(clip.id);}
   };
   root.querySelectorAll('[data-insert-asset]').forEach(b=>b.onclick=()=>addFromLibrary(b.dataset.insertAsset,{start:workspace.playhead}));
   root.querySelectorAll('[data-drag-asset]').forEach(card=>card.ondragstart=ev=>{
