@@ -123,3 +123,11 @@ Contrato geométrico:
 - JSON y respaldo portable conservan las curvas; un proyecto con tiempos, valores, tipos, duplicados o capacidad inválidos se rechaza. La importación de timeline JSON admite hasta 2 MB para acomodar proyectos animados.
 - QA Chrome con PNG transparente/cuadrado blanco y WAV 440 Hz: movimiento X/Y, escala, opacidad y volumen; valores intermedios; bloqueo; quitar puntos/animación; undo; recuperación; split y movimiento conservando fase. FFmpeg decodifica el WebM, compara posición/tamaño/brillo del objeto y el nivel RMS del audio en tres tiempos.
 - Exportación local sigue siendo captura en tiempo real: no se declara render offline con precisión temporal constante o compatibilidad universal MP4.
+
+## Teclado y cabezal — 12-oct-2026
+
+- Los comandos se reciben en el documento mientras el editor conserva el contexto de interacción. Recrear el DOM de la selección no deja el teclado desconectado. Cambiar a otro panel entrega el teclado a ese panel; campos editables, IME, repeticiones y comandos del navegador se respetan.
+- Supr/Delete y Retroceso usan la misma acción de borrado del botón, incluyendo liberación del original en reproducción. Bloqueo de pista y ausencia de selección impiden borrar.
+- Una sola tabla de comandos alimenta el router y la ayuda. Icono de teclado y Shift+/ abren el listado con cada herramienta/atajo; Esc cierra la ayuda y también permite cancelar una exportación activa. Los fundidos invocados desde teclado devuelven el foco al timeline; G enfoca el volumen para editarlo.
+- Cabezal: puntero normal y marcador triangular. Pointerdown en la regla o en una zona vacía inicia scrub; el cabezal se actualiza durante pointermove y se guarda al terminar. Mover el mouse sin arrastrar no altera el montaje. Trim conserva su cursor de ajuste en los bordes; la cuchilla mantiene su guía, sin mira en cruz.
+- QA Chrome sin enfoque artificial del timeline después de seleccionar: duplicar, borrar fragmento, undo/redo, V/C/S, I/O, Shift+I/Shift+O/Shift+T, G, M/F, Shift+K/Shift+L y espacio; ayuda por icono/teclado, edición de campos y exclusión de otros paneles; cabezal comprobado antes de pointerup y persistido después.

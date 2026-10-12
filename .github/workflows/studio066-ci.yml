@@ -39,6 +39,7 @@ jobs:
           node --check public/centro-066/studio-playback.js
           node --check public/centro-066/studio-subtitles.js
           node --check public/centro-066/studio-keyframes.js
+          node --check public/centro-066/studio-shortcuts.js
           node --check public/centro-066/studio-recording.js
           node --check public/centro-066/studio-export-preflight.js
           node --check public/centro-066/studio-media.js
@@ -52,7 +53,7 @@ jobs:
           node --check public/centro-066/studio-portable.js
           node --check public/centro-066/studio-cloud066.js
           node --check lib/studio-cloud066.js
-          node --test tests/studio066-keyframes.test.mjs tests/studio066-subtitles.test.mjs tests/studio066-playback.test.mjs tests/studio066-transitions.test.mjs tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
+          node --test tests/studio066-shortcuts.test.mjs tests/studio066-keyframes.test.mjs tests/studio066-subtitles.test.mjs tests/studio066-playback.test.mjs tests/studio066-transitions.test.mjs tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
       - name: Preparar navegador Chrome preinstalado para pruebas reales
@@ -76,6 +77,7 @@ jobs:
           node tests/studio066-video-browser.test.mjs
           node tests/studio066-subtitles-browser.test.mjs
           node tests/studio066-keyframes-browser.test.mjs
+          node tests/studio066-shortcuts-browser.test.mjs
       - name: Capturas de interacción
         if: always()
         uses: actions/upload-artifact@v4

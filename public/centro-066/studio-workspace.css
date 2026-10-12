@@ -640,7 +640,7 @@
 .wb-root[data-editor-tool=blade] .wb-timeline .wb-pro-clip,
 .wb-root[data-editor-tool=blade] .wb-timeline .wb-pro-clip *,
 .wb-root[data-editor-tool=blade] .wb-timeline .wb-track-content {
-  cursor:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctext x=%220%22 y=%2219%22 font-size=%2219%22 fill=%22%23ffe4a5%22%3E%26%239986%3B%3C/text%3E%3C/svg%3E") 2 2,crosshair!important;
+  cursor:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22%3E%3Ctext x=%220%22 y=%2219%22 font-size=%2219%22 fill=%22%23ffe4a5%22%3E%26%239986%3B%3C/text%3E%3C/svg%3E") 2 2,default!important;
 }
 
 /* Track insertion is an explicit drop target; it never creates empty tracks on hover. */
@@ -665,3 +665,10 @@
 .wb-subtitle-files{display:flex;flex-direction:column;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #574b32}
 .wb-keyframes{margin:10px 12px;padding:10px;border:1px solid #574b32;border-radius:6px}.wb-keyframes summary{color:#f0c574;cursor:pointer;font-weight:700}.wb-keyframes small{display:block;margin-top:8px}.wb-keyframe-points{display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow:auto;margin-top:8px}.wb-keyframes .wb-row{flex-wrap:wrap;gap:5px}.wb-keyframes button{font-size:11px}
 .wb-keyframe-marker{position:absolute;bottom:2px;font-size:9px;color:#ffd181;transform:translateX(-50%);pointer-events:none;z-index:4}
+.wb-shortcut-dialog{max-width:620px;width:calc(100% - 32px);max-height:85vh;overflow:auto;border:1px solid #97743b;border-radius:10px;background:#151a1d;color:#eee6d8;padding:24px}.wb-shortcut-dialog::backdrop{background:#000a}.wb-shortcut-dialog table{width:100%;border-collapse:collapse;font-size:13px}.wb-shortcut-dialog th,.wb-shortcut-dialog td{text-align:left;border-bottom:1px solid #ffffff18;padding:9px 6px}.wb-shortcut-dialog kbd{white-space:nowrap;color:#ffcf77}.wb-shortcut-dialog>button{margin-bottom:16px}
+.wb-root .wb-ruler-times,.wb-root .wb-ruler-times *,.wb-root .wb-track-content{cursor:default!important}.wb-root .wb-ruler-times,.wb-root .wb-track-content{touch-action:none}.wb-root .wb-ruler-cursor:before{content:"";width:0;height:0;top:0;left:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid #edbd65}
+.wb-root[data-editor-tool=blade] .wb-timeline .wb-track-content{cursor:default!important}
+
+.wb-root[data-studio-runtime] .wb-ruler-times,.wb-root[data-studio-runtime] .wb-ruler-times *,.wb-root[data-studio-runtime] .wb-track-content{cursor:default!important}
+.wb-root[data-studio-runtime][data-editor-tool=blade] .wb-timeline .wb-track-content{cursor:default!important}
+.wb-root[data-studio-runtime] .wb-track-content{touch-action:pan-y}
