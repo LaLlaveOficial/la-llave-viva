@@ -10,10 +10,10 @@ export function createVideoRenderer({root='/data/video-066',assets='/houston/vid
  let busy=false;
  const save=async j=>{const dir=join(root,j.id);await mkdir(dir,{recursive:true});await writeFile(join(dir,'job.tmp'),JSON.stringify(j));await rename(join(dir,'job.tmp'),join(dir,'job.json'));};
  const read=async id=>{if(!validId(id))throw Error('Video inválido.');return JSON.parse(await readFile(join(root,id,'job.json'),'utf8'));};
- const run=(args,cwd)=>new Promise((resolve,reject)=>{
+ const run=(args,cwd,executable=process.execPath,prefix=[cli])=>new Promise((resolve,reject)=>{
   // The renderer receives no host/provider credentials. Only fixed compositions execute.
   const env={PATH:process.env.PATH,HOME:root,TMPDIR:'/tmp',LANG:'C.UTF-8',DO_NOT_TRACK:'1',HYPERFRAMES_NO_TELEMETRY:'1',HYPERFRAMES_BROWSER_PATH:'/usr/bin/chromium',PRODUCER_LOW_MEMORY_MODE:'true',PRODUCER_HEADLESS_SHELL_PATH:'/usr/bin/chromium',PUPPETEER_EXECUTABLE_PATH:'/usr/bin/chromium'};
-  const child=runProcess(process.execPath,[cli,...args],{cwd,env,stdio:['ignore','pipe','pipe']});let log='';
+  const child=runProcess(executable,[...prefix,...args],{cwd,env,stdio:['ignore','pipe','pipe']});let log='';
   for(const stream of [child.stdout,child.stderr])stream?.on('data',b=>{log=(log+b).slice(-3000);});
   const timeout=setTimeout(()=>child.kill('SIGTERM'),240000);child.on('error',e=>{clearTimeout(timeout);reject(e)});child.on('exit',code=>{clearTimeout(timeout);code===0?resolve():reject(Error('Render fallido. Revisa el motor antes de volver a intentar. '+log.replace(/\x1b\[[0-9;]*m/g,'').slice(-700)));});
  });
@@ -24,7 +24,13 @@ export function createVideoRenderer({root='/data/video-066',assets='/houston/vid
    for(const dir of [saved,work]){await mkdir(join(dir,'assets'),{recursive:true});for(const file of ['gsap.min.js','cover.webp'])await copyFile(join(assets,file),join(dir,'assets',file));await writeFile(join(dir,'index.html'),videoComposition(j));}
    await run(['lint',work],work);
    const output=join(work,'video.mp4');
-   await run(['render',work,'--output',output,'--workers','1','--low-memory-mode','--no-browser-gpu','--fps','24','--quality','delivery','--video-bitrate','1600k'],work);
+   // Capture first, then encode after Chrome exits: keep peak memory bounded.
+   const frames=join(work,'frames');
+   await run(['render',work,'--output',frames,'--format','png-sequence','--workers','1','--low-memory-mode','--no-browser-gpu','--fps','24'],work);
+   const names=(await readdir(frames)).filter(name=>/^frame_\d{6}\.png$/.test(name)).sort();
+   if(names.length!==j.duration*24)throw Error('La captura no contiene todos los fotogramas esperados.');
+   for(let i=0;i<names.length;i++)if(names[i]!==('frame_'+String(i+1).padStart(6,'0')+'.png'))throw Error('Secuencia de fotogramas incompleta.');
+   await run(['-hide_banner','-loglevel','error','-y','-threads','1','-framerate','24','-start_number','1','-i',join(frames,'frame_%06d.png'),'-an','-c:v','libx264','-threads','1','-filter_threads','1','-preset','veryfast','-b:v','1600k','-maxrate','1600k','-bufsize','1600k','-pix_fmt','yuv420p','-movflags','+faststart',output],work,'/usr/bin/ffmpeg',[]);
    if((await stat(output)).size>4000000)throw Error('El archivo supera el límite de descarga de esta consola.');
    await copyFile(output,join(saved,'video.mp4'));j.status='ready';j.completedAt=new Date().toISOString();await save(j);
   }catch(e){console.error('[video-066] '+String(e.message||'Fallo sin diagnóstico').slice(0,1500));j.status='failed';j.error='El servidor no terminó el render. El proyecto editable se conserva; no se publicó nada.';await save(j);}
