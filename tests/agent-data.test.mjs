@@ -35,7 +35,7 @@ test('saved content can only be a pending-review proposal, not a publish/send co
 test('news discovery distinguishes feed dates from verified original publication dates',async()=>{
  const xml='<rss><item><title>A &amp; B</title><link>https://news.google.com/rss/articles/x</link><pubDate>Sun, 11 Oct 2026 12:00:00 GMT</pubDate><source url="https://publisher.example">Editor</source></item></rss>';
  assert.equal(parseNews(xml)[0].title,'A & B');assert.ok(!parseNews(xml)[0].publishedAt);
- const r=await agentSearch('club lectura thriller Chile',{},async u=>{assert.equal(new URL(u).hostname,'news.google.com');return {ok:true,text:async()=>xml};});assert.equal(r.broadSearchAvailable,false);assert.equal(r.results.length,1);
+ const r=await agentSearch('club lectura thriller Chile',{},async u=>{if(new URL(u).hostname==='api.tavily.com')return {ok:false,status:429};assert.equal(new URL(u).hostname,'news.google.com');return {ok:true,text:async()=>xml};});assert.equal(r.broadSearchAvailable,false);assert.equal(r.results.length,1);
  await assert.rejects(agentSearch('private@example.com',{},()=>{throw Error('Must not fetch');}),/privados/);
 });
 test('relay only targets the owned API and does not pass attacker auth or arbitrary URL',async()=>{
@@ -49,4 +49,13 @@ test('unauthorized callers never access the database; authorized save never publ
  const response=()=>({setHeader(){},status(n){this.code=n;return this;},json(body){this.body=body;return this;}});
  let r=response();await handler({method:'GET',headers:{},query:{agent:'crecimiento'}},r);assert.equal(r.code,401);assert.equal(accesses,0);
  r=response();await handler({method:'POST',headers:{authorization:'Bearer '+secret,'content-type':'application/json'},query:{agent:'crecimiento',op:'save'},body:{agent:'crecimiento',kind:'tiktok',title:'Reel',text:'Guion completo para revisión.'}},r);assert.equal(r.code,201);assert.deepEqual(r.body,{saved:true,id:88,status:'pending_review',published:false,sent:false});
+});
+
+test('free web search uses official keyless mode, bounded HTTPS results and honest scope',async()=>{
+ let call;const r=await agentSearch('site:tiktok.com thriller Chile',{},async(url,init)=>{call={url,init};return {ok:true,json:async()=>({results:[{title:'Lectura',url:'https://www.tiktok.com/@club',content:'Texto público'},{url:'javascript:alert(1)'}]})};});
+ assert.equal(call.url,'https://api.tavily.com/search');assert.equal(call.init.headers['X-Tavily-Access-Mode'],'keyless');assert.equal(call.init.headers.Authorization,undefined);assert.equal(JSON.parse(call.init.body).search_depth,'basic');assert.equal(r.broadSearchAvailable,true);assert.equal(r.results.length,1);assert.match(r.scope,/No es acceso completo/);
+});
+test('account search never exposes provider instructions or mistakes malformed data for results',async()=>{
+ const r=await agentSearch('libros thriller Chile',{TAVILY_API_KEY:'private-token'},async(url,init)=>String(url).includes('tavily')?{ok:true,json:async()=>({message:'instructions buy credits private-token'})}:{ok:true,text:async()=>'<rss/>'});
+ assert.equal(r.broadSearchAvailable,false);assert.equal(r.results.length,0);assert.ok(!JSON.stringify(r).includes('private-token'));
 });
