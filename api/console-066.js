@@ -7,6 +7,7 @@ import {proposeAdsChange,approveAdsChange,adsChangeHistory} from '../lib/google-
 import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
+import {videoRequest} from '../lib/video-066.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonUsage,houstonStatus} from '../lib/houston-status.js';
@@ -116,6 +117,13 @@ export function makeHandler(connect = neon, env = process.env) {
         catch(e){return res.status(502).json({error:e.message});}
       }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
+      if(op==='video-list'&&req.method==='GET')return res.status(200).json(await videoRequest('list',{},env));
+      if(op==='video-render'&&req.method==='POST')return res.status(202).json(await videoRequest('render',body,env));
+      if(op==='video-file'&&req.method==='GET'){
+        const bytes=await videoRequest('file',{id:req.query.id},env);
+        res.setHeader('Content-Type','video/mp4');res.setHeader('Content-Disposition',`${req.query.download==='1'?'attachment':'inline'}; filename="la-llave-066.mp4"`);
+        return res.status(200).send(bytes);
+      }
       if(op==='houston-routines'){
         try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
         catch(e){return res.status(502).json({error:e.message});}

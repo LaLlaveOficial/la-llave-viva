@@ -82,3 +82,13 @@ Los agentes guardan propuestas mediante `node /houston/llave-context.mjs save <a
 Crecimiento prioriza segmentos de lectores con interés de compra, piezas completas diferenciadas para Instagram/TikTok, CTAs hacia `/comprar`, UTM por pieza y experimentos de conversión. Comunidades y perfiles públicos nunca se etiquetan como compradores o suscriptores confirmados sin evidencia y consentimiento.
 
 Búsqueda pública: Tavily basic en modo gratuito keyless oficial si no hay clave de cuenta, con límite diario interno y respaldo Google News RSS identificado. Solo descubre perfiles indexados: no garantiza acceso completo a TikTok/Instagram. Crecimiento distingue intención pública, compradores confirmados y difusión; auditoría con evidencia, pilares, guiones, embudo, respuestas propuestas y medición. Casa Tomada/Mar de Tinta excluidos por correo enviado el 11-oct-2026.
+
+## Gerencia y producción HyperFrames (12-oct-2026)
+
+El rol existente `crecimiento` asume gerencia de marketing, sin crear otro agente ni otra conexión. Mantiene su identificador y horarios; el prompt solicita diagnóstico con fecha, prioridades de ventas, responsables, dependencias, plazos y criterios de decisión, revisando los borradores existentes. Las acciones externas siguen requiriendo aprobación específica.
+
+Marketing incluye producción privada de MP4 con HyperFrames 0.8.149 (Apache-2.0), GSAP 3.14.2 y Chromium/FFmpeg en el servidor Houston. La ruta `/video-066` requiere el token privado existente; la consola solo la expone tras verificar sesión y origen. No acepta HTML, scripts, URLs ni comandos del usuario: compone una plantilla fija con campos de texto escapados y portada real local. Render a 24 fps, 1080p, 6/10/15 segundos, vertical/cuadrado/horizontal, un trabajo a la vez y modo de memoria baja. El proceso no recibe credenciales del host ni de proveedores.
+
+Se conservan proyecto y estado bajo `/data/video-066`. Reinicios detectan renders interrumpidos y los marcan fallidos. Reintentos con el mismo identificador no crean otro proyecto. Se limita a 60 proyectos y 4 MB por MP4 para la descarga a través de Vercel. No hay publicación, mensajes, música, voces ni generación cinematográfica de escenas en este primer flujo. HyperFrames no consume créditos HeyGen; Houston consume el cupo de IA existente y renderizar usa recursos del alojamiento existente. No es una promesa de infraestructura gratuita o capacidad ilimitada.
+
+El UI identifica los errores de cuota como fallos de una ejecución fechada, separados de la consulta actual de cupo. No oculta errores ni los considera resueltos sin una ejecución confirmada.
