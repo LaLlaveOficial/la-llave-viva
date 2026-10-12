@@ -1,0 +1,214 @@
+# Estudio Creativo 066 — Fase 1 (rama aislada)
+
+Estado: interfaz de trabajo disponible en **Vercel Preview aislado**. Generación IA y render remoto **no conectados**. Publicación y migraciones de producción **no ejecutadas**.
+Rama: `feature/estudio-creativo-066-fase1`.
+
+## Alcance implementado
+
+- Nuevo menú `Estudio Creativo` dentro del Centro de Operaciones 066 con la sesión privada existente.
+- Biblioteca de proyectos de cine o publicidad: crear, seleccionar, renombrar y editar descripción.
+- Fichas de planos y guion: título, dirección de cámara, notas de continuidad, resolución de salida solicitada (720p/1080p/2k/4k), orientación (9:16/16:9/1:1/1.91:1), duración (3,5,8,10,15,20 s), FPS (24/30/60), 1–4 variantes y motor previsto.
+- Validación de servidor y control de versiones: rechaza valores inválidos y ediciones obsoletas (409).
+- Persistencia prevista mediante dos tablas aisladas, con registro de cambios en el audit existente. No guarda imágenes, audio, videos ni archivos grandes todavía.
+- Vistas claramente identificadas como pendientes: ElevenLabs (catálogo, preview, voces), motor de video, postproducción y adaptaciones Ads. Sin botones falsos ni requests a proveedores.
+- Responsive y controles de accesibilidad básicos. No se modifica la web de compra.
+
+## Archivos
+
+- `public/centro-066/studio.js`, `public/centro-066/studio.css`: interfaz.
+- `public/centro-066/app.js`, `public/centro-066/index.html`: integración mínima con el menú existente.
+- `api/console-066.js`: nuevos `studio` (GET), `studio-project` y `studio-shot` (POST). Todas las operaciones pasan por la autenticación actual y validación de Origin.
+- `lib/studio066.js`: esquema de configuraciones y sanitización.
+- `migrations/20261010_studio066.sql`: nuevas tablas, *no ejecutada*.
+- `tests/studio066.test.mjs`: validación unitaria de configuraciones.
+
+## Qué todavía NO existe
+
+- No hay acceso a API de OpenAI Images, ElevenLabs, Adobe, Kling, Veo, Wan ni LTX.
+- No hay créditos, videos ni audios generados, ni renders de pago.
+- No hay generación por lotes, ni exportación 4K/60 FPS ni escalado activo. Las preferencias no equivalen a capacidad garantizada del motor.
+- La biblioteca **local de navegador** admite arrastrar/importar archivos PNG/JPEG/WebP, MP4/WebM/MOV y MP3/WAV/otros audios compatibles; los blobs se guardan en IndexedDB de este navegador, NO en servidor remoto. Máximo 150 MB por archivo; la cuota depende del navegador. Cerrar pestaña conserva archivos si no se borran datos del sitio. Exportar JSON no incorpora medios.
+- La pestaña **Montaje y efectos** tiene timeline funcional V1/V2/A1/A2, recorte y desplazamiento horizontal por arrastre, orden por pista, inspector de entrada/duración/volumen, zoom y posición, brillo/contraste/saturación/desenfoque, títulos sobreimpresos, campo de prompt de cada plano, deshacer/rehacer y reproducción previa. Acepta pistas de voz/Foley importadas localmente. No es todavía un reemplazo de Adobe Premiere.
+- Guardado de proyectos/planos validado manualmente por el propietario en Vercel Preview y verificado en la rama Neon de ensayo. Tests CI con PostgreSQL efímero, JSDOM e IndexedDB simulada. El render de video con MediaRecorder todavía requiere prueba manual en Chrome con archivos reales antes de aprobar calidad y sincronización.
+
+## Puesta a prueba segura — requiere aprobación separada
+
+1. Ejecutar `node --test tests/studio066.test.mjs tests/console066.test.mjs`, `npm run build` y verificar la consola con navegador móvil/escritorio en un entorno local o de vista previa.
+2. Crear rama aislada en Neon; aplicar únicamente allí `migrations/20261010_studio066.sql` (requiere tener primero las tablas existentes de Centro 066).
+3. Configurar credenciales de prueba en Vercel Preview, autenticar, guardar dos proyectos y dos planos; comprobar 400/401/403/409, persistencia real y ausencia de llamadas a proveedores.
+4. Verificar `/comprar`, checkout, GA4 y Ads por regresiones antes de autorizar despliegue.
+5. Pedir consentimiento explícito antes de merge, migración o despliegue en producción.
+
+## Próximas fases propuestas
+
+- **Recursos:** biblioteca privada de fotogramas maestros y subida autorizada a almacenamiento de objetos, no blobs enormes en Postgres. Historial de versiones y referencias.
+- **OpenAI Images:** adaptador de generación/edición con llave de API **solo en servidor**, presupuesto por llamada y aprobación antes de consumir créditos.
+- **ElevenLabs:** API en servidor para lista real de voces, muestras `preview_url`, texto-a-voz con voice ID autorizado, límites y costos. No subir voces ajenas sin consentimiento.
+- **Video:** conectores intercambiables con consulta de capacidades del motor (resoluciones, duración, FPS, costo) y cola asíncrona remota. 1–4 variantes si se autorizan.
+- **Editor:** timeline multipista, Foley, color, transiciones y exportaciones con FFmpeg/servicios especializados. Guardar el proyecto editable.
+
+La seguridad, la continuidad de personajes, la claridad de costos y la aprobación humana son requisitos del diseño.
+
+## Editor local funcional (fase experimental)
+
+Ruta: `/operaciones-066` en la vista previa de `feature/estudio-creativo-066-fase1` → `Estudio Creativo` → `Montaje y efectos`.
+
+1. Crear/seleccionar un proyecto en **Proyectos**. Cada proyecto guarda su montaje local de forma separada en el navegador.
+2. Importar medios desde el panel Biblioteca. No se suben a la nube ni se transfieren a proveedores externos. Guardar copias originales fuera del navegador.
+3. Añadir medios al timeline. Las imágenes entran en V1, los audios en A1; las pistas se ajustan en el inspector. Añadir títulos en V2.
+4. Seleccionar un bloque y editar inicio, entrada del original, duración, volumen, color, posición o su prompt. Arrastrar un bloque para moverlo; utilizar el asa derecha para ajustar su duración. Deshacer/re-hacer cambios del montaje.
+5. Reproducir en el visor. Exportar **WebM** de 720p o 1080p, 24/30 FPS, vertical/horizontal/cuadrado/panorámico. La exportación ocurre a velocidad real sobre el propio navegador, solo para proyectos de hasta 120 segundos, si `MediaRecorder` y los códecs del navegador lo admiten. La calidad y el audio se deben revisar manualmente antes de publicar.
+6. Exportar proyecto JSON para recuperar su timeline en otro momento. **El JSON no incluye video, audio o fotogramas**; los assets seguirán vinculados por sus IDs locales y requieren conservar el navegador original y su almacenamiento.
+
+**Limitaciones relevantes:** no hay exportación MP4 nativa, 2K/4K, interpolación de 60 FPS, automatización de prompts a clip, proxy de alta resolución, máscaras/seguimiento complejos, catálogo ElevenLabs conectado, exportación en la nube, render distribuido, autosincronización multi-dispositivo, ni monitor de costos de IA. Los renders locales usan CPU/GPU del navegador (no cumplen el objetivo de cero carga del PC); el procesamiento profesional de larga duración deberá trasladarse a un worker remoto autorizado. La interfaz de voces y los botones de generación permanecen deshabilitados hasta que exista un proveedor verificado y un presupuesto autorizado.
+
+**Seguridad:** la API privada original mantiene sesiones y validación de origen. La rama usa una `DATABASE_URL` restringida a la rama Neon de ensayo, sin modificar producción. Los blobs locales solo se leen desde el origen web con permiso del navegador. El CSP privado autoriza URLs `blob:` para reproducir medios. No poner credenciales de OpenAI/ElevenLabs en JS público.
+
+## Criterios para pasar a producción
+
+- Usuario revisa visualmente la interfaz en Vercel Preview con medios de prueba.
+- Validar exportación WebM real desde Chrome (video 9:16, 16:9, audio A1, título V2) y consistencia temporal, duración y calidad.
+- Confirmar que se recupera un timeline tras recargar sin perder archivos locales.
+- Confirmar explícitamente si se acepta temporalmente biblioteca local o es obligatorio almacenamiento remoto y backups antes del lanzamiento.
+- Publicación a `main`, cambios de producción y proveedores IA solo con autorización nueva.
+
+
+## Generación IA — preparación visual (octubre 2026, fase experimental)
+
+Se incorpora la pestaña **Generación IA** al menú del Estudio Creativo 066. Su layout sigue el flujo visual de Firefly pero no incorpora ni imita sus APIs.
+
+Funciones efectivamente programadas:
+- Panel izquierdo: historial de solicitudes **preparadas** y clips **importados**, por proyecto y navegador.
+- Visor central: previsualización local de imágenes de referencia y videos importados.
+- Panel derecho: prompt positivo/negativo, notas de continuidad, formato, motor previsto, 720p/1080p/2K/4K solicitados, FPS, duración, audio, seed y 1–4 variantes.
+- Referencias: modo **Frames** con fotograma de inicio obligatorio y final opcional, o modo **Images** con 1–3 imágenes y roles por imagen (personaje, escenario, composición, estilo o vestuario). Subida directa a IndexedDB local.
+- **Guardar preparación** verifica todos los parámetros y guarda un registro local, sin simular video generado ni generar cobros.
+- La ficha admite importar 1–4 videos creados fuera de OP 066, asociarlos al registro y previsualizarlos. Un resultado seleccionado se puede enviar a la pista V1 del timeline del mismo proyecto, junto a sus prompts de dirección.
+- Exportar ficha JSON y reutilizar parámetros para nueva solicitud. Los registros no incluyen datos binarios.
+
+**Limitaciones críticas antes de producción:**
+- El botón **Generar clip** permanece deshabilitado porque no hay API de video configurada/autorizada. No existen jobs remotos, colas reales ni promesa de resultado gratuito equivalente a Kling Omni.
+- Los medios y el historial permanecen localmente en el navegador, sin backup central ni sincronización entre computadoras. El usuario debe mantener copia de los originales; limpiar datos del sitio puede borrarlos.
+- La resolución, FPS, seed, número de variantes, referencias o audio son la configuración **deseada**, no capacidades garantizadas de un proveedor. El futuro backend debe negociar capacidades y costo verificables antes de ejecutar una solicitud.
+- Importar un clip no significa que OP 066 lo generó. Los registros usan estados "Preparado" y "Clips importados", nunca estados engañosos de generación.
+- Persistencia en el equipo y render WebM local pueden utilizar CPU/GPU del computador. Para trabajos pesados en la nube se necesita almacenamiento protegido y procesador remoto.
+- Faltan prueba real en Chrome de importación, selección de referencias, recarga, selección de variantes y colocación en timeline. Las pruebas automatizadas son necesarias, pero no sustituyen prueba visual real.
+
+**Requisitos del siguiente gate:**
+1. Revisar cuentas/API de Firefly, Kling, Veo u otro proveedor con autorización y documentación real de imagen-a-video/referencias. No asumir que la suscripción de Firefly incluye API.
+2. Presupuesto, autorización explícita de créditos, colas asíncronas, control de concurrencia y cancelaciones.
+3. Biblioteca de archivos y resultados cifrada/privada con URLs firmadas y copias de seguridad.
+4. Procesamiento remoto de exportaciones MP4 y 2K/4K con calidad controlada.
+5. Tests end-to-end reales de Chrome, aislamiento multicuenta, controles de acceso, conservación de identidad de personajes y regresiones en la consola existente.
+
+La rama `main` y los servicios productivos deben mantenerse intactos hasta un consentimiento separado para merge y migraciones.
+
+## Respaldos portables de estudio
+
+La rama de desarrollo incluye **Respaldo completo con medios** y **Restaurar respaldo completo** en Montaje y efectos. El archivo JSON privado contiene los datos del timeline, las solicitudes de Generación IA guardadas localmente y los bytes de los archivos de imagen/video/audio referenciados. Límite: 40 archivos, 30 MiB por archivo y 48 MiB sumados. No sube a proveedores ni requiere créditos.
+
+Restaurar exige estar dentro del MISMO proyecto ID en el segundo dispositivo, confirma el reemplazo del montaje e historial locales, valida integridad de los tamaños e identificadores de archivos y nunca sobrescribe archivos multimedia que ya están presentes.
+
+**Seguridad:** los respaldos contienen imágenes y videos originales potencialmente privados o con derechos reservados. No compartirlos públicamente. No son copias cifradas; guardarlos con el mismo cuidado que los originales. El respaldo no incluye solicitudes que hayan quedado solo en Neon si todavía no fueron recuperadas al navegador, ni los recursos de otros proyectos o archivos huérfanos. Si supera los límites, falla con mensaje y no produce un archivo incompleto.
+
+**Siguiente fase:** Neon Storage está disponible en la rama aislada, pero no hemos creado bucket ni activado tráfico o facturación. El respaldo manual es temporal mientras se diseña almacenamiento privado compartido entre PC y móvil. El módulo no se publica en producción sin pruebas de Chrome e intervención explícita.
+
+## Biblioteca remota privada — implementación controlada (no activada)
+Se implementan el contrato de multimedia remota, el registro SQL privado, un firmador S3 SigV4 de URLs temporales, verificación de tamaño y hash del original y componentes manuales para sincronizar/recuperar archivos del proyecto. Solo se intentan transferencias tras una acción explícita del usuario. No se muestra como conectado cuando faltan credenciales. No se consumen motores generativos.
+
+Límites de seguridad de pruebas: 50 MiB por archivo, 256 MiB y 80 originales por proyecto. Bucket privado de Neon Storage vinculado exclusivamente a la rama Preview; el servidor deberá recibir `STUDIO_CLOUD_ENABLED=1`, `STUDIO_STORAGE_ENDPOINT`, `STUDIO_STORAGE_BUCKET`, `STUDIO_STORAGE_ACCESS_KEY_ID`, `STUDIO_STORAGE_SECRET_ACCESS_KEY`, `STUDIO_STORAGE_REGION`, `STUDIO_STORAGE_BRANCH_ID` (este último apuntando a `br-little-sound-av8vyecq`). Nunca colocar secretos en JavaScript público ni archivos del repositorio. Ninguna variable se ha configurado aún.
+
+El navegador utiliza solicitudes autenticadas a la consola para crear intenciones, recibe URLs firmadas de corta duración, ejecuta subida PUT directa al storage, confirma mediante HEAD al servidor, y descarga sobre demanda con verificación de SHA-256 antes de almacenar una copia local. No se borran originales automáticamente. La API se niega a funcionar sin proveedor y credenciales completos.
+
+**Requiere validación manual adicional antes de encender el servicio:** compatibilidad de Neon Storage con `x-amz-checksum-sha256`, CORS del bucket para la URL de Preview, correcta firma y verificación HEAD de la plataforma, aislamiento real entre ramas y costo de almacenamiento/transferencia de acuerdo al plan. No activar gastos ni crear buckets hasta obtener aprobación presupuestaria. El CSP en la rama de desarrollo permite solo el endpoint de almacenamiento de esta rama preview; al publicar otra rama ese host debe ajustarse, no copiarlo a producción.
+
+
+## Corrección de exportación WebM (octubre 2026)
+
+La exportación inicial falló en una prueba real de Chrome con un único PNG en V1: `El navegador no produjo un video válido`. Se reemplaza la captura automática por grabación WebM con fotogramas explícitos (`CanvasCaptureMediaStreamTrack.requestFrame`), `MediaRecorder`, finalización controlada e inspección del encabezado EBML. Para proyectos solo de imágenes y títulos, no se agrega una pista de audio vacía; con clips de audio o video, se mantiene la mezcla si existe. Se conserva la posición original del editor después de exportar y se aborta la captura al cerrar el módulo. Se corrige el visor para mostrar el último fotograma al llegar exactamente al final del clip.
+
+Se ha comprobado el método en Chromium real con un lienzo estático generado para test (2 segundos, WebM válido). **Todavía falta repetir la exportación real con `rosa4.png` desde la vista previa del usuario**, verificar con reproductor externo su duración y códec, y probar A1/A2 antes de declarar estable el exportador. No afecta Neon ni la biblioteca original.
+
+## Formato y calidad de exportación (Preview, octubre 2026)
+
+WebM y MP4 nativo del navegador, SOLO cuando MediaRecorder.isTypeSupported confirma el códec correspondiente (H.264, y AAC cuando hay sonido). El sistema verifica firma EBML de WebM o ftyp de MP4 antes de descargar. Nunca se cambia simplemente la extensión. Cuando MP4 no esté disponible, se informa al usuario y permanece WebM.
+
+720p/1080p y calidad Estándar / Alta / Máster, respectivamente 3/6/10 Mbps para 720p y 6/12/20 Mbps para 1080p: son bitrates solicitados al codificador, el valor efectivo podría variar. Proyectos anteriores reciben WebM/Alta sin perder datos. Los renders de Máster cargan CPU/GPU del navegador, 4K y codificación universal deben ir a render remoto.
+
+Pendiente: prueba manual del MP4 con Chrome Windows, audio AAC, VLC, precisión de duración y calidad real antes de declarar el módulo listo para producción.
+
+## Bloqueo seguro de exportación ante archivos ausentes (10 oct 2026)
+
+Una prueba en Chrome móvil produjo MP4 H.264 de 1080 × 1920 y 5 segundos, pero sin el PNG de la pista V1: solo se veía el título en V2. La captura mostraba el PNG disponible en Neon Storage, pero no en la biblioteca local de ese navegador. El formato era MP4 válido, **el montaje exportado no era íntegro**. Se añade un preflight que comprueba presencia de cada original en IndexedDB, tamaño de bytes, carga del recurso y decodificación de imagen/video/audio. Bloquea con mensaje claro si falta el archivo y dirige a «Biblioteca privada → Recuperar al equipo». El visor advierte que faltan medios locales, y la descarga desde Neon actualiza la vista previa sin requerir borrar ni reimportar el original. Prohibido informar exportación completa si falta una pista.
+
+El MP4 de ese ensayo mostró irregularidades de timestamps (DTS no monótono en algunos cuadros). Se pospone considerar producción profesional MP4 hasta normalización de timestamps y validación de audio/compatibilidad con reproducción real o FFmpeg remoto. El codec H.264 + dimensión 1080p no garantiza calidad visual del montaje ni tasa constante de 24 FPS.
+
+## Biblioteca visual, papelera y herramientas de timeline (fase experimental)
+Nuevos componentes desarrollados en rama aislada: tarjetas locales con miniaturas, arrastre HTML5 desde biblioteca a pistas compatibles V1/V2/A1/A2, alternativa táctil «En cabezal», división de clips en el cabezal, herramienta de cuchilla, imán de bordes, zoom horizontal, mover/recortar arrastrando, controles Deshacer/Rehacer del montaje, y panel de papelera recuperable para archivos locales y de Neon Preview.
+
+**Nunca borramos los bytes de S3 desde el editor:** la eliminación remota marca `deleted_at`; «Restaurar» revierte esa marca, conserva el original y sus IDs. La papelera local guarda `trashedAt` y conserva el Blob en IndexedDB; el timeline mantiene sus referencias para poder reactivarlas. La capacidad de Neon sigue contando los objetos en papelera; limpieza definitiva necesita una operación futura, revisión de dependencias y autorización explícita.
+
+Miniaturas de originales locales y subidos a la nube: si el archivo está local, se muestra directamente; el remoto no recuperado exige pulsar «Vista previa» (descarga firmada con SHA-256 y tamaño verificados) para evitar transferencias y facturación automáticas. Los móviles pueden añadir a la posición del cabezal sin drag HTML5. El botón «+ Al final» mantiene el comportamiento previo.
+Estas funciones son un **editor no destructivo de primera fase**; no están implementadas todas las herramientas de Premiere/CapCut/Firefly (keyframes reales, waveforms, transiciones complejas, colaboración, GPU/FFmpeg remoto).
+
+
+## Estación visual unificada y responsive — 11 octubre 2026 (Preview)
+
+El usuario aportó un paquete ZIP de referencia de Stitch con siete pantallas: workspace de edición multitrack para escritorio, vista móvil, generación Firefly/IA, montaje Copilot, render/exportación móvil y desktop. Se adopta la **arquitectura visual**, no el branding ni capacidades inexistentes (GPU NVENC, colas de render, créditos falsos).
+
+Nueva hoja de estilos aislada `studio-workspace.css` y mejoras de UI sin alterar IndexedDB, Neon, proyectos ni los endpoints. En escritorio: navegación OP 066 condensada, cabecera profesional, seis parámetros de proyecto, toolbar, biblioteca acoplada con fichas/miniaturas, pestañas Medios/Nube/Texto/Audio, panel Origen con previsualización real, monitor Programa, inspector contextual y timeline multitrack en el mismo viewport. Herramientas funcionales anteriores conservadas; móviles: cabecera horizontal con scrolling y selector de panel bajo el monitor, por defecto timeline; Biblioteca e Inspector mediante dock táctil para evitar minúsculos tres paneles al mismo tiempo. En la galería: seleccionar thumbnail abre imagen/video/audio real, 'Insertar en cabezal' pasa al timeline, drag & drop sigue soportado en PC. Las etiquetas de navegación nunca implican motores IA activos.
+
+**Pendiente:** QA real en Chrome/Android, Safari, tamaño 390/768/1440, contraste, prueba visual con archivo real, pulir Timeline y transiciones avanzadas; no autorizar producción antes de QA manual. El diseño requiere nuevas pruebas de teclado, acceso por pantalla, rendimiento con 100+ archivos y estado de nube/papelera.
+
+
+## Fase Pro III: timeline mejorado y controles de pista (Preview 11-oct-2026)
+
+El nuevo timeline utiliza una escala de tiempo real y zoom efectivo en el ancho de la regla; los clips se dibujan con ancho proporcional y aparecen imágenes/vídeos originales dentro de los bloques cuando el navegador puede mostrar su miniatura. Los archivos de audio utilizan muestras PCM reales extraídas de WebAudio para dibujar un waveform, sin curvas simuladas. El render de audio solo se calcula para originales locales de hasta 32 MiB; si falta capacidad de decodificación no se inventan formas de onda.
+
+Cada pista conserva su estado de Bloqueo (impide mover/cortar/insertar/editar clips), Oculto para vídeo (afecta el visor y la exportación local) o Silencio para audio (afecta la reproducción y mezcla). Los estados se guardan en el almacenamiento local del proyecto, separado de las estructuras existentes. Inspector contextual Clip/Color/Audio/Guion-IA, accesos rápidos de duplicación y eliminación, contador de fotogramas y cabezal visible. Está restringido a la rama Preview; jamás simular rendimiento GPU o motor generativo.
+
+Pendiente de revisión humana: arrastre horizontal largo, waveforms en archivos reales, PWA Android e iOS, sincronía A1/A2 y codec final MP4, cuadros a 24fps, interacción accesible por teclado y pantallas pequeñas. Pruebas automatizadas no sustituyen el QA audiovisual real.
+
+## Generación IA: galería de referencias y móvil (Preview 11 octubre 2026)
+
+La pantalla de generación suma un explorador visual de imágenes locales para añadir referencias con un toque y marcarlas como seleccionadas, conservando los dos modos exactos: 1–2 fotogramas ordenados de inicio/fin o 1–3 imágenes con roles configurables. Se permite tocar una referencia seleccionada para quitarla. La vista previa solo muestra medios reales y los prompts siguen sin enviarse a motores externos. En móvil el dock alterna Biblioteca / Visor / Prompts; el visor permanece visible, con espacio adicional cuando está seleccionado. Las pruebas DOM validan los modos sin alterar preparaciones previas.
+
+Los motores Firefly, Veo, Kling, Wan y LTX siguen desconectados: **NO** se generan videos ni se gastan créditos. Las imágenes remotas de Neon no descargadas en este navegador no aparecen aquí automáticamente; su sincronización y control de permisos requiere desarrollo adicional.
+
+
+## Herramientas dentro del timeline y cursor cuchilla (Preview 11-oct-2026)
+
+La barra de Selección / Cuchilla / Dividir en cabezal / Duplicar / Quitar / Imán / Zoom / Ajustar se mueve desde encima del monitor hacia la cabecera **del timeline**, inmediatamente antes de la regla. La cuchilla habilita cursor crosshair con guía de tijera en el clip; al pulsar calcula la posición relativa a la pista, la cuantiza al fotograma más cercano y corta **ese clip** en el punto señalado, nunca en la posición previa del cabezal. El corte actualiza cabezal, se puede Deshacer y respeta bloqueo de pistas. En modo Cuchilla se desactiva el arrastre para evitar movimientos accidentales. Teclas V (Selección), C (Cuchilla), S (división en cabezal); se ignoran cuando se escribe en formularios. Se añade acción Ajustar al contenido y aumenta la escala inicial en secuencias cortas para aprovechar la superficie de edición. Se mantiene el uso exclusivo de Preview, sin proveedores IA ni cargos y sin tocar main.
+
+**Pendiente QA manual:** validar cursor guía bajo zoom/scroll reales, ergonomía del corte con táctil, arrastre de clips y recorte de bordes en Chrome/Android, sin pérdida de medios de IndexedDB; no publicar a producción hasta revisión explícita del usuario.
+
+## Reparación validable del arrastre de clips (11-oct-2026)
+
+Se reemplaza el arrastre limitado al propio elemento del clip por seguimiento de eventos Pointer a través de la ventana y captura opcional de puntero. Un gesto completo separa `pointerdown`, `pointermove`, `pointerup` y `pointercancel`: no se modifica la secuencia ni su historial hasta soltar; cancelar devuelve el estado inicial. Los bordes de recorte (16px en escritorio, 22px táctiles) ahora son claramente visibles y reaccionan a hover/drag; se conserva la selección, cuchilla y pistas bloqueadas. La duración del clip se puede extender desde el extremo derecho, sin alterar ni duplicar el original almacenado.
+
+Para no repetir la falsa señal de seguridad anterior, las pruebas de CI incluyen arrastre de recorte, cancelación, movimiento, bloqueo y deshacer en DOM, además de una ejecución de Chromium real que importa un PNG y recorre **recortar → deshacer → mover → cortar con cuchilla**. Si falla, se guarda captura del navegador. No se habilita producción ni generación de video a partir de esto.
+
+## Transiciones entre clips y render protegido (Preview, 11-oct-2026)
+
+Se implementan disolución de imágenes/video y fundido cruzado de audio, con herramientas separadas en el timeline (T y Shift+T). Se solapan dos clips de la misma pista, se selecciona el segundo y se aplica el efecto. No cambia la posición ni la duración de los bloques. El inspector ajusta la duración y permite quitar el efecto; una región dorada o verde identifica el tramo mezclado. Deben existir fuentes originales suficientes para el tramo, sin tres clips compitiendo por el mismo solape.
+
+El compositor procesa medios y títulos según el orden de pistas. Las transiciones de imagen usan una superficie de mezcla ponderada para evitar un descenso a negro en el centro. La mezcla de sonido utiliza curvas seno/coseno independientes del efecto visual. Guardado, JSON, backups y Deshacer/Rehacer preservan relaciones válidas; separar o borrar una fuente elimina la relación inválida.
+
+Se bloquean los controles durante una exportación y se incorpora Cancelar exportación. Finalizar o cancelar restaura el cabezal y la edición. Se valida con un archivo WebM real descargado en Chrome, decodificado con FFmpeg: dos imágenes de colores conocidos y dos tonos originales distintos. MP4/AAC y compatibilidad completa entre dispositivos siguen requiriendo validación específica.
+# Montaje con originales reales
+
+Video/audio ya usan su duración real como límite al insertar y recortar. La exportación valida todos los fragmentos y espera la preparación de su fotograma inicial. Restaurar un proyecto prepara sus originales y libera fuentes que ya no pertenecen al montaje.
+
+El icono **Extraer audio del video (Shift+E)** crea sonido editable en una pista A libre, conservando posición e In/Out, y silencia el video. Deshacer devuelve la mezcla previa. Video y audio pueden moverse y ajustarse por separado.
+
+La prueba Chrome descarga una secuencia de video real con audio separado y verifica colores, frecuencias, volumen y un intervalo en silencio mediante FFmpeg. MP4 H.264/AAC se verifica solo cuando el navegador anuncia ambos códecs; WebM es la salida comprobada localmente. Este hito no habilita render remoto, proveedores de generación ni producción.
+# Subtítulos SRT/VTT
+
+En Biblioteca → Texto se pueden importar archivos SRT/WebVTT y exportar subtítulos SRT. Cada cue se agrega como bloque de texto en V2; seleccionar permite editar texto (hasta 500 caracteres), inicio, duración, tamaño, posición y fondo. El icono **Añadir subtítulo (Shift+L)** crea una cue manual en el cabezal.
+
+Los subtítulos se dibujan dentro del video exportado y se guardan en el proyecto. Importación, tiempos, estilo, recuperación y exportación SRT/WebM se verifican en Chrome con archivos reales. La importación respeta el bloqueo de V2 y los límites del montaje; no hace transcripción automática ni consume créditos.
+# Animación con keyframes
+
+Selecciona un clip, coloca el cabezal dentro y pulsa el icono **Guardar keyframe (Shift+K)**. Avanza a otro tiempo y cambia posición, escala, opacidad o volumen en el inspector: cada cambio de una propiedad animada crea un punto. La reproducción interpola los valores entre puntos. El panel Keyframes permite recorrerlos, quitar el punto actual y quitar la animación conservando el valor visible.
+
+Los puntos se guardan con el proyecto y se conservan al mover, recortar, cortar o duplicar clips. Imagen/texto admiten posición, escala y opacidad; video también volumen; audio admite volumen. Interpolación lineal, hasta 32 puntos por propiedad. La exportación WebM con movimiento y volumen animados se comprobó leyendo el archivo descargado con FFmpeg.

@@ -1,0 +1,96 @@
+name: Estudio 066 - tests de rama
+on:
+  push:
+    branches:
+      - feature/estudio-creativo-066-fase1
+      - release/studio066-approved
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Superseded previews should not spawn repeated alerts.
+concurrency:
+  group: studio066-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Test seguridad + estudio y build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout de la rama
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias sin ejecutar scripts de instalación
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validar editor y seguridad de Centro 066
+        run: node --test tests/studio066.test.mjs tests/console066.test.mjs
+      - name: Dependencias efímeras de integración
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund @electric-sql/pglite jsdom fake-indexeddb
+      - name: Probar Postgres y DOM aislados del estudio
+        run: node tests/studio066-integration.mjs
+      - name: Validar editor multimedia e interfaz
+        run: |
+          node --check public/centro-066/studio-workbench.js
+          node --check public/centro-066/studio-playback.js
+          node --check public/centro-066/studio-subtitles.js
+          node --check public/centro-066/studio-keyframes.js
+          node --check public/centro-066/studio-shortcuts.js
+          node --check public/centro-066/studio-recording.js
+          node --check public/centro-066/studio-export-preflight.js
+          node --check public/centro-066/studio-media.js
+          node --check public/centro-066/studio-timeline-tools.js
+          node --check public/centro-066/studio-timeline-visuals.js
+          node --check public/centro-066/studio.js
+          test -s public/centro-066/studio-workspace.css
+          grep -q 'studio-workspace.css' public/centro-066/index.html
+          node --check public/centro-066/app.js
+          node --check public/centro-066/studio-generation.js
+          node --check public/centro-066/studio-portable.js
+          node --check public/centro-066/studio-cloud066.js
+          node --check lib/studio-cloud066.js
+          node --test tests/studio066-shortcuts.test.mjs tests/studio066-keyframes.test.mjs tests/studio066-subtitles.test.mjs tests/studio066-playback.test.mjs tests/studio066-transitions.test.mjs tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
+      - name: Compilar la web sin publicar
+        run: npm run build
+      - name: Preparar navegador Chrome preinstalado para pruebas reales
+        run: |
+          command -v google-chrome
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright
+      - name: Preparar verificación del archivo audiovisual exportado
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          command -v ffprobe
+      - name: Probar montaje, transiciones y exportación en Chrome real
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/studio066-http.log 2>&1 &
+          for i in $(seq 1 35); do
+            curl -fsS http://127.0.0.1:4173/tests/studio066-browser-harness.html >/dev/null && break
+            sleep 1
+          done
+          node tests/studio066-browser.test.mjs
+          node tests/studio066-transitions-browser.test.mjs
+          node tests/studio066-video-browser.test.mjs
+          node tests/studio066-subtitles-browser.test.mjs
+          node tests/studio066-keyframes-browser.test.mjs
+          node tests/studio066-shortcuts-browser.test.mjs
+      - name: Capturas de interacción
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: estudio066-browser-evidence
+          path: |
+            /tmp/studio066-browser/*.png
+            /tmp/studio066-browser/transitions.webm
+            /tmp/studio066-browser/video-montage.webm
+            /tmp/studio066-browser/video-montage.mp4
+            /tmp/studio066-browser/subtitles.webm
+            /tmp/studio066-browser/subtitulos.srt
+            /tmp/studio066-browser/keyframes.webm
+            /tmp/studio066-browser/keyframe-title.webm
+          if-no-files-found: ignore
