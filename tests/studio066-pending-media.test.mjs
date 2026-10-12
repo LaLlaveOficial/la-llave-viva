@@ -13,7 +13,8 @@ test('changing output settings while video metadata loads preserves the pending 
   const root=dom.window.document.querySelector('#root'),messages=[];clean=studioWorkbenchView(root,m=>messages.push(m));
   for(let i=0;i<100&&!root.querySelector('[data-add-asset]');i++)await new Promise(r=>setTimeout(r,10));root.querySelector('[data-add-asset]').click();
   for(let i=0;i<100&&!media.length;i++)await new Promise(r=>setTimeout(r,10));const pending=media[0];assert.ok(pending.getAttribute('src'));
-  const quality=root.querySelector('#studiowb-quality');quality.value='1080p';quality.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,20));
+  const quality=root.querySelector('#studiowb-quality');quality.value='1080p';quality.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+  const format=root.querySelector('#studiowb-format');format.value='mp4';format.dispatchEvent(new dom.window.Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,20));
   assert.ok(pending.getAttribute('src'),'A UI refresh must not release a video whose metadata is still loading');pending.dataset.loaded='1';pending.dispatchEvent(new dom.window.Event('loadedmetadata'));
   for(let i=0;i<100&&!root.querySelector('[data-select-clip]');i++)await new Promise(r=>setTimeout(r,10));assert.equal(root.querySelectorAll('.wb-timeline [data-select-clip]').length,1);assert.equal(root.querySelector('#studiowb-quality').value,'1080p');assert.ok(!messages.some(m=>m.includes('no puede leer')));
  }finally{clean?.();db?.close();dom.window.close();for(const key of keys)if(old[key]===undefined)delete globalThis[key];else globalThis[key]=old[key];}
