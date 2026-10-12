@@ -83,8 +83,10 @@ try{
  assert.equal(await page.locator('[data-timeline-seek]').count(),5);
  await page.locator('#studiowb-undo').click();
  assert.equal(await page.locator('[data-timeline-seek]').count(),4,'Undo removes inserted track and restores clip');
+ assert.equal(await page.locator('[data-property=track]').inputValue(),'V1','Undo keeps the moved clip selected on its restored track');
  await page.locator('#studiowb-redo').click();
  assert.equal(await page.locator('[data-timeline-seek]').count(),5,'Redo restores inserted track');
+ assert.equal(await page.locator('[data-property=track]').inputValue(),'V3','Redo keeps the moved clip selected');
  await page.locator('#studiowb-undo').click();
  await page.locator('[data-select-clip]').first().click();
  await page.locator('[data-edit-effect="videoFadeIn"]').click();
