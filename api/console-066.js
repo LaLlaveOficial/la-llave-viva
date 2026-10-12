@@ -9,7 +9,7 @@ import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import { neon } from '@neondatabase/serverless';
-import {houstonStatus} from '../lib/houston-status.js';
+import {houstonUsage,houstonStatus} from '../lib/houston-status.js';
 import {houstonConnect} from '../lib/houston-connect.js';
 import {houstonMission,validateMission} from '../lib/houston-missions.js';
 import {configuration,sameOrigin,readToken,newToken,hashToken,cookie,rateKey,verifyConfiguredPassword,validateLeadUpdate,validateNewLead,TASK_STATES} from '../lib/console-security.js';
@@ -134,6 +134,7 @@ export function makeHandler(connect = neon, env = process.env) {
         await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('metrics',0,'import',${JSON.stringify(item)}::jsonb)`;
         return res.status(200).json({ok:true,network:item.network,importedAt:item.importedAt});
       }
+      if(op==='houston-usage'&&req.method==='GET')return res.status(200).json(await houstonUsage(env));
       if (op === 'houston' && req.method === 'GET') return res.status(200).json(await houstonStatus(env));
       if (op === 'houston-mission' && req.method === 'POST') {
         if(!validateMission(body))return res.status(400).json({error:'Revisa la tarea y el agente.'});
