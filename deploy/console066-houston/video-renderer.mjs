@@ -1,4 +1,4 @@
-import {mkdir,readFile,writeFile,rename,readdir,copyFile,stat} from 'node:fs/promises';
+import {mkdir,readFile,writeFile,rename,readdir,copyFile,stat,mkdtemp,rm} from 'node:fs/promises';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {timingSafeEqual} from 'node:crypto';
@@ -17,7 +17,20 @@ export function createVideoRenderer({root='/data/video-066',assets='/houston/vid
   for(const stream of [child.stdout,child.stderr])stream?.on('data',b=>{log=(log+b).slice(-3000);});
   const timeout=setTimeout(()=>child.kill('SIGTERM'),240000);child.on('error',e=>{clearTimeout(timeout);reject(e)});child.on('exit',code=>{clearTimeout(timeout);code===0?resolve():reject(Error('Render fallido. Revisa el motor antes de volver a intentar. '+log.replace(/\x1b\[[0-9;]*m/g,'').slice(-700)));});
  });
- const produce=async j=>{try{const dir=join(root,j.id);await mkdir(join(dir,'assets'),{recursive:true});for(const file of ['gsap.min.js','cover.webp'])await copyFile(join(assets,file),join(dir,'assets',file));await writeFile(join(dir,'index.html'),videoComposition(j));await run(['lint',dir],dir);await run(['render',dir,'--output',join(dir,'video.mp4'),'--workers','1','--low-memory-mode','--no-browser-gpu','--fps','24','--quality','delivery','--video-bitrate','1600k'],dir);if((await stat(join(dir,'video.mp4'))).size>4000000)throw Error('El archivo supera el límite de descarga de esta consola.');j.status='ready';j.completedAt=new Date().toISOString();await save(j);}catch(e){console.error('[video-066] '+String(e.message||'Fallo sin diagnóstico').slice(0,1500));j.status='failed';j.error='El servidor no terminó el render. El proyecto editable se conserva; no se publicó nada.';await save(j);}finally{busy=false;}};
+ const produce=async j=>{
+  let work=null;
+  try{
+   const saved=join(root,j.id);work=await mkdtemp('/tmp/llave-render-');
+   for(const dir of [saved,work]){await mkdir(join(dir,'assets'),{recursive:true});for(const file of ['gsap.min.js','cover.webp'])await copyFile(join(assets,file),join(dir,'assets',file));await writeFile(join(dir,'index.html'),videoComposition(j));}
+   await run(['lint',work],work);
+   const output=join(work,'video.mp4');
+   await run(['render',work,'--output',output,'--workers','1','--low-memory-mode','--no-browser-gpu','--fps','24','--quality','delivery','--video-bitrate','1600k'],work);
+   if((await stat(output)).size>4000000)throw Error('El archivo supera el límite de descarga de esta consola.');
+   await copyFile(output,join(saved,'video.mp4'));j.status='ready';j.completedAt=new Date().toISOString();await save(j);
+  }catch(e){console.error('[video-066] '+String(e.message||'Fallo sin diagnóstico').slice(0,1500));j.status='failed';j.error='El servidor no terminó el render. El proyecto editable se conserva; no se publicó nada.';await save(j);}
+  finally{if(work)await rm(work,{recursive:true,force:true}).catch(()=>{});busy=false;}
+ };
+
  return async(req,res,url)=>{
   const json=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'private, no-store'});res.end(JSON.stringify(data));};
   if(!videoAuth(req,process.env.HOUSTON_HOST_TOKEN))return json(401,{error:'Acceso privado requerido.'});
