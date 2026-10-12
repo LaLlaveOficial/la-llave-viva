@@ -38,6 +38,7 @@ export function studioWorkbenchView(root,notice,project=null){
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  let inspectorRenderFrame=0,pendingInspectorRefresh=null;
  let editorActive=false,keyboardHandler=null,scrubCleanup=null;
+ const pendingInsertions=new Set();
  const editorDocument=root.ownerDocument;
  const keyboardListener=event=>{if(root.isConnected&&(editorActive||root.contains(event.target)))keyboardHandler?.(event);};
  const editorActivation=event=>{editorActive=root.contains(event.target);};
@@ -89,7 +90,7 @@ export function studioWorkbenchView(root,notice,project=null){
   await Promise.all(workspace.clips.map(async c=>{try{if(c.kind==='image')await getPicture(c);else if(c.kind!=='text')await getMedia(c);}catch{}}));
  }
  function releaseMedia(id){const item=media.get(id);if(!item)return;item.element.pause();item.element.removeEventListener('seeked',paint);item.element.removeEventListener('loadeddata',paint);item.source?.disconnect();item.gain?.disconnect();item.element.removeAttribute('src');item.element.load();media.delete(id);}
- function reconcileMedia(){for(const [id,item] of media){const clip=workspace.clips.find(c=>c.id===id);if(!clip||clip.assetId!==item.assetId)releaseMedia(id);}}
+ function reconcileMedia(){for(const [id,item] of media){if(pendingInsertions.has(id))continue;const clip=workspace.clips.find(c=>c.id===id);if(!clip||clip.assetId!==item.assetId)releaseMedia(id);}}
  function audioGraph(){
   if(audioCtx)return;
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
@@ -164,6 +165,7 @@ export function studioWorkbenchView(root,notice,project=null){
   const duration=timelineDuration(workspace.clips);
   if(duration>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
   const before=workspace.playhead;
+  let exportSilence=null;
   const outputFormat=workspace.exportFormat||'webm';
   rendering=true;
   exportAbort=new AbortController();
@@ -182,14 +184,15 @@ export function studioWorkbenchView(root,notice,project=null){
    if(!preflight.ok){notice(formatExportPreflightError(preflight));return;}
    for(const c of workspace.clips)for(const channel of ['video','audio']){const pair=transitionWindow(workspace.clips,c,channel);if(pair&&transitionSourceLimit(pair)+.001<pair.duration)throw new Error('La transición excede el material original disponible. Acorta su duración o ajusta el solape.');}
    const useAudio=workspace.clips.some(c=>c.kind==='audio'||c.kind==='video');
-   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();}
+   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();if(audioCtx&&mix){exportSilence=audioCtx.createConstantSource();exportSilence.offset.value=0;exportSilence.connect(mix);exportSilence.start();}}
    await Promise.all(workspace.clips.filter(c=>['audio','video'].includes(c.kind)).map(c=>prepareMediaFrame(media.get(c.id).element,c.sourceStart||0,{signal:exportAbort.signal})));
-   isPlaying=true;syncPlayback();paint();
-   let {blob,format}=await exportCanvasRecording({
+   isPlaying=outputFormat!=='mp4';syncPlayback(true);paint();
+   let {blob,format,leadSeconds}=await exportCanvasRecording({
     canvas:canvas(),seconds:duration,fps:workspace.fps,format:'webm',
     audioTracks:useAudio&&mix?mix.stream.getAudioTracks():[],
     bitrate:recordingBitrate(workspace.quality,workspace.encodingQuality||'high'),
     signal:exportAbort.signal,
+    onStart:outputFormat==='mp4'?()=>{isPlaying=true;syncPlayback(true);}:undefined,
     onProgress:value=>{if(button)button.textContent='Capturando montaje · '+Math.round(value*100)+'%';},
     onFrame:async elapsed=>{
      workspace.playhead=Math.min(elapsed,Math.max(0,duration-1/(workspace.fps*4)));
@@ -197,7 +200,7 @@ export function studioWorkbenchView(root,notice,project=null){
     }
    });
    if(outputFormat==='mp4'){
-    pause();blob=await encodeStudioMP4(blob,{seconds:duration,fps:workspace.fps,quality:workspace.encodingQuality||'high',resolution:workspace.quality,signal:exportAbort.signal,onProgress:(stage,percent)=>{if(button)button.textContent=stage+' · '+percent+'%';}});format='mp4';
+    pause();blob=await encodeStudioMP4(blob,{seconds:duration,fps:workspace.fps,quality:workspace.encodingQuality||'high',resolution:workspace.quality,leadSeconds,signal:exportAbort.signal,onProgress:(stage,percent)=>{if(button)button.textContent=stage+' · '+percent+'%';}});format='mp4';
    }
    if(exportAbort.signal.aborted)return;
    const url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -208,6 +211,7 @@ export function studioWorkbenchView(root,notice,project=null){
   }catch(error){
    if(!exportAbort?.signal.aborted)notice('No se pudo exportar: '+error.message);
   }finally{
+   exportSilence?.stop();exportSilence?.disconnect();
    pause();workspace.playhead=before;save();syncPlayback(true);paint();drawTime();
    rendering=false;exportAbort=null;cancelButton.remove();exportControls.forEach(([node,disabled])=>{if(node.isConnected)node.disabled=disabled;});
    if(button){button.disabled=false;button.textContent='Exportar '+outputFormat.toUpperCase();}
@@ -339,7 +343,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<label class="wb-tool-zoom">Zoom <input id="studiowb-zoom" aria-label="Zoom de la línea de tiempo" type="range" min=".5" max="5" step=".25" value="'+timelineZoom+'"></label>'+
     '<button type="button" id="studiowb-timeline-fit" title="Ajustar (F)" aria-label="Ajustar (F)">'+toolIcon('fit')+'</button>'+
     '<div id="studiowb-tool-hint" class="wb-tool-hint" role="status">'+(editingTool==='blade'?'CUCHILLA · Haz clic en un clip para cortarlo exactamente aquí':'SELECCIÓN · Arrastra, recorta o elige un clip')+'</div></div>'+
-timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · Generación y render remoto todavía no conectados</p></div>';
+timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · MP4 con Houston · Generación IA pendiente</p></div>';
  }
  async function updateSourceViewer(){
   const frame=root.querySelector('#studiowb-source-frame'),button=root.querySelector('#studiowb-source-add');
@@ -524,10 +528,12 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     if(added)track=added.id;
     const next=start===null?clip:insertClipAt(asset,clip,snapToEdges(start,workspace.clips,null,{enabled:snapping}),track||clip.track);
     if(!trackIsEditable(trackState,next.track)){notice('Pista bloqueada: desbloquéala para insertar medios.');return;}
+    pendingInsertions.add(next.id);
     if(['audio','video'].includes(next.kind)){const decoded=await getMedia(next);if(!Number.isFinite(decoded?.element.duration)||decoded.element.duration<.1){releaseMedia(next.id);throw new Error('Este navegador no puede leer la duración del archivo. Importa un MP4/WebM o WAV compatible.');}Object.assign(next,constrainSourceRange(next,decoded.element.duration));}
     if(rendering||!root.isConnected||!canAddClip()){releaseMedia(next.id);return;}
     checkpoint();if(added)workspace.tracks=added.tracks;workspace.clips.push(next);selected=next.id;inspectorTab='clip';mobilePane='timeline';save();await prime();render();
    }catch(error){notice(error.message);}
+   finally{pendingInsertions.delete(clip.id);if(!workspace.clips.some(c=>c.id===clip.id))releaseMedia(clip.id);}
   };
   root.querySelectorAll('[data-insert-asset]').forEach(b=>b.onclick=()=>addFromLibrary(b.dataset.insertAsset,{start:workspace.playhead}));
   root.querySelectorAll('[data-drag-asset]').forEach(card=>card.ondragstart=ev=>{

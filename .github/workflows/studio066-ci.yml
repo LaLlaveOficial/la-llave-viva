@@ -5,6 +5,7 @@ on:
       - feature/estudio-creativo-066-fase1
       - release/studio066-approved
       - feature/studio066-server-mp4
+      - fix/studio066-pending-media
   workflow_dispatch:
 
 permissions:
@@ -41,6 +42,7 @@ jobs:
           node --check public/centro-066/studio-server-export.js
           node --check deploy/console066-houston/studio-encoder.mjs
           node --test tests/studio066-server-mp4.test.mjs tests/video-066-renderer.test.mjs
+          node --test tests/studio066-pending-media.test.mjs
           node --check public/centro-066/studio-playback.js
           node --check public/centro-066/studio-subtitles.js
           node --check public/centro-066/studio-keyframes.js

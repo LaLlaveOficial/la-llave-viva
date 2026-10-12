@@ -64,7 +64,7 @@ try{
  const frame=execFileSync('ffmpeg',['-v','error','-ss','4','-i',path,'-frames:v','1','-vf','scale=1:1','-f','rawvideo','-pix_fmt','rgb24','pipe:1']);
  assert.ok(frame[0]>90&&frame[0]<165&&frame[2]>90&&frame[2]<165&&frame[1]<15,'Encoded midpoint keeps the purple dissolve, actual='+[...frame]);
  const spectrum=at=>{const pcm=execFileSync('ffmpeg',['-v','error','-i',path,'-ss',String(at),'-t','0.1','-f','f32le','-ac','1','-ar','48000','pipe:1']);const n=pcm.length/4;return [440,880].map(hz=>{let re=0,im=0;for(let i=0;i<n;i++){const sample=pcm.readFloatLE(i*4),phase=2*Math.PI*hz*i/48000;re+=sample*Math.cos(phase);im+=sample*Math.sin(phase);}return 2*Math.hypot(re,im)/n;});};
- const before=spectrum(.5),middle=spectrum(4),after=spectrum(6);
+ const before=spectrum(.5),middle=spectrum(4),after=spectrum(6);if(server){console.log(JSON.stringify({midpoint:[...frame],crossfade:middle}));assert.ok(Math.abs(frame[0]-frame[2])<20,'MP4 dissolve midpoint must match the preview');assert.ok(Math.abs(middle[0]-middle[1])<.04,'MP4 audio crossfade midpoint must match the timeline');}
  assert.ok(before[0]>.1&&before[1]<.02,'Outgoing tone starts alone: '+before);
  assert.ok(middle[0]>.07&&middle[1]>.07,'Both source tones are actually encoded during crossfade: '+middle);
  assert.ok(after[1]>.1&&after[0]<.02,'Incoming tone remains alone: '+after);

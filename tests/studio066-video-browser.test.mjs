@@ -59,4 +59,4 @@ try{
  await page.locator('.wb-timeline [data-select-clip]').first().click();await page.locator('.wb-timeline').focus();await page.keyboard.press('Delete');await page.waitForTimeout(100);
  assert.equal(await page.evaluate(()=>window.__mediaElements.filter(el=>el.src?.startsWith('blob:')&&!el.paused).length),0,'Removed sources cannot remain playing');
  assert.deepEqual(errors,[]);console.log(JSON.stringify({result:'VIDEO_MONTAGE_EXPORT_PASS',mp4Available,frames:{green,gap,blue},audio:{green:a,gap:b,blue:c},bytes:fs.statSync(output).size}));
-}catch(error){console.error(error.stack);await page?.screenshot({path:dir+'/video-montage-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();await server?.stop();}
+}catch(error){console.error(error.stack);console.error(JSON.stringify({messages:await page?.evaluate(()=>window.__studioHarness?.messages).catch(()=>[])}));await page?.screenshot({path:dir+'/video-montage-failed.png',fullPage:true}).catch(()=>{});process.exitCode=1;}finally{await browser.close();await server?.stop();}

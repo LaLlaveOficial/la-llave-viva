@@ -9,8 +9,9 @@ export const STUDIO_CHUNK=512*1024, STUDIO_MAX_BYTES=128*1024*1024;
 const uuid=id=>/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(id||'');
 const base64=s=>typeof s==='string'&&s.length>0&&s.length<=Math.ceil(STUDIO_CHUNK/3)*4&&/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(s);
 export function validateStudioUpload(b){
+ const leadSeconds=b?.leadSeconds??0;if(!Number.isFinite(leadSeconds)||leadSeconds<0||leadSeconds>8)return null;
  if(!b||!uuid(b.id)||!Number.isSafeInteger(b.bytes)||b.bytes<16||b.bytes>STUDIO_MAX_BYTES||!Number.isFinite(b.seconds)||b.seconds<=0||b.seconds>120||![24,30].includes(b.fps)||!['standard','high','master'].includes(b.quality)||!['720p','1080p'].includes(b.resolution)||!/^[a-f0-9]{64}$/.test(b.sha256||''))return null;
- return {id:b.id,bytes:b.bytes,seconds:b.seconds,fps:b.fps,quality:b.quality,resolution:b.resolution,sha256:b.sha256};
+ return {id:b.id,bytes:b.bytes,seconds:b.seconds,fps:b.fps,quality:b.quality,resolution:b.resolution,leadSeconds,sha256:b.sha256};
 }
 const snapshot=j=>({id:j.id,status:j.status,progress:j.progress,received:j.received,bytes:j.bytes,outputBytes:j.outputBytes||0,error:j.error||null});
 export function createStudioEncoder({resources={busy:false},runProcess=spawn,ffmpeg='/usr/bin/ffmpeg',ffprobe='/usr/bin/ffprobe',ttlMs=3600000}={}){
@@ -30,7 +31,7 @@ export function createStudioEncoder({resources={busy:false},runProcess=spawn,ffm
    const video=info.streams?.find(s=>s.codec_type==='video'),audio=info.streams?.filter(s=>s.codec_type==='audio')||[];
    if(!video||info.streams.length>2||audio.length>1||!['vp8','vp9','av1'].includes(video.codec_name)||video.width<2||video.height<2||video.width>2064||video.height>1920||video.width*video.height>2230000||Number(info.format.duration)>122)throw Error('El archivo no corresponde a un montaje admitido.');
    const output=join(j.dir,'output.mp4');
-   await run(ffmpeg,['-hide_banner','-loglevel','error','-nostdin','-y','-threads','1','-protocol_whitelist','file,pipe','-i',join(j.dir,'input.webm'),'-map','0:v:0','-map','0:a:0?','-t',String(j.seconds),'-r',String(j.fps),'-c:v','libx264','-threads','1','-filter_threads','1','-preset','veryfast','-crf',({standard:'23',high:'20',master:'17'})[j.quality],'-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-movflags','+faststart','-progress','pipe:1',output],j,true);
+   await run(ffmpeg,['-hide_banner','-loglevel','error','-nostdin','-y','-threads','1','-protocol_whitelist','file,pipe','-ss',j.leadSeconds.toFixed(6),'-i',join(j.dir,'input.webm'),'-map','0:v:0','-map','0:a:0?','-t',String(j.seconds),'-r',String(j.fps),'-c:v','libx264','-threads','1','-filter_threads','1','-preset','veryfast','-crf',({standard:'23',high:'20',master:'17'})[j.quality],'-pix_fmt','yuv420p','-c:a','aac','-b:a','192k','-movflags','+faststart','-progress','pipe:1',output],j,true);
    const verified=JSON.parse(await run(ffprobe,['-v','error','-protocol_whitelist','file,pipe','-show_entries','stream=codec_type,codec_name,width,height:format=duration','-of','json',output],j));
    if(verified.streams.find(s=>s.codec_type==='video')?.codec_name!=='h264'||(audio.length&&!verified.streams.some(s=>s.codec_type==='audio'&&s.codec_name==='aac'))||Math.abs(Number(verified.format.duration)-j.seconds)>.5)throw Error('La salida no pasó la verificación de video y audio.');
    j.outputBytes=(await stat(output)).size;if(j.outputBytes>STUDIO_MAX_BYTES)throw Error('El MP4 supera los 128 MB permitidos.');
