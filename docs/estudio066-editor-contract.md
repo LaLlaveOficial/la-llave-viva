@@ -99,7 +99,7 @@ Contrato geométrico:
 ## Pendientes para cerrar el estudio completo
 
 1. Render MP4 H.264/AAC independiente del navegador, control de sincronía por fotograma y pruebas con material de producción largo. Render remoto no conectado.
-2. Edición avanzada: keyframes, multiselección, vincular imagen/audio, medidores y control de picos. Transcripción automática de voz pendiente; subtítulos manuales y SRT/VTT ya operativos.
+2. Edición avanzada: multiselección, vincular imagen/audio, medidores y control de picos. Transcripción automática de voz pendiente; subtítulos manuales y SRT/VTT y keyframes lineales ya operativos.
 3. Generación IA y voz: las funciones que necesitan proveedor/créditos permanecen deshabilitadas hasta conexión autorizada. No se presentan como operativas.
 4. Prueba humana con clips reales del Caso 066 y dispositivos de destino antes de aprobar producción.
 
@@ -112,3 +112,14 @@ Contrato geométrico:
 - JSON/respaldo portable y undo/redo conservan texto, tiempos y estilo. El SRT exportado utiliza los tiempos actuales y solo bloques marcados como subtítulo; no incluye estilos ni títulos normales. El archivo SRT no incluye medios.
 - QA Chrome: importación, 269 caracteres sin truncar, ajustes de estilo/tiempo, vertical/horizontal, bloqueo de pista, rechazo atómico de archivo inválido, creación manual, undo/redo, recuperación al recargar y lectura de SRT descargado. FFmpeg cuenta píxeles de texto blanco en el WebM para confirmar presencia durante ambas cues y ausencia antes, entre ellas y después.
 - Sin transcripción automática, generación de voz ni llamadas a proveedores.
+
+## Keyframes lineales — 12-oct-2026
+
+- Icono Guardar keyframe (Shift+K): registra los valores actuales en el tiempo interno del clip, alineado al FPS del proyecto. Imagen, video, títulos y subtítulos: X/Y, escala y opacidad; video/audio: volumen. Máximo 32 puntos por propiedad.
+- Después del primer punto, editar una propiedad animada crea o actualiza su punto en el cabezal. Antes/después de los puntos extremos se mantiene su valor; entre ellos se interpola linealmente. No hay curvas Bézier ni ease-in/ease-out.
+- Inspector muestra los valores interpolados y ofrece ir a puntos, quitar el actual o quitar la animación conservando el valor del cabezal. Bloqueo de pista y cabezal fuera del clip impiden crear/cambiar/quitar puntos.
+- Los diamantes en los bloques usan geometría CSSOM autorizada por CSP, y la misma escala temporal de la línea de tiempo. Los puntos viajan con el clip al moverlo, duplicarlo o cambiarlo de pista.
+- Split y trim conservan valores interpolados en los nuevos bordes y desplazan el tiempo de la animación al inicio de cada fragmento. No se cambian archivos originales. Extraer audio mueve la curva de volumen al nuevo clip A y elimina esa curva del video silenciado para evitar doble sonido.
+- JSON y respaldo portable conservan las curvas; un proyecto con tiempos, valores, tipos, duplicados o capacidad inválidos se rechaza. La importación de timeline JSON admite hasta 2 MB para acomodar proyectos animados.
+- QA Chrome con PNG transparente/cuadrado blanco y WAV 440 Hz: movimiento X/Y, escala, opacidad y volumen; valores intermedios; bloqueo; quitar puntos/animación; undo; recuperación; split y movimiento conservando fase. FFmpeg decodifica el WebM, compara posición/tamaño/brillo del objeto y el nivel RMS del audio en tres tiempos.
+- Exportación local sigue siendo captura en tiempo real: no se declara render offline con precisión temporal constante o compatibilidad universal MP4.

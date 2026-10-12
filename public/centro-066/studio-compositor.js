@@ -2,11 +2,15 @@ import {fadeEnvelope} from './studio-tracks.js';
 import {transitionWindow,transitionProgress} from './studio-transitions.js';
 import {trackIsVisible} from './studio-timeline-visuals.js';
 import {drawSubtitle} from './studio-subtitles.js';
+import {sampleAnimation} from './studio-keyframes.js';
 const bounded=(value,lo,hi)=>Math.max(lo,Math.min(hi,Number(value)||0));
 const active=(c,t)=>t>=c.start&&t<c.start+c.duration;
 function drawClip(ctx,c,time,w,h,sourceFor,weight=1){
+ c={...c,...sampleAnimation(c,time)};
  ctx.save();ctx.globalAlpha=bounded(c.opacity??1,0,1)*fadeEnvelope(c,time)*weight;
  if(c.kind==='text'){
+  const zoom=bounded(c.scale??1,.25,4),x=bounded(c.x??0,-1,1)*w/2,y=bounded(c.y??0,-1,1)*h/2;
+  if(zoom!==1||x||y){ctx.translate(w/2+x,h/2+y);ctx.scale(zoom,zoom);ctx.translate(-w/2,-h/2);}
   if(c.textRole==='subtitle'){drawSubtitle(ctx,c,w,h);ctx.restore();return;}
   const size=Math.round(h/18);ctx.font='700 '+size+'px Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.shadowColor='#000';ctx.shadowBlur=14;ctx.lineWidth=Math.max(3,size/9);ctx.strokeStyle='#000';ctx.fillStyle='#fff';
   (c.text||'TÍTULO').slice(0,180).split('\n').forEach((line,i)=>{const y=h*.78+i*size*1.2;ctx.strokeText(line,w/2,y,w*.9);ctx.fillText(line,w/2,y,w*.9);});

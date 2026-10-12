@@ -1,5 +1,6 @@
 import {sanitizeTransitions} from './studio-transitions.js';
 import {normalizeTracks,compatibleTrack} from './studio-tracks.js';
+import {normalizeKeyframes} from './studio-keyframes.js';
 // Estudio 066 · biblioteca local. Los archivos quedan en este navegador, NO en servidores.
 const DB_NAME='llave-studio066-media-v1',STORE='assets';
 export function mediaDB(){
@@ -68,7 +69,8 @@ export function parseWorkspace(value){
   if(items.some(item=>item.id===id)||!Number.isFinite(Number(c.sourceStart??0))||!Number.isFinite(Number(c.volume??1)))return null;
   const fades=Object.fromEntries(['videoFadeIn','videoFadeOut','audioFadeIn','audioFadeOut'].map(k=>[k,Math.min(c.duration/2,Math.max(0,Number(c[k])||0))]));
   const captionStyle=c.kind==='text'&&c.textRole==='subtitle'?{subtitleSize:Math.min(10,Math.max(2,Number(c.subtitleSize)||4.8)),subtitleY:Math.min(95,Math.max(10,Number(c.subtitleY)||88)),subtitleBackground:Math.min(1,Math.max(0,Number(c.subtitleBackground??.65)||0))}:{};
-  items.push({...c,...captionStyle,...fades,id,assetId,start:c.start,duration:c.duration,text:String(c.text||'').slice(0,500),sourceStart:Math.max(0,Number(c.sourceStart)||0),volume:Math.min(2,Math.max(0,Number(c.volume??1))),opacity:Math.min(1,Math.max(0,Number(c.opacity??1))),brightness:Math.min(200,Math.max(0,Number(c.brightness??100))),contrast:Math.min(200,Math.max(0,Number(c.contrast??100))),saturation:Math.min(200,Math.max(0,Number(c.saturation??100))),blur:Math.min(20,Math.max(0,Number(c.blur)||0))});
+  const keyframes=normalizeKeyframes(c.keyframes,c.kind,c.duration);if(!keyframes)return null;
+  items.push({...c,...(c.keyframes===undefined?{}:{keyframes}),...captionStyle,...fades,id,assetId,start:c.start,duration:c.duration,text:String(c.text||'').slice(0,500),sourceStart:Math.max(0,Number(c.sourceStart)||0),volume:Math.min(2,Math.max(0,Number(c.volume??1))),opacity:Math.min(1,Math.max(0,Number(c.opacity??1))),brightness:Math.min(200,Math.max(0,Number(c.brightness??100))),contrast:Math.min(200,Math.max(0,Number(c.contrast??100))),saturation:Math.min(200,Math.max(0,Number(c.saturation??100))),blur:Math.min(20,Math.max(0,Number(c.blur)||0))});
  }
  return {version:1,name:String(value.name||'Montaje').slice(0,160),aspect:value.aspect,quality:value.quality,fps:value.fps,exportFormat:value.exportFormat||'webm',encodingQuality:value.encodingQuality||'high',tracks:orderedTracks,clips:sanitizeTransitions(items),playhead:Math.min(600,Math.max(0,Number(value.playhead)||0))};
 }

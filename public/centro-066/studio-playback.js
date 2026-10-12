@@ -1,5 +1,6 @@
 // Source bounds apply to motion/sound; still images and titles remain extensible.
 import {insertTrack} from './studio-tracks.js';
+import {sliceAnimation} from './studio-keyframes.js';
 export function extractVideoAudio(workspace,id,trackState={},newId=()=>crypto.randomUUID()){
  if(workspace.clips.length>=120)throw new Error('Máximo de 120 clips por montaje.');
  const video=workspace.clips.find(c=>c.id===id);
@@ -9,12 +10,14 @@ export function extractVideoAudio(workspace,id,trackState={},newId=()=>crypto.ra
  let tracks=[...workspace.tracks],track=tracks.find(t=>t.startsWith('A')&&!trackState[t]?.locked&&!workspace.clips.some(c=>c.track===t&&c.start<video.start+video.duration&&c.start+c.duration>video.start));
  if(!track){const added=insertTrack(tracks,'audio');tracks=added.tracks;track=added.id;}
  const audio={id:newId(),assetId:video.assetId,kind:'audio',track,start:video.start,duration:video.duration,sourceStart:video.sourceStart||0,volume:video.volume??1,audioFadeIn:video.audioFadeIn||0,audioFadeOut:video.audioFadeOut||0,extractedFrom:id};
- return {...workspace,tracks,clips:[...workspace.clips.map(c=>c.id===id?{...c,volume:0}:c),audio]};
+ if(video.keyframes?.volume)audio.keyframes={volume:video.keyframes.volume.map(node=>({...node}))};
+ return {...workspace,tracks,clips:[...workspace.clips.map(c=>c.id===id?{...c,volume:0,...(c.keyframes?{keyframes:Object.fromEntries(Object.entries(c.keyframes).filter(([key])=>key!=='volume'))}:{})}:c),audio]};
 }
 export function constrainSourceRange(clip,sourceDuration){
  if(!['audio','video'].includes(clip.kind)||!Number.isFinite(sourceDuration)||sourceDuration<.1)return {...clip};
  const sourceStart=Math.min(Math.max(0,Number(clip.sourceStart)||0),sourceDuration-.1);
- return {...clip,sourceStart,duration:Math.min(clip.duration,sourceDuration-sourceStart)};
+ const duration=Math.min(clip.duration,sourceDuration-sourceStart);
+ return {...clip,...(clip.keyframes&&duration!==clip.duration?{keyframes:sliceAnimation(clip,0,duration)}:{}),sourceStart,duration};
 }
 export function sourceRangeValid(clip,sourceDuration){
  return Number.isFinite(sourceDuration)&&sourceDuration>0&&Number.isFinite(clip.duration)&&

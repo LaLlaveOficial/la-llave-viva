@@ -1,4 +1,5 @@
 import {compatibleTrack} from './studio-tracks.js';
+import {sliceAnimation} from './studio-keyframes.js';
 // Studio 066 timeline editing primitives; no side effects or remote calls.
 const round=t=>Math.round(t*100)/100;
 export function insertClipAt(asset,clip,start,track){
@@ -12,8 +13,8 @@ export function splitClipAt(clips,id,at,idGenerator=()=>crypto.randomUUID()){
  if(!clip||!Number.isFinite(at))return null;
  const offset=round(at-clip.start);
  if(offset<.1||clip.duration-offset<.1)return null;
- const first={...clip,duration:round(offset),videoFadeOut:0,audioFadeOut:0};
- const second={...clip,videoFadeIn:0,audioFadeIn:0,id:idGenerator(),start:round(clip.start+offset),duration:round(clip.duration-offset),sourceStart:round((clip.sourceStart||0)+offset)};
+ const first={...clip,...(clip.keyframes?{keyframes:sliceAnimation(clip,0,round(offset))}:{}),duration:round(offset),videoFadeOut:0,audioFadeOut:0};
+ const second={...clip,...(clip.keyframes?{keyframes:sliceAnimation(clip,offset,round(clip.duration-offset))}:{}),videoFadeIn:0,audioFadeIn:0,id:idGenerator(),start:round(clip.start+offset),duration:round(clip.duration-offset),sourceStart:round((clip.sourceStart||0)+offset)};
  return [...clips.filter(x=>x.id!==id),first,second];
 }
 export function snapToEdges(time,clips,ignoreId,{enabled=true,tolerance=.18}={}){
@@ -52,6 +53,7 @@ export function previewClipDrag(clip,mode,delta,{fps=24,clips=[],snapping=true}=
  const duration=clip.duration;
  if(mode==='trim-right'){
   const result={...clip,duration:round(Math.max(.1,Math.min(maxLength,duration+deltaFrame)))};
+  if(clip.keyframes)result.keyframes=sliceAnimation(clip,0,result.duration);
   return result;
  }
  if(mode==='trim-left'){
@@ -59,7 +61,7 @@ export function previewClipDrag(clip,mode,delta,{fps=24,clips=[],snapping=true}=
   // Still images have no finite source length: they may extend left to timeline zero.
   const earliest=clip.kind==='image'||clip.kind==='text'?-clip.start:minDelta;
   const applied=Math.max(earliest,Math.min(duration-.1,deltaFrame));
-  return {...clip,start:round(clip.start+applied),duration:round(duration-applied),
+  return {...clip,...(clip.keyframes?{keyframes:sliceAnimation(clip,applied,round(duration-applied))}:{}),start:round(clip.start+applied),duration:round(duration-applied),
     sourceStart:round(Math.max(0,(clip.sourceStart||0)+applied))};
  }
  const position=Math.min(600-duration,Math.max(0,clip.start+deltaFrame));

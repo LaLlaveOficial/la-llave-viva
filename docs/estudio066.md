@@ -207,3 +207,8 @@ La prueba Chrome descarga una secuencia de video real con audio separado y verif
 En Biblioteca → Texto se pueden importar archivos SRT/WebVTT y exportar subtítulos SRT. Cada cue se agrega como bloque de texto en V2; seleccionar permite editar texto (hasta 500 caracteres), inicio, duración, tamaño, posición y fondo. El icono **Añadir subtítulo (Shift+L)** crea una cue manual en el cabezal.
 
 Los subtítulos se dibujan dentro del video exportado y se guardan en el proyecto. Importación, tiempos, estilo, recuperación y exportación SRT/WebM se verifican en Chrome con archivos reales. La importación respeta el bloqueo de V2 y los límites del montaje; no hace transcripción automática ni consume créditos.
+# Animación con keyframes
+
+Selecciona un clip, coloca el cabezal dentro y pulsa el icono **Guardar keyframe (Shift+K)**. Avanza a otro tiempo y cambia posición, escala, opacidad o volumen en el inspector: cada cambio de una propiedad animada crea un punto. La reproducción interpola los valores entre puntos. El panel Keyframes permite recorrerlos, quitar el punto actual y quitar la animación conservando el valor visible.
+
+Los puntos se guardan con el proyecto y se conservan al mover, recortar, cortar o duplicar clips. Imagen/texto admiten posición, escala y opacidad; video también volumen; audio admite volumen. Interpolación lineal, hasta 32 puntos por propiedad. La exportación WebM con movimiento y volumen animados se comprobó leyendo el archivo descargado con FFmpeg.
