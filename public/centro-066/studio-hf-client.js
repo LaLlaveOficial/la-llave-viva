@@ -4,7 +4,7 @@ const HUB='https://huggingface.co';
 const MAX_VIDEO=150*1024*1024;
 export class WanFreeClient {
  #token=''; #fetch;
- constructor(fetcher=globalThis.fetch){this.#fetch=fetcher;}
+ constructor(fetcher=globalThis.fetch){this.#fetch=fetcher.bind(globalThis);}
  get connected(){return Boolean(this.#token);}
  disconnect(){this.#token='';}
  async #request(url,options={},token=this.#token){
