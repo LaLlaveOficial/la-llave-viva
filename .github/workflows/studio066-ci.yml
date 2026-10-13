@@ -9,6 +9,7 @@ on:
       - fix/studio066-stable-seek
       - feature/studio066-audio-envelope
       - fix/studio066-undo-selection
+      - feature/studio066-wan-free-browser
   workflow_dispatch:
 
 permissions:
@@ -63,7 +64,7 @@ jobs:
           node --check public/centro-066/studio-portable.js
           node --check public/centro-066/studio-cloud066.js
           node --check lib/studio-cloud066.js
-          node --test tests/studio066-volume-envelope.test.mjs tests/studio066-shortcuts.test.mjs tests/studio066-keyframes.test.mjs tests/studio066-subtitles.test.mjs tests/studio066-playback.test.mjs tests/studio066-transitions.test.mjs tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
+          node --test tests/studio066-volume-envelope.test.mjs tests/studio066-shortcuts.test.mjs tests/studio066-keyframes.test.mjs tests/studio066-subtitles.test.mjs tests/studio066-playback.test.mjs tests/studio066-transitions.test.mjs tests/studio066-tracks.test.mjs tests/studio066-editor-tools.test.mjs tests/studio066-timeline-visuals.test.mjs tests/studio066-workbench.test.mjs tests/studio066-generation.test.mjs tests/studio066-hf.test.mjs tests/studio066-portable.test.mjs tests/studio066-cloud.test.mjs tests/studio066-recording.test.mjs tests/studio066-formats.test.mjs tests/studio066-preflight.test.mjs
       - name: Compilar la web sin publicar
         run: npm run build
       - name: Preparar navegador Chrome preinstalado para pruebas reales
@@ -88,6 +89,7 @@ jobs:
           node tests/studio066-subtitles-browser.test.mjs
           node tests/studio066-keyframes-browser.test.mjs
           node tests/studio066-shortcuts-browser.test.mjs
+          node tests/studio066-hf-browser.test.mjs
       - name: MP4 real del montaje con H.264 y AAC en el servidor
         run: |
           STUDIO_SERVER_MP4_TEST=1 node tests/studio066-transitions-browser.test.mjs
