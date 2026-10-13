@@ -2,6 +2,8 @@ import base64
 import importlib.util
 from pathlib import Path
 import unittest
+import subprocess
+import tempfile
 
 spec = importlib.util.spec_from_file_location('wan_worker', Path(__file__).parents[1] / 'deploy/studio066-wan/handler.py')
 worker = importlib.util.module_from_spec(spec)
@@ -33,6 +35,20 @@ class WorkerContract(unittest.TestCase):
 
     def test_invalid_job_does_not_start_generation(self):
         self.assertIn('error', worker.handler({'input': {'image_url': 'https://example.com'}}))
+
+    def test_actual_mp4_decodes_with_native_profile(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / 'native.mp4'
+            subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',
+                            'color=c=black:s=704x1280:r=24', '-frames:v', '73',
+                            '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', str(output)], check=True)
+            params = worker.validate_input(self.valid(duration=3))
+            measured = worker.inspect_output(output, params)
+            self.assertEqual(measured['frames'], 73)
+            self.assertEqual(measured['fps'], 24)
+            params['orientation'] = 'landscape'
+            with self.assertRaises(ValueError):
+                worker.inspect_output(output, params)
 
 
 if __name__ == '__main__':
