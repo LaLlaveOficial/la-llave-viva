@@ -12,7 +12,7 @@ import time
 WAN_ROOT = Path('/opt/Wan2.2')
 MODEL_ROOT = Path('/models/Wan2.2-TI2V-5B')
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
-MAX_OUTPUT_BYTES = 7 * 1024 * 1024
+MAX_OUTPUT_BYTES = 2500000
 SIZES = {'portrait': (704, 1280), 'landscape': (1280, 704)}
 
 
@@ -101,6 +101,14 @@ def handler(job):
             prepare_image(params.pop('raw'), reference, params['orientation'])
             subprocess.run(build_command(params, reference, output), cwd=WAN_ROOT, check=True,
                            timeout=540, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Preserve native dimensions and frames; cap transport bitrate without upscaling.
+            delivery = Path(folder) / 'delivery.mp4'
+            subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-i', str(output), '-an',
+                            '-c:v', 'libx264', '-preset', 'fast', '-crf', '22',
+                            '-maxrate', '3M', '-bufsize', '3M', '-pix_fmt', 'yuv420p',
+                            '-movflags', '+faststart', str(delivery)], check=True, timeout=45,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            output = delivery
             metadata = inspect_output(output, params)
             return {'video_base64': base64.b64encode(output.read_bytes()).decode('ascii'),
                     'mime_type': 'video/mp4', 'metadata': metadata,
