@@ -1,0 +1,33 @@
+{
+  "status": "prepared-not-deployed",
+  "provider": "runpod",
+  "deploymentType": "serverless-queue",
+  "model": "Wan-AI/Wan2.2-TI2V-5B",
+  "sourceRepository": "https://github.com/Wan-Video/Wan2.2",
+  "minimumGpuVramGiB": 24,
+  "workersMin": 0,
+  "workersMax": 1,
+  "idleTimeoutSeconds": 5,
+  "executionTimeoutSeconds": 600,
+  "initialTest": {
+    "mode": "image-to-video",
+    "orientation": "portrait",
+    "outputSize": "704x1280",
+    "targetDurationSeconds": 5,
+    "variants": 1,
+    "audio": false,
+    "acceptance": [
+      "Original reference identity and clothing remain recognizable",
+      "Motion follows the shot prompt",
+      "No material facial or hand deformation",
+      "MP4 plays completely and can be added to the OP066 timeline",
+      "Record GPU model, peak memory, generation time and actual billed cost"
+    ]
+  },
+  "billing": {
+    "approvedTestBudgetUsd": null,
+    "automaticRecharge": false,
+    "includeStartupAndIdleTime": true,
+    "storageIsChargedSeparately": true
+  }
+}
