@@ -13,6 +13,7 @@ import {managerReport} from '../lib/manager-report.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import {validateStudioProject,validateStudioShot} from '../lib/studio066.js';
 import {studioGenerationApi} from '../lib/studio-generation-api.js';
+import {studioWanApi} from '../lib/studio-wan066.js';
 import {studioCloudApi} from '../lib/studio-cloud066.js';
 import { neon } from '@neondatabase/serverless';
 import {houstonUsage,houstonStatus} from '../lib/houston-status.js';
@@ -31,7 +32,7 @@ export function makeHandler(connect = neon, env = process.env) {
     if (req.method === 'POST' && !sameOrigin(req,config)) return res.status(403).json({error:'Origen no permitido.'});
     const op = req.query?.op || 'data';
     const body = req.body;
-    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > (op==='studio-encode-chunk'?750000:12000))) return res.status(400).json({error:'Solicitud inválida.'});
+    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > (op==='studio-wan-submit'?2100000:op==='studio-encode-chunk'?750000:12000))) return res.status(400).json({error:'Solicitud inválida.'});
     try {
       const sql = connect(config.databaseUrl);
       if (op === 'login' && req.method === 'POST') {
@@ -184,6 +185,10 @@ export function makeHandler(connect = neon, env = process.env) {
       if (op === 'logout' && req.method === 'POST') {
         await sql`DELETE FROM console066_sessions WHERE token_hash=${hashToken(token)}`;
         res.setHeader('Set-Cookie',cookie('',0)); return res.status(200).json({ok:true});
+      }
+      if(['studio-wan-capabilities','studio-wan-submit','studio-wan-status'].includes(op)) {
+        const reply=await studioWanApi(sql,op,req,env);
+        return res.status(reply.status).json(reply.data);
       }
       if(['studio-generations','studio-video-capabilities','studio-generation'].includes(op)) {
         const reply=await studioGenerationApi(sql,op,req);
