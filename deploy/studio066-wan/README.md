@@ -8,7 +8,7 @@ The official Wan2.2 TI2V 5B profile generates 704×1280 portrait or 1280×704 la
 
 Runpod job input: `image_base64` (plain PNG/JPEG/WebP bytes, maximum 8 MiB and 20 MP), `prompt` (maximum 4000 characters), `duration` (3 or 5), `orientation` (`portrait` or `landscape`), and `seed` (0–2147483647). URLs, filesystem paths, commands, end frames, audio and arbitrary parameters are rejected. The server must authenticate OP066 users before forwarding a job; Runpod credentials must never be sent to the browser.
 
-The worker returns a base64 MP4 plus measured resolution/fps/duration. It verifies full decoding before returning. Results over 7 MiB fail closed until private object storage is connected. No automatic retries. `quality_verified: false` explicitly means the result has not passed a human continuity review.
+The worker returns a base64 MP4 plus measured resolution/fps/duration. It encodes H.264 with a 3 Mbps maximum rate while preserving native dimensions and frames, and verifies full decoding before returning. Results over 2.5 MB fail closed until private object storage is connected. No automatic retries. `quality_verified: false` explicitly means the result has not passed a human continuity review. The browser/backend reference transport is limited to 1.5 MB to remain under serverless request limits.
 
 ## Deployment requirements still outstanding
 
@@ -16,12 +16,12 @@ The worker returns a base64 MP4 plus measured resolution/fps/duration. It verifi
 2. Mount weights at `/models/Wan2.2-TI2V-5B`, downloaded from `Wan-AI/Wan2.2-TI2V-5B` revision `921dbaf3f1674a56f47e83fb80a34bac8a8f203e`. Confirm sufficient storage and the official model's GPU requirements.
 3. Provision a serverless endpoint with zero minimum workers, maximum one, idle timeout 5 seconds and execution timeout 600 seconds. An execution timeout is not a spending cap.
 4. Obtain the actual rate and required deposit. Historical preparation records a USD 2 test budget but no approved USD 10 deposit. Do not treat this implementation as funding approval.
-5. Connect an authenticated backend job submit/status flow and browser result import after an endpoint exists. Before submission, display the estimated cost; never replay a submission after an ambiguous network failure.
+5. Apply `migrations/20261013_studio066_wan_jobs.sql`, then configure `STUDIO_WAN_ENDPOINT_ID`, `RUNPOD_API_KEY`, `STUDIO_WAN_TEST_ESTIMATE_USD`, and `STUDIO_WAN_TEST_CEILING_USD` in the server environment. Set `STUDIO_WAN_ENABLED=true` only after funding and GPU validation. The prepared console routes and panel provide authenticated job submit/status and local browser import. They show an estimate and require per-job cost consent. Neither the estimate nor ceiling controls actual Runpod billing. The initial profile admits only one job per UTC day globally and one active job. UNKNOWN jobs retain the lock for manual provider review.
 6. Generate one authorized Caso 066 test; inspect identity, clothing, motion, actual GPU charge, and playback/import/export. Enable the quality engine only after this passes.
 
 ## Local checks
 
-`python3 tests/studio066-wan-worker.test.py` tests validation and the native command contract without a GPU or provider call.
+`python3 tests/studio066-wan-worker.test.py` tests validation, the native command contract and actual fixture-MP4 decoding without a GPU or provider call. `node --test tests/studio066-wan-api.test.mjs` verifies disabled/over-budget configuration, input checks, duplicate job suppression, uncertain submission handling and result dimensions. Browser QA, container build and a real generation remain outstanding.
 
 Sources checked on 2026-10-13:
 - https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/configs/wan_ti2v_5B.py
