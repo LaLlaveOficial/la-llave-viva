@@ -108,7 +108,7 @@ export function studioView(root,request,notice) {
     if(!root.isConnected)return;
     if(stopWorkbench){stopWorkbench();stopWorkbench=null;}
     if(stopGenerator){stopGenerator();stopGenerator=null;}
-    root.innerHTML='<section class="studio-root'+(state.tab==='editor'?' editor-workspace':'')+'"><div class="studio-banner studio-banner-compact"><div class="studio-banner-copy"><span class="studio-caption">ESPACIO DE TRABAJO · ESTUDIO 066</span><p>Fotogramas, referencias, prompts y montaje de tus proyectos.</p></div><span class="studio-readiness">Vista previa · Motores de generación y cargos deshabilitados</span></div>'+
+    root.innerHTML='<section class="studio-root'+(state.tab==='editor'?' editor-workspace':'')+'"><div class="studio-banner studio-banner-compact"><div class="studio-banner-copy"><span class="studio-caption">ESPACIO DE TRABAJO · ESTUDIO 066</span><p>Fotogramas, referencias, prompts y montaje de tus proyectos.</p></div><span class="studio-readiness">Vista previa · Video gratuito con cuota compartida</span></div>'+
       '<div class="studio-tabs" role="group" aria-label="Secciones del estudio">'+navTabs(state.tab)+'</div>'+
       (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='generate'?'<div id="studio-generation-host"></div>':state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
       '</section>';

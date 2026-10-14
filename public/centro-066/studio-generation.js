@@ -147,7 +147,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     '<label class="gen-check"><input type="checkbox" name="preserveIdentity" '+(draft.preserveIdentity?'checked':'')+'> Priorizar identidad del personaje</label>'+
     '<label class="gen-check"><input type="checkbox" name="preserveComposition" '+(draft.preserveComposition?'checked':'')+'> Priorizar composición del fotograma</label></details>'+
     '<div class="gen-cta"><button type="submit" id="gen-save">Guardar preparación</button><button type="button" disabled title="Conecta primero un motor de video autorizado.">Generar clip · Motor pendiente</button></div>'+
-    '<p class="studio-help">Aquí no se generan clips ni se consumen créditos. Duración, calidad, seed, audio y cantidad de variantes se validarán contra el motor cuando esté autorizado.</p></form>';
+    '<p class="studio-help">Guardar preparación conserva esta ficha. Para crear el video, usa el panel Video gratuito de abajo; sus perfiles muestran las opciones disponibles.</p></form>';
  }
  function captureForm(){
   const f=root.querySelector('#gen-form');if(!f)return;
