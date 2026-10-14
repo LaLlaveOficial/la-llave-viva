@@ -36,7 +36,13 @@ export function mountNativeWanPanel(root,{projectId,onResult,onTimeline,onFindAs
     say('Clip recibido y guardado. Revisa rostros, manos y movimiento antes de usarlo en Caso 066.');
    }else say(data.error||('Trabajo terminado: '+status+'. La prueba diaria no se repite automáticamente.'));
   }catch(error){if(error.status===404)terminal=true;say(error.message+' Puedes consultar el mismo trabajo; no se enviará otro.');}
-  finally{busy=false;controls();}
+  finally{
+   if(terminal&&active){
+    capabilities={...capabilities,canSubmit:false};
+    try{capabilities=await api('studio-wan-capabilities');}catch{}
+   }
+   busy=false;controls();
+  }
  }
  el('generate').onclick=async()=>{
   if(busy||remembered()||!capabilities?.canSubmit||!projectId)return;
