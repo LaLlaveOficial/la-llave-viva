@@ -1,4 +1,19 @@
 // Native Wan profile. No provider credential is accepted or stored in the browser.
+export async function validateNativeVideo(file,expected){
+ const url=URL.createObjectURL(file),video=document.createElement('video');
+ let timer;
+ try{
+  const measured=await new Promise((resolve,reject)=>{
+   timer=setTimeout(()=>reject(Error('El navegador no pudo leer el MP4.')),15000);
+   video.onloadedmetadata=()=>resolve({width:video.videoWidth,height:video.videoHeight,duration:video.duration,fps:expected.fps,audio:false});
+   video.onerror=()=>reject(Error('El MP4 recibido no se puede reproducir en este navegador.'));
+   video.preload='metadata';video.src=url;
+  });
+  if(measured.width!==expected.width||measured.height!==expected.height||!Number.isFinite(measured.duration)||Math.abs(measured.duration-expected.duration)>.1)
+   throw Error('El MP4 recibido no coincide con sus metadatos.');
+  return measured;
+ }finally{clearTimeout(timer);video.removeAttribute('src');video.load();URL.revokeObjectURL(url);}
+}
 export function mountNativeWanPanel(root,{projectId,onResult,onTimeline,onFindAsset=()=>null}){
  let active=true,busy=false,capabilities=null,asset=null,videoInfo=null,timer=null,terminal=false;
  const key='studio066-wan-job:'+projectId;
@@ -28,11 +43,11 @@ export function mountNativeWanPanel(root,{projectId,onResult,onTimeline,onFindAs
     if(!asset){
      const bytes=Uint8Array.from(atob(data.output.video_base64),c=>c.charCodeAt(0));
      const file=new File([bytes],'Wan-calidad-'+id+'.mp4',{type:'video/mp4'});
-     // addMedia checks browser playback metadata before saving the result.
+     videoInfo=await validateNativeVideo(file,data.output.metadata);
      asset=await onResult(file);
      try{localStorage.setItem(key+':asset',JSON.stringify({jobId:id,assetId:asset.id}));}catch{}
     }
-    videoInfo=data.output.metadata;
+    videoInfo=videoInfo||data.output.metadata;
     say('Clip recibido y guardado. Revisa rostros, manos y movimiento antes de usarlo en Caso 066.');
    }else say(data.error||('Trabajo terminado: '+status+'. La prueba diaria no se repite automáticamente.'));
   }catch(error){if(error.status===404)terminal=true;say(error.message+' Puedes consultar el mismo trabajo; no se enviará otro.');}
