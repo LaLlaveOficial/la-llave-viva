@@ -1,0 +1,35 @@
+name: Estudio 066 free video browser verification
+on:
+  push:
+    branches: [feature/estudio-creativo-066-fase1]
+    paths:
+      - 'public/centro-066/studio-hf-*'
+      - 'public/centro-066/studio-generation.js'
+      - 'tests/studio066-hf*'
+      - 'vercel.json'
+      - '.github/workflows/studio066-free-video-ci.yml'
+permissions:
+  contents: read
+concurrency:
+  group: free-video-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  free-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright jsdom fake-indexeddb
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: API and DOM tests
+        run: node --test tests/studio066-hf.test.mjs tests/studio066-generation.test.mjs
+      - name: Chrome MP4 import and timeline
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: node tests/studio066-hf-browser.test.mjs
+      - name: Build
+        run: npm run build

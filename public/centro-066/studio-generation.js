@@ -1,6 +1,8 @@
 // Estudio Creativo 066 · preparación real de generaciones, sin motor conectado.
 // Referencias y resultados importados se conservan SOLO en IndexedDB del navegador.
 import {mediaDB,listMedia,addMedia,readMedia,workspaceKey,defaultWorkspace,parseWorkspace,addTimelineClip} from './studio-media.js';
+import {WanFreeClient} from './studio-hf-client.js';
+import {mountWanPanel} from './studio-hf-panel.js';
 
 export const generationModels=[
  ['pendiente','Seleccionar motor (API pendiente)'],
@@ -8,7 +10,7 @@ export const generationModels=[
  ['veo','Veo · integración pendiente'],
  ['firefly','Adobe Firefly · integración pendiente'],
  ['wan','Wan · servidor GPU pendiente'],
- ['ltx','LTX · servidor GPU pendiente']
+ ['ltx','LTX · disponible en el panel gratuito']
 ];
 export const generationFormats=['9:16','16:9','1:1','1.91:1'];
 export const generationDurations=[3,5,8,10,15,20];
@@ -61,6 +63,7 @@ export function makeGenerationRecord(id,data){
 export function studioGenerationView(root,notice,project,openTimeline,request){
  let db=null,assets=[],history=[],draft=newGenerationDraft(),selected=null,ready=false;
  let busy=false,active=true,previewURLs=new Map(),activePreview=null,mobileView='configure';
+ const hfClient=new WanFreeClient();let clearHfPanel=null;
  const projectId=Number(project?.id)||null;
  const remoteOK=Boolean(projectId&&typeof request==='function');
  const upsertRemote=async(record,action)=>{
@@ -187,8 +190,22 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  }
  function render(){
   if(!active||!root.isConnected)return;
+  clearHfPanel?.();
   root.innerHTML='<div class="gen-workspace" data-gen-mobile-pane="'+mobileView+'">'+historyPanel()+previewPanel()+settingsPanel()+'<nav class="gen-mobile-dock" aria-label="Paneles de generación">'+[['history','Biblioteca'],['preview','Visor'],['configure','Prompts']].map(([id,label])=>'<button type="button" data-gen-mobile-tab="'+id+'" aria-pressed="'+(mobileView===id)+'">'+label+'</button>').join('')+'</nav></div>';
   wire();refreshThumbs();
+  const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').append(hfRoot);
+  clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,onResult:async(file)=>{
+   const asset=await addMedia(db,file);assets=await listMedia(db);activePreview=asset.id;await preview(asset.id);notice('Clip gratuito guardado en la biblioteca local.');return asset;
+  },onTimeline:(asset,info)=>{
+   const k=trackKeyFor(project);let workspace;
+   try{workspace=parseWorkspace(JSON.parse(localStorage.getItem(k)||'null'))||defaultWorkspace();}catch{workspace=defaultWorkspace();}
+   if(workspace.clips.length>=120)return notice('Límite de 120 clips del timeline.');
+   const clip=addTimelineClip({...asset,duration:info.duration},workspace.clips);
+   if(clip.start+clip.duration>600)return notice('El clip supera la duración disponible del timeline.');
+   workspace.clips.push(clip);
+   try{localStorage.setItem(k,JSON.stringify(workspace));notice('Clip generado añadido a V1.');openTimeline?.();}catch{notice('No se pudo guardar el timeline.');}
+  }});
+
   if(activePreview)preview(activePreview);
  }
  const refreshImages=()=>{
@@ -312,5 +329,5 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    ready=true;render();
   }catch(error){if(active&&root.isConnected)root.innerHTML='<div class="studio-pane"><h3>Biblioteca multimedia no disponible</h3><p>'+esc(error.message)+'</p></div>';}
  })();
- return ()=>{active=false;for(const u of previewURLs.values())URL.revokeObjectURL(u);previewURLs.clear();try{db?.close();}catch{}};
+ return ()=>{active=false;clearHfPanel?.();hfClient.disconnect();for(const u of previewURLs.values())URL.revokeObjectURL(u);previewURLs.clear();try{db?.close();}catch{}};
 }
