@@ -142,7 +142,8 @@ try {
     const resolution=root.querySelector('[name=resolution]');
     assert.ok(Array.from(resolution.options).some(o=>o.value==='4k'));
     const variants=root.querySelector('[name=variants]');
-    assert.equal(variants.options.length,4);
+    assert.equal(variants.type,'hidden');
+    assert.equal(variants.value,'1','Cada toma debe solicitar una sola muestra');
     assert.ok(root.querySelector('button[disabled]'),'La generación pagada no debe estar disponible');
     root.querySelector('[data-studio-tab="voices"]').click();
     assert.ok(root.querySelector('button[disabled]'),'No mostrar previews de voces sin conexión');
