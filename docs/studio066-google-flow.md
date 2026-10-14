@@ -15,3 +15,13 @@ Una única generación real en Keloke con Veo 3.1 Lite consumió 10 créditos in
 La cuenta personal Santibáñez mostró nivel Pro y 1.050 créditos en Flow; Keloke quedó en 40. Son saldos observados, no un contador conectado al estudio. No certifican continuidad de Paula, Rosa o Enrique.
 
 17 pruebas de generación, contrato y DOM y el build pasaron; la importación real también comprobó copia del prompt y enlaces de referencias. La integración permanece en una rama de vista previa. PR 18 mantiene conflictos con main que deben resolverse antes de una publicación autorizada.
+
+## Recuperación y controles compartidos
+
+El panel LTX/Wan integrado lee el prompt, las restricciones, los fotogramas, la duración, el formato y seed de la escena principal. Solo mantiene los controles específicos de conexión y motor. Los perfiles incompatibles se rechazan antes de enviar archivos, sin acortar ni cambiar la petición automáticamente. Cada resultado se registra con la petición capturada al iniciar, para que editar el formulario durante la espera no cambie el historial de ese resultado.
+
+La selección, vista previa y pestaña se recuperan al reabrir. Las fichas locales pendientes de sincronización se conservan cuando se descarga una versión remota anterior.
+
+El respaldo `.studio066` contiene un manifiesto limitado a 2 MB seguido de los archivos binarios usados por las referencias, los resultados y el timeline del proyecto (máximo 500 MB de medios, 150 MB por archivo). No usa base64 ni incluye tokens. La importación valida estructura, tamaños, IDs, formatos, referencias y parámetros antes de escribir medios. Asigna IDs nuevos para conservar los archivos originales y elimina solo las nuevas copias si falla la restauración. Es un respaldo local de los medios y parámetros audiovisuales; no una copia de la consola comercial ni del servidor.
+
+19 pruebas unitarias/DOM y el build pasaron. Chrome comprobó el formulario compartido y el respaldo completo/restauración en un contexto vacío, incluida recuperación del video después de recargar. La generación en esa prueba usa una respuesta simulada; no consume cuota. La prueba anterior del MP4 real de Flow sigue pasando.

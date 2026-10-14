@@ -3,6 +3,7 @@
 import {mediaDB,listMedia,addMedia,readMedia,workspaceKey,defaultWorkspace,parseWorkspace,addTimelineClip} from './studio-media.js';
 import {WanFreeClient} from './studio-hf-client.js';
 import {mountWanPanel} from './studio-hf-panel.js';
+import {exportProjectBundle,importProjectBundle,discardRestoredAssets} from './studio-project-backup.js';
 
 export const generationModels=[
  ['pendiente','Seleccionar motor (API pendiente)'],
@@ -83,9 +84,10 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  const projectId=Number(project?.id)||null;
  const remoteOK=Boolean(projectId&&typeof request==='function');
  const upsertRemote=async(record,action)=>{
+  record.syncPending=true;
   if(!remoteOK)return null;
   const res=await request('studio-generation',{action,projectId,id:record.id,version:record.version??0,request:record.request,results:record.results});
-  record.version=res.record.version;
+  record.version=res.record.version;delete record.syncPending;
   return res.record;
  };
  const key=keyFor(project);
@@ -93,10 +95,10 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  const media=()=>assets.filter(x=>x.kind==='image');
  const clipAssets=()=>assets.filter(x=>x.kind==='video');
  const keep=()=>{
-  try{localStorage.setItem(key,JSON.stringify({draft,history}));}catch{notice('No se guardaron los ajustes. La cuota del navegador puede estar llena.');}
+  try{localStorage.setItem(key,JSON.stringify({draft,history,selected,activePreview,mobileView}));}catch{notice('No se guardaron los ajustes. La cuota del navegador puede estar llena.');}
  };
  const restore=()=>{
-  try{const value=JSON.parse(localStorage.getItem(key)||'null');history=parseGenerationHistory(value?.history);if(value?.draft&&typeof value.draft==='object'){const partial=value.draft;draft={...newGenerationDraft(),...partial,refs:Array.isArray(partial.refs)?partial.refs.slice(0,3):[]};}}
+  try{const value=JSON.parse(localStorage.getItem(key)||'null');history=parseGenerationHistory(value?.history);selected=history.some(r=>r.id===value?.selected)?value.selected:null;activePreview=typeof value?.activePreview==='string'?value.activePreview:null;mobileView=['history','preview','configure'].includes(value?.mobileView)?value.mobileView:'configure';if(value?.draft&&typeof value.draft==='object'){const partial=value.draft;draft={...newGenerationDraft(),...partial,variants:1,refs:Array.isArray(partial.refs)?partial.refs.slice(0,3):[]};}}
   catch{history=[];draft=newGenerationDraft();}
  };
  const metadata=r=>r?.request||draft;
@@ -114,6 +116,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  const roleLabel=x=>({'start':'Fotograma inicial','end':'Fotograma final','character':'Personaje','environment':'Escenario','composition':'Composición','style':'Estilo','wardrobe':'Vestuario'}[x]||x);
  function historyPanel(){
   return '<section class="gen-history"><div class="gen-heading"><div><span class="studio-caption">BIBLIOTECA · SOLICITUDES</span><h3>Historial</h3></div><button class="subtle" type="button" id="gen-new">+ Nueva</button></div>'+
+   '<div class="gen-request-actions"><button type="button" id="gen-backup">Descargar respaldo completo</button><label class="gen-add-files">Restaurar respaldo<input type="file" id="gen-restore" accept=".studio066"></label></div><p class="studio-help">El respaldo incluye archivos, referencias, historial y timeline de este proyecto.</p>'+
    '<p class="studio-help">Preparaciones y clips importados manualmente. Ninguna solicitud se envía a un motor de IA.</p>'+
    '<div class="gen-record-list">'+(history.map(h=>'<button type="button" class="gen-record'+(selected===h.id?' active':'')+'" data-generation="'+esc(h.id)+'"><strong>'+esc(h.request.title)+'</strong><span>'+esc(h.request.model)+' · '+esc(h.request.aspect)+' · '+h.request.duration+'s</span><small>'+h.results.length+' clips importados · '+(h.results.length?'Importado':'Preparado')+'</small></button>').join('')||'<p class="studio-help">Todavía no hay solicitudes. Prepara la primera desde el panel derecho.</p>')+'</div>'+
    '<h4>Referencias disponibles <small>'+media().length+' archivos</small></h4><p class="studio-help">Toca una imagen para añadirla al siguiente espacio de referencia. No se enviará a ningún motor.</p>'+
@@ -187,7 +190,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   if(asset.kind==='video'){node.controls=true;node.preload='metadata';node.playsInline=true;}
   node.className='gen-stage-media';const st=root.querySelector('#gen-stage');st.replaceChildren(node);
   const caption=root.querySelector('#gen-preview-caption');if(caption)caption.textContent=asset.name;
-  activePreview=assetId;
+  activePreview=assetId;keep();
  }
  async function refreshThumbs(){
   for(const tile of root.querySelectorAll('[data-gen-image-thumb]')){
@@ -210,9 +213,18 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   clearHfPanel?.();
   root.innerHTML='<div class="gen-workspace" data-gen-mobile-pane="'+mobileView+'">'+historyPanel()+previewPanel()+settingsPanel()+'<nav class="gen-mobile-dock" aria-label="Paneles de generación">'+[['history','Biblioteca'],['preview','Visor'],['configure','Prompts']].map(([id,label])=>'<button type="button" data-gen-mobile-tab="'+id+'" aria-pressed="'+(mobileView===id)+'">'+label+'</button>').join('')+'</nav></div>';
   wire();refreshThumbs();
-  const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').append(hfRoot);
-  clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,onResult:async(file)=>{
-   const asset=await addMedia(db,file);assets=await listMedia(db);activePreview=asset.id;await preview(asset.id);notice('Clip gratuito guardado en la biblioteca local.');return asset;
+  const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').after(hfRoot);
+  clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,initialProvider:['ltx','wan'].includes(draft.model)?draft.model:'ltx',
+  onProviderChange:provider=>{captureForm();draft.model=provider;const selector=root.querySelector('[name="model"]');if(selector)selector.value=provider;keep();},
+  getRequest:async provider=>{
+   captureForm();const checked=validateGeneration(draft,assets);if(checked.error)throw new Error(checked.error);
+   if(draft.model!==provider)throw new Error('Selecciona '+provider.toUpperCase()+' en el motor de la escena o en este panel.');
+   if(draft.mode!=='frames'||![3,5].includes(draft.duration))throw new Error('LTX y Wan requieren fotogramas y duración de 3 o 5 segundos. Ajusta la escena antes de generar.');
+   if(provider==='wan'&&draft.refs.length>1)throw new Error('Wan solo usa el fotograma inicial. Quita el final o elige LTX.');
+   const req=checked.value;const originals=await Promise.all(req.refs.map(r=>readMedia(db,r.assetId)));if(originals.some(a=>!a?.blob))throw new Error('Falta un fotograma de la escena.');
+   return {request:req,image:originals[0].blob,endImage:originals[1]?.blob||null,prompt:provider==='ltx'?buildFlowPrompt(req):buildFlowPrompt({...req,negative:''}),negative:req.negative,duration:req.duration,aspect:req.aspect,seed:req.seed===''?42:Number(req.seed)};
+  },onResult:async(file,info,shared)=>{
+   const asset=await addMedia(db,file);const record=makeGenerationRecord(crypto.randomUUID(),{...shared.request,refs:shared.request.refs.map(r=>({...r})),variants:1});record.results=[{assetId:asset.id,addedAt:new Date().toISOString(),duration:info.duration}];record.status='imported';history.unshift(record);history=history.slice(0,MAX_RECORDS);selected=record.id;keep();assets=await listMedia(db);activePreview=asset.id;const hist=root.querySelector('.gen-history'),visor=root.querySelector('.gen-preview-panel');if(hist)hist.outerHTML=historyPanel();if(visor)visor.outerHTML=previewPanel();wire();await preview(asset.id);notice('Clip gratuito guardado en la biblioteca local.');return asset;
   },onTimeline:(asset,info)=>{
    const k=trackKeyFor(project);let workspace;
    try{workspace=parseWorkspace(JSON.parse(localStorage.getItem(k)||'null'))||defaultWorkspace();}catch{workspace=defaultWorkspace();}
@@ -256,7 +268,20 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  }
  function wire(){
   const one=id=>root.querySelector('#'+id);
-  root.querySelectorAll('button[data-gen-mobile-tab]').forEach(btn=>btn.onclick=()=>{captureForm();mobileView=btn.dataset.genMobileTab;render();});
+  one('gen-backup').onclick=async()=>{
+   captureForm();keep();const button=one('gen-backup');button.disabled=true;
+   try{const workspace=parseWorkspace(JSON.parse(localStorage.getItem(trackKeyFor(project))||'null'));const blob=await exportProjectBundle(db,{draft,history,selected,activePreview,mobileView,workspace});const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='estudio066-proyecto-'+String(project?.id||'local')+'.studio066';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);notice('Respaldo completo descargado. Consérvalo para recuperar los archivos en otro navegador.');}catch(error){notice('No se creó el respaldo: '+error.message);}finally{if(button.isConnected)button.disabled=false;}
+  };
+  one('gen-restore').onchange=async ev=>{
+   const file=ev.target.files?.[0];if(!file)return;
+   const original=localStorage.getItem(key),originalTrack=localStorage.getItem(trackKeyFor(project));let imported=null;
+   try{
+    imported=await importProjectBundle(db,file,(records,entries)=>{const media=entries.map(a=>({...a,kind:a.mime.split('/')[0]}));return parseGenerationHistory(records).length===records.length&&records.every(r=>validateGeneration(r.request,media).value);});
+    const snap=imported.snapshot;localStorage.setItem(key,JSON.stringify(snap));if(snap.workspace)localStorage.setItem(trackKeyFor(project),JSON.stringify(snap.workspace));else localStorage.removeItem(trackKeyFor(project));
+    draft=snap.draft;history=snap.history;selected=snap.selected;activePreview=snap.activePreview;mobileView=snap.mobileView;assets=await listMedia(db);render();notice('Proyecto recuperado: archivos, referencias, parámetros y timeline. Los originales anteriores siguen en la biblioteca.');
+   }catch(error){if(imported){await discardRestoredAssets(db,imported.created);try{original===null?localStorage.removeItem(key):localStorage.setItem(key,original);originalTrack===null?localStorage.removeItem(trackKeyFor(project)):localStorage.setItem(trackKeyFor(project),originalTrack);}catch{}}notice('No se restauró el proyecto: '+error.message);}
+  };
+  root.querySelectorAll('button[data-gen-mobile-tab]').forEach(btn=>btn.onclick=()=>{captureForm();mobileView=btn.dataset.genMobileTab;keep();render();});
   root.querySelectorAll('[data-gen-quick-ref]').forEach(btn=>btn.onclick=()=>{
    captureForm();const id=btn.dataset.genQuickRef;
    const idx=draft.refs.findIndex(r=>r.assetId===id),limit=draft.mode==='frames'?2:3;
@@ -269,7 +294,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   root.querySelectorAll('[data-generation]').forEach(btn=>btn.onclick=()=>{captureForm();selected=btn.dataset.generation;activePreview=null;keep();render();});
   root.querySelectorAll('[data-preview-result]').forEach(btn=>btn.onclick=()=>preview(btn.dataset.previewResult));
   one('gen-new').onclick=()=>{draft=newGenerationDraft();selected=null;activePreview=null;keep();render();};
-  one('gen-clear-preview').onclick=()=>{activePreview=null;const st=one('gen-stage');if(st)st.innerHTML='<div class="gen-placeholder"><span class="gen-play-icon">▶</span><strong>Visor vacío</strong><small>Elige un fotograma o un clip importado.</small></div>';};
+  one('gen-clear-preview').onclick=()=>{activePreview=null;keep();const st=one('gen-stage');if(st)st.innerHTML='<div class="gen-placeholder"><span class="gen-play-icon">▶</span><strong>Visor vacío</strong><small>Elige un fotograma o un clip importado.</small></div>';};
   one('gen-copy-flow').onclick=async()=>{
    captureForm();const checked=validateGeneration(draft,assets);
    if(checked.error)return notice(checked.error);
@@ -351,7 +376,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     const res=await fetch('/api/console-066?op=studio-generations&projectId='+encodeURIComponent(projectId),{credentials:'same-origin'});
     const response=await res.json();if(!res.ok)throw new Error(response.error||'No se pudo recuperar el historial.');
     const remote=parseGenerationHistory(response.records.map(row=>({...row,id:row.id,createdAt:row.created_at,updatedAt:row.updated_at})));
-    const known=new Set(remote.map(x=>x.id));history=[...remote,...history.filter(x=>!known.has(x.id))].slice(0,MAX_RECORDS);
+    const known=new Set(remote.map(x=>x.id));history=[...remote.map(r=>history.find(local=>local.id===r.id&&local.syncPending)||r),...history.filter(x=>!known.has(x.id))].slice(0,MAX_RECORDS);
     keep();
    }catch(error){notice('Sin sincronización remota: '+error.message+'. Se conservarán los datos locales.');}}
    ready=true;render();

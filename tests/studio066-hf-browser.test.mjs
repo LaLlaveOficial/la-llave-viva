@@ -32,8 +32,10 @@ try{
  await page.locator('#hf-token').fill(token);await page.locator('#hf-connect').click();
  try{await page.getByText('Conectado: test-user · cuenta gratuita.').waitFor({timeout:5000});}catch(e){console.log('CONNECT STATUS',await page.locator('#hf-status').textContent());throw e;}
  assert.equal(await page.locator('#hf-token').inputValue(),'');
- await page.locator('#hf-image').setInputFiles({name:'ref.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l1sAAAAASUVORK5CYII=','base64')});
- await page.locator('#hf-prompt').fill('Slow camera movement.');await page.locator('#hf-generate').click();
+ await page.locator('#gen-upload-images').setInputFiles({name:'ref.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l1sAAAAASUVORK5CYII=','base64')});
+ await page.waitForFunction(()=>document.querySelector('[data-ref-asset="0"]')?.value);
+ await page.locator('[name="model"]').selectOption('ltx');await page.locator('[name="duration"]').selectOption('3');
+ await page.locator('[name="prompt"]').fill('Slow camera movement.');await page.locator('#hf-generate').click();
  await page.getByText(/MP4 guardado/).waitFor({timeout:20000});
  assert.match(await page.locator('#hf-status').textContent(),/576 × 1024 · 3.00 s/);
  assert.ok(await page.locator('#hf-download').isVisible());
@@ -43,6 +45,22 @@ try{
  assert.equal(await page.evaluate(t=>JSON.stringify({...localStorage}).includes(t),token),false);
  assert.equal(await page.locator('#hf-provider').inputValue(),'ltx');
  assert.equal(calls.filter(p=>p.endsWith('/queue/join')).length,1);
+
+ const backupWait=page.waitForEvent('download');await page.locator('#gen-backup').click();const backup=await backupWait;const backupPath=await backup.path();assert.ok(backupPath);
+ const freshContext=await browser.newContext();const fresh=await freshContext.newPage();
+ await fresh.route(base+'/tests/hf-panel-harness',route=>route.fulfill({contentType:'text/html',body:'<div id="root"></div>'}));
+ await fresh.goto(base+'/tests/hf-panel-harness');
+ await fresh.evaluate(async()=>{const {studioGenerationView}=await import('/public/centro-066/studio-generation.js');window.restoredNotices=[];window.dispose=studioGenerationView(document.querySelector('#root'),m=>window.restoredNotices.push(m),{id:7788},()=>{});});
+ await fresh.locator('#gen-restore').setInputFiles(backupPath);
+ await fresh.waitForFunction(()=>window.restoredNotices.some(m=>m.startsWith('Proyecto recuperado')));
+ await fresh.waitForFunction(()=>document.querySelector('#gen-stage video')?.readyState>=2);
+ assert.equal(await fresh.locator('[name="prompt"]').inputValue(),'Slow camera movement.');
+ const restoredWorkspace=await fresh.evaluate(()=>JSON.parse(localStorage.getItem('llave-studio066-workspace-v1:7788')));
+ assert.equal(restoredWorkspace.clips.length,1);assert.equal(restoredWorkspace.clips[0].duration,3);
+ assert.notEqual(restoredWorkspace.clips[0].assetId,workspace.clips[0].assetId);
+ await fresh.reload();await fresh.evaluate(async()=>{const {studioGenerationView}=await import('/public/centro-066/studio-generation.js');window.dispose=studioGenerationView(document.querySelector('#root'),()=>{},{id:7788},()=>{});});
+ await fresh.waitForFunction(()=>document.querySelector('#gen-stage video')?.readyState>=2);
+ await fresh.evaluate(()=>window.dispose());await freshContext.close();
  await page.evaluate(()=>window.dispose());
- console.log('PASS: Chrome connects, clears token, decodes MP4, saves media and adds clip to timeline. Provider is simulated.');
+ console.log('PASS: Chrome connects, clears token, decodes MP4, saves media and adds clip to timeline. Provider is simulated. Complete binary backup restores in a fresh browser context, including preview, timeline and prompt, and survives another reload.');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
