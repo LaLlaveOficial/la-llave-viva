@@ -100,7 +100,7 @@ def handler(job):
             reference, output = Path(folder) / 'reference.png', Path(folder) / 'result.mp4'
             prepare_image(params.pop('raw'), reference, params['orientation'])
             subprocess.run(build_command(params, reference, output), cwd=WAN_ROOT, check=True,
-                           timeout=540, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                           timeout=480, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             # Preserve native dimensions and frames; cap transport bitrate without upscaling.
             delivery = Path(folder) / 'delivery.mp4'
             subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-i', str(output), '-an',
