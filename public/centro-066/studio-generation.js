@@ -11,7 +11,7 @@ export const generationModels=[
  ['veo','Veo · integración pendiente'],
  ['firefly','Adobe Firefly · integración pendiente'],
  ['wan','Wan · servidor GPU pendiente'],
- ['ltx','LTX · servidor GPU pendiente']
+ ['ltx','LTX · disponible en el panel gratuito']
 ];
 export const generationFormats=['9:16','16:9','1:1','1.91:1'];
 export const generationDurations=[3,5,8,10,15,20];
@@ -197,7 +197,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   wire();refreshThumbs();
   const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').append(hfRoot);
   clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,onResult:async(file)=>{
-   const asset=await addMedia(db,file);assets=await listMedia(db);activePreview=asset.id;await preview(asset.id);notice('Clip de Wan guardado en la biblioteca local.');return asset;
+   const asset=await addMedia(db,file);assets=await listMedia(db);activePreview=asset.id;await preview(asset.id);notice('Clip gratuito guardado en la biblioteca local.');return asset;
   },onTimeline:(asset,info)=>{
    const k=trackKeyFor(project);let workspace;
    try{workspace=parseWorkspace(JSON.parse(localStorage.getItem(k)||'null'))||defaultWorkspace();}catch{workspace=defaultWorkspace();}

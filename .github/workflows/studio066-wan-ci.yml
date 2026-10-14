@@ -6,6 +6,9 @@ on:
       - 'lib/studio-wan066.js'
       - 'public/centro-066/studio-wan-panel.js'
       - 'public/centro-066/studio-generation.js'
+      - 'public/centro-066/studio-hf-*'
+      - 'tests/studio066-hf*'
+      - 'vercel.json'
       - 'tests/studio066-wan-*'
       - '.github/workflows/studio066-wan-ci.yml'
 permissions:
@@ -20,7 +23,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --ignore-scripts --no-audit --no-fund
-      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright jsdom fake-indexeddb
       - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
       - name: CPU and native fixture verification
         run: |
@@ -31,3 +34,10 @@ jobs:
           node --check public/centro-066/studio-wan-panel.js
       - name: Browser result import and job recovery with mocked provider
         run: node tests/studio066-wan-browser.test.mjs
+      - name: Free LTX/Wan contracts and real browser import with simulated provider
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          node --test tests/studio066-hf.test.mjs tests/studio066-generation.test.mjs
+          node tests/studio066-hf-browser.test.mjs
+          npm run build
