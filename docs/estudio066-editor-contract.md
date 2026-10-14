@@ -131,3 +131,7 @@ Contrato geométrico:
 - Una sola tabla de comandos alimenta el router y la ayuda. Icono de teclado y Shift+/ abren el listado con cada herramienta/atajo; Esc cierra la ayuda y también permite cancelar una exportación activa. Los fundidos invocados desde teclado devuelven el foco al timeline; G enfoca el volumen para editarlo.
 - Cabezal: puntero normal y marcador triangular. Pointerdown en la regla o en una zona vacía inicia scrub; el cabezal se actualiza durante pointermove y se guarda al terminar. Mover el mouse sin arrastrar no altera el montaje. Trim conserva su cursor de ajuste en los bordes; la cuchilla mantiene su guía, sin mira en cruz.
 - QA Chrome sin enfoque artificial del timeline después de seleccionar: duplicar, borrar fragmento, undo/redo, V/C/S, I/O, Shift+I/Shift+O/Shift+T, G, M/F, Shift+K/Shift+L y espacio; ayuda por icono/teclado, edición de campos y exclusión de otros paneles; cabezal comprobado antes de pointerup y persistido después.
+
+## Publicación autorizada · 12-oct-2026
+
+El usuario autorizó la publicación de la reparación de HyperFrames y los cambios del editor con «sí autorizo a todo». La rama de release integra los cambios recientes de main y conserva HyperFrames en Marketing. Las tablas nuevas del estudio se aplican de forma aditiva, sin trasladar ni modificar datos de CRM o pedidos. Esta autorización de despliegue no acredita que todos los proveedores o el almacenamiento remoto estén conectados.

@@ -1,0 +1,18 @@
+export const VIDEO_VERSION='0.8.149';
+export function validateVideo(body){
+ if(!body||! /^[a-f0-9-]{36}$/.test(body.id||'')||!['vertical','square','landscape'].includes(body.format)||![6,10,15].includes(body.duration))throw Error('Selecciona formato, duración y un identificador válido.');
+ const fields=['title','hook','message','cta'];const limits=[100,120,180,90];
+ const clean={id:body.id,format:body.format,duration:body.duration};
+ fields.forEach((k,i)=>{if(typeof body[k]!=='string'||!body[k].trim()||body[k].length>limits[i]||/[\x00-\x08]/.test(body[k]))throw Error('Revisa el texto de '+k+'.');clean[k]=body[k].trim();});
+ return clean;
+}
+const escape=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function videoComposition(raw){
+ const v=validateVideo(raw),[w,h]=v.format==='vertical'?[1080,1920]:v.format==='square'?[1080,1080]:[1920,1080],part=v.duration/3;
+ return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escape(v.title)}</title><script src="assets/gsap.min.js"></script><style>
+ *{box-sizing:border-box}html,body{margin:0;width:${w}px;height:${h}px;background:#080b0c;font-family:Arial,sans-serif;color:#f4f0e4}#root{position:relative;width:${w}px;height:${h}px;overflow:hidden;background:radial-gradient(ellipse at 80% 20%,#25352e 0,transparent 55%),#080b0c}.orbit{position:absolute;border:2px solid #d9b96655;border-radius:50%;width:1050px;height:1050px;left:${w/2-525}px;top:${h/2-525}px}.brand{position:absolute;left:80px;top:80px;letter-spacing:12px;font-size:28px;font-weight:700;color:#ecc666}.scene{position:absolute;inset:180px 80px 160px;display:flex;flex-direction:column;justify-content:center;gap:40px}.eyebrow{font-size:24px;letter-spacing:7px;color:#eec563}.headline{font-size:${v.format==='landscape'?88:78}px;line-height:1.08;letter-spacing:-3px;font-weight:700;max-width:100%;overflow-wrap:anywhere}.scene p{font-size:38px;line-height:1.35;color:#c1c8bd;margin:0}.cover{height:${v.format==='vertical'?620:330}px;max-width:70%;object-fit:contain;align-self:center;filter:drop-shadow(0 18px 30px #000)}.url{position:absolute;bottom:80px;left:80px;color:#eac367;font-size:28px;letter-spacing:2px}.gold{color:#eec563}.bar{width:110px;height:5px;background:#eec563}</style></head><body><div id="root" data-composition-id="root" data-start="0" data-duration="${v.duration}" data-width="${w}" data-height="${h}" data-fps="24"><div class="orbit"></div><div class="brand">LA LLAVE <span class="gold">066</span></div>
+ <section id="s0" class="scene clip" data-start="0" data-duration="${part}" data-track-index="1"><div class="eyebrow">SUSPENSO · MISTERIO · DISTOPÍA</div><div class="bar"></div><div class="headline">${escape(v.hook)}</div></section>
+ <section id="s1" class="scene clip" data-start="${part}" data-duration="${part}" data-track-index="1"><img class="cover" src="assets/cover.webp" alt="Portada de La Llave I: Ciudad Central"><p>${escape(v.message)}</p></section>
+ <section id="s2" class="scene clip" data-start="${part*2}" data-duration="${part}" data-track-index="1"><div class="eyebrow">ENRIQUE G. SANTIBÁÑEZ</div><div class="headline">La Llave I:<br><span class="gold">Ciudad Central</span></div><div class="bar"></div><p>${escape(v.cta)}</p></section><div class="url">lallaveoficial.com</div></div>
+ <script>window.__timelines=window.__timelines||{};const tl=gsap.timeline({paused:true});tl.to('.orbit',{rotation:30,scale:1.12,duration:${v.duration},ease:'none'},0);for(let i=0;i<3;i++){tl.fromTo('#s'+i,{opacity:0,y:24},{opacity:1,y:0,duration:.6,ease:'power2.out'},i*${part});tl.to('#s'+i,{opacity:0,duration:.3},(i+1)*${part}-.3)}window.__timelines.root=tl;</script></body></html>`;
+}

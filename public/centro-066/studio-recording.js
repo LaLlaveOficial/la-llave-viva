@@ -46,7 +46,7 @@ export function recordingBitrate(resolution='720p',preset='high'){
 }
 export async function exportCanvasRecording({
  canvas,seconds,fps=24,format='webm',audioTracks=[],onFrame,
- bitrate=6000000,onProgress,signal,
+ bitrate=6000000,onProgress,onStart,signal,
  Recorder=window.MediaRecorder,createStream=window.MediaStream
 }){
  if(!canvas?.captureStream||!Recorder||!Number.isFinite(seconds)||seconds<=0||seconds>120||![24,30].includes(fps)||typeof onFrame!=='function')throw new Error('Parámetros de exportación no admitidos.');
@@ -57,12 +57,12 @@ export async function exportCanvasRecording({
  if(!mime)throw new Error(format==='mp4'
   ?'Tu navegador no admite codificar MP4 H.264'+(liveAudio.length?' con AAC':'')+'. Utiliza WebM o espera el render remoto.'
   :'Tu navegador no admite WebM con esta configuración de codificación.');
- const capture=canvas.captureStream(0);
+ const captureStartedAt=performance.now(),capture=canvas.captureStream(0);
  const video=capture.getVideoTracks()[0];
  if(!video){capture.getTracks().forEach(t=>t.stop());throw new Error('El navegador no creó la pista de video.');}
  if(typeof video.requestFrame!=='function'){capture.getTracks().forEach(t=>t.stop());throw new Error('El navegador no permite capturar fotogramas de forma fiable.');}
  const tracks=[video,...liveAudio],stream=new createStream(tracks);
- let recorder,clock=null,started=0,frame=-1,ended=false;
+ let recorder,clock=null,started=0,frame=-1,ended=false,startupCleanup=null,leadSeconds=0;
  const parts=[];
  try{
   recorder=new Recorder(stream,{mimeType:mime,videoBitsPerSecond:bitrate});
@@ -72,8 +72,25 @@ export async function exportCanvasRecording({
    recorder.onstop=resolve;
   });
   await onFrame(0);
+  if(signal?.aborted)throw new Error('Exportación cancelada.');
+  const ready=onStart?new Promise((resolve,reject)=>{
+   let startupFrame=null,waiting=true;
+   const cleanup=()=>{waiting=false;clearTimeout(timer);if(startupFrame!==null)cancelAnimationFrame(startupFrame);signal?.removeEventListener('abort',abort);};
+   startupCleanup=cleanup;
+   const abort=()=>{cleanup();reject(new Error('Exportación cancelada.'));};
+   const timer=setTimeout(()=>{cleanup();reject(new Error('El codificador no confirmó el inicio. Vuelve a exportar.'));},8000);
+   signal?.addEventListener('abort',abort,{once:true});
+   recorder.onstart=()=>{cleanup();resolve();};
+   const primeFrame=async()=>{if(!waiting)return;try{await onFrame(0);video.requestFrame();if(waiting)startupFrame=requestAnimationFrame(primeFrame);}catch(error){cleanup();reject(error);}};
+   startupFrame=requestAnimationFrame(primeFrame);
+  }):null;
+  ready?.catch(()=>{});
   recorder.start(250);
+  if(onStart)video.requestFrame();
+  if(ready)await ready;
   started=performance.now();
+  if(onStart)leadSeconds=Math.max(0,(started-captureStartedAt)/1000);
+  await onStart?.();
   await new Promise((resolve,reject)=>{
    let busy=false;
    const loop=async now=>{
@@ -107,8 +124,9 @@ export async function exportCanvasRecording({
   const blob=new Blob(parts,{type:mime});
   if(!(format==='mp4'?await isMP4Data(blob):await isWebMData(blob)))
    throw new Error('El navegador devolvió una grabación vacía o con contenedor inválido; no se descargó un archivo falso.');
-  return {blob,format,mime};
+  return {blob,format,mime,leadSeconds};
  }finally{
+  startupCleanup?.();
   ended=true;
   if(clock!==null)cancelAnimationFrame(clock);
   if(recorder?.state==='recording')recorder.stop();

@@ -665,6 +665,13 @@
 .wb-subtitle-files{display:flex;flex-direction:column;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #574b32}
 .wb-keyframes{margin:10px 12px;padding:10px;border:1px solid #574b32;border-radius:6px}.wb-keyframes summary{color:#f0c574;cursor:pointer;font-weight:700}.wb-keyframes small{display:block;margin-top:8px}.wb-keyframe-points{display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow:auto;margin-top:8px}.wb-keyframes .wb-row{flex-wrap:wrap;gap:5px}.wb-keyframes button{font-size:11px}
 .wb-keyframe-marker{position:absolute;bottom:2px;font-size:9px;color:#ffd181;transform:translateX(-50%);pointer-events:none;z-index:4}
+.wb-volume-envelope{margin-top:16px;padding-top:12px;border-top:1px solid #ffffff20}
+.wb-volume-envelope svg{display:block;width:100%;height:120px;background:#101921;border:1px solid #ffffff25;border-radius:6px;cursor:pointer;touch-action:none}
+.wb-volume-unity{stroke:#ffffff35;stroke-width:1;vector-effect:non-scaling-stroke;stroke-dasharray:4 4}
+.wb-volume-line{fill:none;stroke:#f0bc63;stroke-width:2;vector-effect:non-scaling-stroke;pointer-events:none}
+.wb-volume-envelope ellipse{fill:#f0bc63;stroke:#101921;stroke-width:2;vector-effect:non-scaling-stroke;cursor:pointer}
+.wb-volume-envelope ellipse:focus{stroke:#fff;stroke-width:3;outline:none}
+.wb-volume-envelope small{display:block;margin-top:6px;color:#b7c4cf}
 .wb-shortcut-dialog{max-width:620px;width:calc(100% - 32px);max-height:85vh;overflow:auto;border:1px solid #97743b;border-radius:10px;background:#151a1d;color:#eee6d8;padding:24px}.wb-shortcut-dialog::backdrop{background:#000a}.wb-shortcut-dialog table{width:100%;border-collapse:collapse;font-size:13px}.wb-shortcut-dialog th,.wb-shortcut-dialog td{text-align:left;border-bottom:1px solid #ffffff18;padding:9px 6px}.wb-shortcut-dialog kbd{white-space:nowrap;color:#ffcf77}.wb-shortcut-dialog>button{margin-bottom:16px}
 .wb-root .wb-ruler-times,.wb-root .wb-ruler-times *,.wb-root .wb-track-content{cursor:default!important}.wb-root .wb-ruler-times,.wb-root .wb-track-content{touch-action:none}.wb-root .wb-ruler-cursor:before{content:"";width:0;height:0;top:0;left:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid #edbd65}
 .wb-root[data-editor-tool=blade] .wb-timeline .wb-track-content{cursor:default!important}

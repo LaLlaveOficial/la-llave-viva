@@ -4,11 +4,16 @@ import {mkdir,chown,stat,readFile} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {bootstrapAgents} from './bootstrap.mjs';
+import {createVideoRenderer} from './video-renderer.mjs';
+import {createStudioEncoder} from './studio-encoder.mjs';
 
 const root=resolve(process.env.HOUSTON_WEB_ROOT || '/houston/packages/web/dist');
 const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.woff2':'font/woff2','.ico':'image/x-icon'};
 
-export function createGateway({webRoot=root,enginePort=4318}={}) {
+export function createGateway({webRoot=root,enginePort=4318,agentRelay=relayAgentData,videoHandler,studioHandler}={}) {
+  const resources={busy:false};
+  videoHandler ||= createVideoRenderer({resources});
+  studioHandler ||= createStudioEncoder({resources});
   return http.createServer(async(req,res)=>{
     res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');
     res.setHeader('X-Content-Type-Options','nosniff');
@@ -16,6 +21,14 @@ export function createGateway({webRoot=root,enginePort=4318}={}) {
     res.setHeader('X-Frame-Options','DENY');
     try {
       const url=new URL(req.url,'http://localhost');
+      if(url.pathname==='/video-066'){await videoHandler(req,res,url);return;}
+      if(url.pathname==='/studio-encode-066'){await studioHandler(req,res,url);return;}
+      if(url.pathname==='/agent-data'){
+        // Only runtimes in this container may use the bridge. Proxy headers
+        // cannot turn a public request into an internal request.
+        if(!internalAgentClient(req))return void res.writeHead(403).end();
+        await agentRelay(req,res,url);return;
+      }
       if(url.pathname.startsWith('/engine/') || url.pathname==='/health'){
         const path=url.pathname==='/health'?'/health':url.pathname.slice('/engine'.length)+url.search;
         const headers={...req.headers,host:'127.0.0.1:'+enginePort};
@@ -41,6 +54,19 @@ export function createGateway({webRoot=root,enginePort=4318}={}) {
       res.end(req.method==='HEAD'?undefined:bytes);
     } catch {if(!res.headersSent)res.writeHead(500);res.end();}
   });
+}
+export const internalAgentClient=req=>['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket?.remoteAddress);
+
+export async function relayAgentData(req,res,url,env=process.env,fetcher=fetch){
+ const agent=url.searchParams.get('agent'),op=url.searchParams.get('op')||'context';
+ if(!['radar-lectores','contactos','prensa','contenidos','analitica','crecimiento'].includes(agent)||!['context','search','save'].includes(op)||!['GET','POST'].includes(req.method)||(req.method==='POST')!==(op==='save'))return void res.writeHead(400).end();
+ if(!env.HOUSTON_HOST_TOKEN||env.HOUSTON_HOST_TOKEN.length<32)return void res.writeHead(503).end();
+ const target=new URL('https://www.lallaveoficial.com/api/agent-066');target.searchParams.set('agent',agent);target.searchParams.set('op',op);
+ if(op==='search')target.searchParams.set('q',(url.searchParams.get('q')||'').slice(0,351));
+ let body='';if(req.method==='POST'){for await(const chunk of req){body+=chunk;if(Buffer.byteLength(body)>14000)return void res.writeHead(413).end();}}
+ const r=await fetcher(target,{method:req.method,headers:{Authorization:'Bearer '+env.HOUSTON_HOST_TOKEN,...(body?{'Content-Type':'application/json'}:{})},body:body||undefined,redirect:'error',signal:AbortSignal.timeout(110000)});
+ const result=await r.text();if(result.length>400000)return void res.writeHead(502).end();
+ res.writeHead(r.status,{'Content-Type':'application/json','Cache-Control':'private, no-store'});res.end(result);
 }
 
 async function start(){

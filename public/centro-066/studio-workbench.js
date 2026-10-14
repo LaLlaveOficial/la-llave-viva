@@ -1,3 +1,4 @@
+import {volumeEnvelopeView,volumePointerPoint,moveVolumePoint} from './studio-volume-envelope.js';
 import {createTransition,transitionWindow,sanitizeTransitions,audioTransitionGain} from './studio-transitions.js';
 import {renderVisualFrame} from './studio-compositor.js';
 import {constrainSourceRange,prepareMediaFrame,extractVideoAudio} from './studio-playback.js';
@@ -8,7 +9,8 @@ import {compatibleTrack,insertTrack,fadeEnvelope} from './studio-tracks.js';
 import {mediaDB,listMedia,readMedia,addMedia,trashMedia,restoreMedia,listTrashedMedia,workspaceKey,defaultWorkspace,parseWorkspace,timelineDuration,addTimelineClip} from './studio-media.js';
 import {exportPortableBackup,importPortableBackup} from './studio-portable.js';
 import {mountStudioCloud} from './studio-cloud066.js';
-import {exportCanvasRecording,exportFormatCapabilities,recordingBitrate} from './studio-recording.js';
+import {exportCanvasRecording,recordingBitrate} from './studio-recording.js';
+import {encodeStudioMP4} from './studio-server-export.js';
 import {preflightExportMedia,formatExportPreflightError} from './studio-export-preflight.js';
 import {insertClipAt,splitClipAt,snapToEdges,trackPosition,pointerCutTime,pointerCutWithinClip,revealClipScroll,previewClipDrag,clipDragChanged} from './studio-timeline-tools.js';
 import {extractPeaks,timelineSpan,mediaTimecode,trackIsEditable,trackIsAudible,trackIsVisible} from './studio-timeline-visuals.js';
@@ -36,7 +38,8 @@ export function studioWorkbenchView(root,notice,project=null){
  let audioCtx=null,mix=null,recorder=null,movieStop=null,media=new Map(),urls=new Map(),cache=new Map(),raf=0;
  let cloudDispose=null,exportAbort=null,timelineZoom=1,snapping=true,trash=[],showLocalTrash=false,editingTool='select',activeBin='media',mobilePane='timeline',mediaQuery='',sourceAssetId=null,inspectorTab='clip';
  let inspectorRenderFrame=0,pendingInspectorRefresh=null;
- let editorActive=false,keyboardHandler=null,scrubCleanup=null;
+ let editorActive=false,keyboardHandler=null,scrubCleanup=null,envelopeCleanup=null;
+ const pendingInsertions=new Set();
  const editorDocument=root.ownerDocument;
  const keyboardListener=event=>{if(root.isConnected&&(editorActive||root.contains(event.target)))keyboardHandler?.(event);};
  const editorActivation=event=>{editorActive=root.contains(event.target);};
@@ -52,7 +55,14 @@ export function studioWorkbenchView(root,notice,project=null){
  const lanePosition=(clientX,lane)=>{const bounds=lane.getBoundingClientRect();return trackPosition(clientX,bounds.left+lane.clientLeft,lane.clientWidth,rulerSpan());};
  const checkpoint=()=>{history.push(JSON.stringify(workspace));if(history.length>30)history.shift();future.length=0;};
  const canAddClip=()=>{if(workspace.clips.length<120)return true;notice('Máximo de 120 clips por montaje. Divide la pieza en proyectos para conservar el trabajo.');return false;};
- const restoreFrom=(source,dest)=>{if(!source.length)return;dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();selected=null;syncTracks();save();render();};
+ const restoreFrom=(source,dest)=>{
+  if(!source.length)return;
+  const previousIds=new Set(workspace.clips.map(c=>c.id));
+  dest.push(JSON.stringify(workspace));workspace=parseWorkspace(JSON.parse(source.pop()))||defaultWorkspace();
+  // Preserve the editing context; undoing deletion selects its restored clip.
+  if(!workspace.clips.some(c=>c.id===selected))selected=workspace.clips.find(c=>!previousIds.has(c.id))?.id||null;
+  syncTracks();save();render();syncPlayback(true);paint();
+ };
  const localKey=workspaceKey+':'+(project&&Number.isSafeInteger(Number(project.id))?Number(project.id):'scratch');
  const firstWorkspace=()=>({...defaultWorkspace(),name:project?.name||defaultWorkspace().name});
  const safeLoad=()=>{try{return parseWorkspace(JSON.parse(localStorage.getItem(localKey)||'null'))||firstWorkspace();}catch{return firstWorkspace();}};
@@ -88,7 +98,7 @@ export function studioWorkbenchView(root,notice,project=null){
   await Promise.all(workspace.clips.map(async c=>{try{if(c.kind==='image')await getPicture(c);else if(c.kind!=='text')await getMedia(c);}catch{}}));
  }
  function releaseMedia(id){const item=media.get(id);if(!item)return;item.element.pause();item.element.removeEventListener('seeked',paint);item.element.removeEventListener('loadeddata',paint);item.source?.disconnect();item.gain?.disconnect();item.element.removeAttribute('src');item.element.load();media.delete(id);}
- function reconcileMedia(){for(const [id,item] of media){const clip=workspace.clips.find(c=>c.id===id);if(!clip||clip.assetId!==item.assetId)releaseMedia(id);}}
+ function reconcileMedia(){for(const [id,item] of media){if(pendingInsertions.has(id))continue;const clip=workspace.clips.find(c=>c.id===id);if(!clip||clip.assetId!==item.assetId)releaseMedia(id);}}
  function audioGraph(){
   if(audioCtx)return;
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
@@ -109,7 +119,8 @@ export function studioWorkbenchView(root,notice,project=null){
    const m=media.get(c.id);if(!m)continue;
    const on=activeClip(c,t);
    const target=Math.max(0,clipSource(c,t));
-   if(on&&(force||Math.abs(m.element.currentTime-target)>.35))try{m.element.currentTime=target;}catch{}
+   // Reassigning the same currentTime restarts video decoding after export preflight.
+   if(on&&Math.abs(m.element.currentTime-target)>(force ? .001 : .35))try{m.element.currentTime=target;}catch{}
    m.element.muted=!trackIsAudible(trackState,c.track);
    const volume=animationValue(c,'volume',t-c.start);
     if(m.gain)m.gain.gain.value=on&&trackIsAudible(trackState,c.track)?number(volume,0,2)*fadeEnvelope(c,t,'audio')*audioTransitionGain(workspace.clips,c,t,audioWindows):0;
@@ -158,13 +169,13 @@ export function studioWorkbenchView(root,notice,project=null){
  }
  async function saveExport(){
   if(rendering)return;
-  scrubCleanup?.();
+  scrubCleanup?.();envelopeCleanup?.();
   if(workspace.clips.length===0){notice('Agrega al menos un clip al timeline.');return;}
   const duration=timelineDuration(workspace.clips);
   if(duration>120){notice('Por seguridad, exporta secuencias de hasta 120 segundos.');return;}
   const before=workspace.playhead;
+  let exportSilence=null;
   const outputFormat=workspace.exportFormat||'webm';
-  if(outputFormat==='mp4'&&!exportFormatCapabilities(window.MediaRecorder).mp4){notice('Este navegador no ofrece MP4 H.264. Selecciona WebM o espera el render remoto.');return;}
   rendering=true;
   exportAbort=new AbortController();
   const exportControls=Array.from(root.querySelectorAll('button,input,select,textarea')).map(node=>[node,node.disabled]);
@@ -182,19 +193,24 @@ export function studioWorkbenchView(root,notice,project=null){
    if(!preflight.ok){notice(formatExportPreflightError(preflight));return;}
    for(const c of workspace.clips)for(const channel of ['video','audio']){const pair=transitionWindow(workspace.clips,c,channel);if(pair&&transitionSourceLimit(pair)+.001<pair.duration)throw new Error('La transición excede el material original disponible. Acorta su duración o ajusta el solape.');}
    const useAudio=workspace.clips.some(c=>c.kind==='audio'||c.kind==='video');
-   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();}
+   if(useAudio){audioGraph();await audioCtx?.resume();connectSources();if(audioCtx&&mix){exportSilence=audioCtx.createConstantSource();exportSilence.offset.value=0;exportSilence.connect(mix);exportSilence.start();}}
    await Promise.all(workspace.clips.filter(c=>['audio','video'].includes(c.kind)).map(c=>prepareMediaFrame(media.get(c.id).element,c.sourceStart||0,{signal:exportAbort.signal})));
-   isPlaying=true;syncPlayback();paint();
-   const {blob,format}=await exportCanvasRecording({
-    canvas:canvas(),seconds:duration,fps:workspace.fps,format:outputFormat,
+   isPlaying=outputFormat!=='mp4';syncPlayback(true);paint();
+   let {blob,format,leadSeconds}=await exportCanvasRecording({
+    canvas:canvas(),seconds:duration,fps:workspace.fps,format:'webm',
     audioTracks:useAudio&&mix?mix.stream.getAudioTracks():[],
     bitrate:recordingBitrate(workspace.quality,workspace.encodingQuality||'high'),
     signal:exportAbort.signal,
+    onStart:outputFormat==='mp4'?()=>{isPlaying=true;syncPlayback(true);}:undefined,
+    onProgress:value=>{if(button)button.textContent='Capturando montaje · '+Math.round(value*100)+'%';},
     onFrame:async elapsed=>{
      workspace.playhead=Math.min(elapsed,Math.max(0,duration-1/(workspace.fps*4)));
      syncPlayback();paint();drawTime();
     }
    });
+   if(outputFormat==='mp4'){
+    pause();blob=await encodeStudioMP4(blob,{seconds:duration,fps:workspace.fps,quality:workspace.encodingQuality||'high',resolution:workspace.quality,leadSeconds,signal:exportAbort.signal,onProgress:(stage,percent)=>{if(button)button.textContent=stage+' · '+percent+'%';}});format='mp4';
+   }
    if(exportAbort.signal.aborted)return;
    const url=URL.createObjectURL(blob),a=document.createElement('a');
    a.href=url;a.download='estudio066-'+workspace.aspect.replace(':','x')+'-'+workspace.quality+'-'+(workspace.encodingQuality||'high')+'.'+format;
@@ -204,6 +220,7 @@ export function studioWorkbenchView(root,notice,project=null){
   }catch(error){
    if(!exportAbort?.signal.aborted)notice('No se pudo exportar: '+error.message);
   }finally{
+   exportSilence?.stop();exportSilence?.disconnect();
    pause();workspace.playhead=before;save();syncPlayback(true);paint();drawTime();
    rendering=false;exportAbort=null;cancelButton.remove();exportControls.forEach(([node,disabled])=>{if(node.isConnected)node.disabled=disabled;});
    if(button){button.disabled=false;button.textContent='Exportar '+outputFormat.toUpperCase();}
@@ -230,7 +247,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<div class="wb-row wb-clip-actions"><button type="button" class="subtle" id="studiowb-duplicate">Duplicar</button><button type="button" class="subtle" id="studiowb-delete">Eliminar clip</button></div></div>'+
     '<div class="wb-inspector-section" data-inspector-panel="color">'+(c.kind==='audio'?'<p class="studio-help">Los clips de audio no tienen ajustes visuales.</p>':
     '<h4>Corrección básica</h4><div class="studio-fields">'+ctrl('brightness','Brillo %',c.brightness??100,0,200,5)+ctrl('contrast','Contraste %',c.contrast??100,0,200,5)+ctrl('saturation','Saturación %',c.saturation??100,0,200,5)+ctrl('blur','Desenfoque',c.blur??0,0,20,1)+ctrl('opacity','Opacidad',c.opacity??1,0,1,.1)+ctrl('scale','Escala',c.scale??1,.25,4,.1)+ctrl('x','Posición X',c.x??0,-1,1,.1)+ctrl('y','Posición Y',c.y??0,-1,1,.1)+ctrl('videoFadeIn','Fundido de video · entrada (s)',c.videoFadeIn||0,0,c.duration/2,.1)+ctrl('videoFadeOut','Fundido de video · salida (s)',c.videoFadeOut||0,0,c.duration/2,.1)+'</div>'+transitionControls(c,'video'))+'</div>'+
-    '<div class="wb-inspector-section" data-inspector-panel="sound"><h4>Mezcla de audio</h4><div class="studio-fields">'+ctrl('volume','Volumen (0–2)',c.volume??1,0,2,.1)+ctrl('audioFadeIn','Fundido de audio · entrada (s)',c.audioFadeIn||0,0,c.duration/2,.1)+ctrl('audioFadeOut','Fundido de audio · salida (s)',c.audioFadeOut||0,0,c.duration/2,.1)+'</div><p class="studio-help">Silencia o activa una pista desde sus controles. Los fundidos ajustan el volumen al inicio y al final del clip.</p>'+transitionControls(c,'audio')+'</div>'+
+    '<div class="wb-inspector-section" data-inspector-panel="sound"><h4>Mezcla de audio</h4><div class="studio-fields">'+ctrl('volume','Volumen (0–2)',c.volume??1,0,2,.1)+ctrl('audioFadeIn','Fundido de audio · entrada (s)',c.audioFadeIn||0,0,c.duration/2,.1)+ctrl('audioFadeOut','Fundido de audio · salida (s)',c.audioFadeOut||0,0,c.duration/2,.1)+'</div><p class="studio-help">Silencia o activa una pista desde sus controles. Los fundidos ajustan el volumen al inicio y al final del clip.</p>'+transitionControls(c,'audio')+volumeEnvelopeView(c)+'</div>'+
     '<div class="wb-inspector-section" data-inspector-panel="prompt"><label>Prompt técnico<textarea data-property="prompt" rows="8" maxlength="3000" placeholder="Camera, lens, motion, lighting, continuity...">'+e(c.prompt||'')+'</textarea></label><button type="button" class="subtle" id="studiowb-copy">Copiar prompt</button><p class="studio-help">Guarda instrucciones de producción. No consume créditos ni envía datos a motores IA.</p></div></div>';
  }
  function keyframePanel(c){
@@ -312,10 +329,10 @@ export function studioWorkbenchView(root,notice,project=null){
 
  function page(){
   return '<div class="wb-root" data-bin="'+activeBin+'" data-editor-tool="'+editingTool+'" data-mobile-pane="'+mobilePane+'"><div class="wb-top"><div class="wb-workspace-brand"><span class="wb-brand-mark" aria-hidden="true">◈</span><div><span class="studio-caption">LA LLAVE 066 · ESTACIÓN CREATIVA</span><h3>Estudio de montaje 066</h3><p class="studio-help">'+e(project?.name||'Montaje libre')+' · Guardado en este navegador</p></div></div></div><div class="wb-row"><button type="button" class="subtle" id="studiowb-undo">↶ Deshacer</button><button type="button" class="subtle" id="studiowb-redo">↷ Rehacer</button><button type="button" class="wb-top-export" id="studiowb-top-export">⇧ Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button><details class="wb-file-menu"><summary>Archivo y respaldos ▾</summary><div class="wb-file-menu-content"><button type="button" class="subtle" id="studiowb-backup">Exportar proyecto JSON</button><label class="wb-file-label">Importar proyecto JSON<input id="studiowb-restore" type="file" accept=".json,application/json"></label><button type="button" class="subtle" id="studiowb-portable-export"'+(!project?.id?' disabled':'')+'>Respaldo completo con medios</button><label class="wb-file-label">Restaurar respaldo completo<input id="studiowb-portable-import" type="file" accept=".json,application/json" '+(!project?.id?'disabled':'')+'></label></div></details></div>'+
-   '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Orientación<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Resolución<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label><label>Archivo<select id="studiowb-format">'+option('webm',workspace.exportFormat||'webm','WebM · VP9/VP8')+option('mp4',workspace.exportFormat||'webm','MP4 · H.264'+(exportFormatCapabilities(window.MediaRecorder).mp4?'':' · no disponible')).replace('<option','<option'+(exportFormatCapabilities(window.MediaRecorder).mp4?'':' disabled'))+'</select></label><label>Calidad<select id="studiowb-encode-quality">'+[['standard','Estándar'],['high','Alta'],['master','Máster']].map(([v,l])=>option(v,workspace.encodingQuality||'high',l)).join('')+'</select></label></div>'+
+   '<div class="wb-settings"><label>Proyecto<input id="studiowb-name" maxlength="160" value="'+e(workspace.name)+'"></label><label>Orientación<select id="studiowb-aspect">'+['9:16','16:9','1:1','1.91:1'].map(v=>option(v,workspace.aspect)).join('')+'</select></label><label>Resolución<select id="studiowb-quality">'+['720p','1080p'].map(v=>option(v,workspace.quality)).join('')+'</select></label><label>FPS<select id="studiowb-fps">'+[24,30].map(v=>option(v,workspace.fps,v+' fps')).join('')+'</select></label><label>Archivo<select id="studiowb-format">'+option('webm',workspace.exportFormat||'webm','WebM · VP9/VP8')+option('mp4',workspace.exportFormat||'webm','MP4 · H.264 / AAC · Houston')+'</select></label><label>Calidad<select id="studiowb-encode-quality">'+[['standard','Estándar'],['high','Alta'],['master','Máster']].map(([v,l])=>option(v,workspace.encodingQuality||'high',l)).join('')+'</select></label></div>'+
    '<div class="wb-workarea"><aside class="wb-library" aria-label="Explorador multimedia"><div class="wb-pane-heading"><span class="wb-pane-kicker">RECURSOS DEL PROYECTO</span><h3>Biblioteca <span class="wb-count">'+(assets.length+trash.length)+'</span></h3></div><div class="wb-bin-tabs" role="group" aria-label="Explorar recursos">'+[['media','Medios'],['cloud','Nube'],['text','Texto'],['audio','Audio']].map(([id,label])=>'<button type="button" data-bin-switch="'+id+'" aria-pressed="'+(activeBin===id)+'">'+label+'</button>').join('')+'</div><div class="wb-bin-local"><label class="wb-file-label">＋ Importar video, imagen o audio<input type="file" id="studiowb-upload" multiple accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/*"></label><label class="wb-search-wrap"><span>⌕</span><input id="studiowb-media-search" type="search" placeholder="Buscar medios…" value="'+e(mediaQuery)+'" aria-label="Buscar archivos en biblioteca"></label>'+
    '<div class="wb-library-head"><button id="studiowb-local-library" class="subtle" type="button" aria-pressed="'+(!showLocalTrash)+'">Archivos ('+assets.length+')</button><button id="studiowb-local-trash" class="subtle" type="button" aria-pressed="'+showLocalTrash+'">Papelera ('+trash.length+')</button></div><div class="wb-media-list">'+(showLocalTrash?(trash.length?trash.map(a=>mediaCard(a,true)).join(''):'<p class="studio-help">Papelera vacía.</p>'):(assets.filter(a=>(activeBin!=='audio'||a.kind==='audio')&&a.name.toLowerCase().includes(mediaQuery.toLowerCase())).length?assets.filter(a=>(activeBin!=='audio'||a.kind==='audio')&&a.name.toLowerCase().includes(mediaQuery.toLowerCase())).map(a=>mediaCard(a,false)).join(''):'<p class="studio-help">No hay medios con ese filtro. Puedes importar o recuperar originales desde Nube.</p>'))+'</div></div><div class="wb-bin-text"><p class="wb-pane-kicker">TÍTULOS Y CAPAS</p><p class="studio-help">Agrega títulos en el cabezal; cambia el contenido en el inspector.</p><button type="button" class="wb-title-quick" id="studiowb-title">＋ Añadir título al montaje</button><div class="wb-title-sample">CASO 066 <small>Texto editable · V2</small></div><div class="wb-subtitle-files"><p class="wb-pane-kicker">SUBTÍTULOS</p><label class="wb-file-label">Importar SRT / VTT<input id="studiowb-subtitles-import" type="file" accept=".srt,.vtt,text/vtt,application/x-subrip,text/plain"></label><button type="button" class="subtle" id="studiowb-subtitles-export">Exportar subtítulos SRT</button><p class="studio-help">Tiempos del montaje. Se dibujan en el video; no generan voz ni transcripción automática.</p></div></div><div id="studiowb-cloud" class="wb-cloud-wrap"></div><div class="wb-source-pane" id="studiowb-source-pane"'+(!findAsset(sourceAssetId)?' hidden':'')+'><span class="wb-pane-kicker">ORIGEN · VISTA PREVIA</span><div class="wb-source-frame" id="studiowb-source-frame">Selecciona una miniatura para inspeccionarla</div><button id="studiowb-source-add" class="subtle" type="button"'+(!sourceAssetId?' disabled':'')+'>＋ Insertar en cabezal</button></div></aside>'+
-   '<div class="wb-stage"><div class="wb-monitor-bar"><span class="wb-pane-kicker"><span class="wb-dot"></span> PROGRAMA · '+e(workspace.name)+'</span><span class="wb-monitor-status">Vista previa local · Sin créditos</span></div>'+(workspace.clips.some(c=>c.kind!=='text'&&!findAsset(c.assetId))?'<p class="studio-help wb-media-warning" role="status">Este montaje incluye medios que faltan en este navegador. Recupera los originales desde Biblioteca privada antes de exportar.</p>':'')+'<div class="wb-preview-box"><canvas id="studiowb-canvas" aria-label="Vista previa de composición"></canvas></div><div class="wb-controls"><button type="button" class="subtle" id="studiowb-stop" title="Volver al inicio" aria-label="Volver al inicio">⏮</button><button type="button" class="wb-play-primary" id="studiowb-play">▶ Reproducir</button><strong id="studiowb-time"></strong><button type="button" id="studiowb-export">⇧ Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button></div><input id="studiowb-seek" type="range" min="0" max="5" step=".05" value="'+workspace.playhead+'" aria-label="Posición en montaje"><p class="studio-help">1080p y calidad Máster son opciones reales de codificación del navegador, pero no garantizan detalle extra del original. MP4 solo si Chrome permite H.264; el audio MP4 requiere AAC. 2K/4K y MP4 profesional universal requerirán render remoto.</p></div>'+
+   '<div class="wb-stage"><div class="wb-monitor-bar"><span class="wb-pane-kicker"><span class="wb-dot"></span> PROGRAMA · '+e(workspace.name)+'</span><span class="wb-monitor-status">Vista previa local · Sin créditos</span></div>'+(workspace.clips.some(c=>c.kind!=='text'&&!findAsset(c.assetId))?'<p class="studio-help wb-media-warning" role="status">Este montaje incluye medios que faltan en este navegador. Recupera los originales desde Biblioteca privada antes de exportar.</p>':'')+'<div class="wb-preview-box"><canvas id="studiowb-canvas" aria-label="Vista previa de composición"></canvas></div><div class="wb-controls"><button type="button" class="subtle" id="studiowb-stop" title="Volver al inicio" aria-label="Volver al inicio">⏮</button><button type="button" class="wb-play-primary" id="studiowb-play">▶ Reproducir</button><strong id="studiowb-time"></strong><button type="button" id="studiowb-export">⇧ Exportar '+e((workspace.exportFormat||'webm').toUpperCase())+'</button></div><input id="studiowb-seek" type="range" min="0" max="5" step=".05" value="'+workspace.playhead+'" aria-label="Posición en montaje"><p class="studio-help">1080p y calidad Máster son opciones reales de codificación del navegador, pero no garantizan detalle extra del original. El navegador captura el montaje y Houston codifica el MP4 H.264/AAC. Hasta 120 segundos y 128 MB de captura. Mantén esta pestaña abierta hasta descargar. 2K/4K todavía no disponibles.</p></div>'+
    propertyPanel()+'</div><div class="wb-timeline-panel"><div class="wb-timeline-heading"><strong>◫ Timeline multitrack</strong><span>'+workspace.clips.length+' clips · '+workspace.fps+' FPS · '+e(workspace.aspect)+'</span></div>'+
    '<div class="wb-edit-toolbar" role="toolbar" aria-label="Herramientas de edición de línea de tiempo"><span class="wb-tool-section">HERRAMIENTAS</span>'+
     '<button type="button" id="studiowb-select-tool" title="Selección (V). Arrastra clips para moverlos." aria-label="Herramienta Selección, tecla V" aria-pressed="'+(editingTool==='select')+'">'+toolIcon('select')+'</button>'+
@@ -335,7 +352,7 @@ export function studioWorkbenchView(root,notice,project=null){
     '<label class="wb-tool-zoom">Zoom <input id="studiowb-zoom" aria-label="Zoom de la línea de tiempo" type="range" min=".5" max="5" step=".25" value="'+timelineZoom+'"></label>'+
     '<button type="button" id="studiowb-timeline-fit" title="Ajustar (F)" aria-label="Ajustar (F)">'+toolIcon('fit')+'</button>'+
     '<div id="studiowb-tool-hint" class="wb-tool-hint" role="status">'+(editingTool==='blade'?'CUCHILLA · Haz clic en un clip para cortarlo exactamente aquí':'SELECCIÓN · Arrastra, recorta o elige un clip')+'</div></div>'+
-timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · Generación y render remoto todavía no conectados</p></div>';
+timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'+[['media','Medios'],['timeline','Montaje'],['inspector','Inspector']].map(([k,label])=>'<button type="button" data-mobile-pane="'+k+'" aria-pressed="'+(mobilePane===k)+'">'+label+'</button>').join('')+'</nav><p class="wb-footnote">Proyecto privado · Edición no destructiva · MP4 con Houston · Generación IA pendiente</p></div>';
  }
  async function updateSourceViewer(){
   const frame=root.querySelector('#studiowb-source-frame'),button=root.querySelector('#studiowb-source-add');
@@ -435,7 +452,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
   timelineEl.dataset.runtimeStylesheet=runtimeSheet?'ready':'missing';
  }
  function render(){
-  scrubCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
+  scrubCleanup?.();envelopeCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
   syncTracks();
   const oldTimelineScroll=root.querySelector('.wb-timeline')?.scrollLeft||0;
   const oldTimelineScrollTop=root.querySelector('.wb-timeline')?.scrollTop||0;
@@ -520,10 +537,12 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
     if(added)track=added.id;
     const next=start===null?clip:insertClipAt(asset,clip,snapToEdges(start,workspace.clips,null,{enabled:snapping}),track||clip.track);
     if(!trackIsEditable(trackState,next.track)){notice('Pista bloqueada: desbloquéala para insertar medios.');return;}
+    pendingInsertions.add(next.id);
     if(['audio','video'].includes(next.kind)){const decoded=await getMedia(next);if(!Number.isFinite(decoded?.element.duration)||decoded.element.duration<.1){releaseMedia(next.id);throw new Error('Este navegador no puede leer la duración del archivo. Importa un MP4/WebM o WAV compatible.');}Object.assign(next,constrainSourceRange(next,decoded.element.duration));}
     if(rendering||!root.isConnected||!canAddClip()){releaseMedia(next.id);return;}
     checkpoint();if(added)workspace.tracks=added.tracks;workspace.clips.push(next);selected=next.id;inspectorTab='clip';mobilePane='timeline';save();await prime();render();
    }catch(error){notice(error.message);}
+   finally{pendingInsertions.delete(clip.id);if(!workspace.clips.some(c=>c.id===clip.id))releaseMedia(clip.id);}
   };
   root.querySelectorAll('[data-insert-asset]').forEach(b=>b.onclick=()=>addFromLibrary(b.dataset.insertAsset,{start:workspace.playhead}));
   root.querySelectorAll('[data-drag-asset]').forEach(card=>card.ondragstart=ev=>{
@@ -739,6 +758,44 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
    scheduleInspectorRefresh(clipId,reveal);
   });
   const selectedClip=workspace.clips.find(c=>c.id===selected);
+  const envelope=root.querySelector('[data-volume-envelope]');
+  if(envelope&&selectedClip){
+   const editable=()=>!rendering&&trackIsEditable(trackState,selectedClip.track);
+   const commit=(keyframes)=>{checkpoint();selectedClip.keyframes=keyframes;save();render();syncPlayback(false);paint();};
+   envelope.onclick=ev=>{
+    if(ev.target.closest('[data-volume-node]')||!editable())return;
+    try{const point=volumePointerPoint(selectedClip,envelope.getBoundingClientRect(),ev.clientX,ev.clientY,workspace.fps);commit(putKeyframe(selectedClip,'volume',point.time,point.value,workspace.fps));}catch(error){notice(error.message);}
+   };
+   envelope.querySelectorAll('[data-volume-node]').forEach(node=>{
+    const index=Number(node.dataset.volumeNode);
+    node.onkeydown=ev=>{
+     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Delete','Backspace'].includes(ev.key))return;
+     ev.preventDefault();ev.stopPropagation();if(!editable())return;
+     const current=selectedClip.keyframes.volume[index];
+     try{
+      if(['Delete','Backspace'].includes(ev.key)){commit({...selectedClip.keyframes,volume:selectedClip.keyframes.volume.filter((_,i)=>i!==index)});return;}
+      const step=ev.shiftKey ? .1 : .01,point={...current};
+      if(ev.key==='ArrowUp')point.value=Math.min(2,Math.round((point.value+step)*100)/100);
+      if(ev.key==='ArrowDown')point.value=Math.max(0,Math.round((point.value-step)*100)/100);
+      if(ev.key==='ArrowLeft')point.time=Math.max(0,point.time-(ev.shiftKey?10:1)/workspace.fps);
+      if(ev.key==='ArrowRight')point.time=Math.min(selectedClip.duration,point.time+(ev.shiftKey?10:1)/workspace.fps);
+      commit(moveVolumePoint(selectedClip,index,point,workspace.fps));
+      root.querySelector('[data-volume-node="'+selectedClip.keyframes.volume.findIndex(n=>Math.abs(n.time-point.time)<.000001)+'"]')?.focus();
+     }catch(error){notice(error.message);}
+    };
+    node.onpointerdown=ev=>{
+     if(ev.button!==0||!editable())return;ev.preventDefault();ev.stopPropagation();pause();
+     const rect=envelope.getBoundingClientRect(),env=root.ownerDocument.defaultView,original=selectedClip.keyframes.volume[index];let point=original,moved=false;
+     const matching=event=>event.pointerId===ev.pointerId;
+     const cleanup=()=>{env.removeEventListener('pointermove',move,true);env.removeEventListener('pointerup',up,true);env.removeEventListener('pointercancel',cancel,true);envelopeCleanup=null;};
+     const move=event=>{if(!matching(event))return;point=volumePointerPoint(selectedClip,rect,event.clientX,event.clientY,workspace.fps);moved=true;node.setAttribute('cx',String(10+point.time/selectedClip.duration*980));node.setAttribute('cy',String(110-point.value*50));const nodes=selectedClip.keyframes.volume.map((n,i)=>i===index?point:n).sort((a,b)=>a.time-b.time);const points=[{time:0,value:nodes[0].value},...nodes,{time:selectedClip.duration,value:nodes.at(-1).value}];envelope.querySelector('polyline').setAttribute('points',points.map(n=>(10+n.time/selectedClip.duration*980)+','+(110-n.value*50)).join(' '));};
+     const up=event=>{if(!matching(event))return;cleanup();if(moved){try{commit(moveVolumePoint(selectedClip,index,point,workspace.fps));}catch(error){notice(error.message);render();}}};
+     const cancel=event=>{if(!matching(event))return;cleanup();render();};
+     envelopeCleanup?.();envelopeCleanup=cleanup;env.addEventListener('pointermove',move,true);env.addEventListener('pointerup',up,true);env.addEventListener('pointercancel',cancel,true);
+     try{node.setPointerCapture?.(ev.pointerId);}catch{}
+    };
+   });
+  }
   if(selectedClip){
    el('studiowb-delete').onclick=()=>{if(!trackIsEditable(trackState,selectedClip.track)){notice('Pista bloqueada.');return;}checkpoint();workspace.clips=workspace.clips.filter(c=>c.id!==selected);releaseMedia(selected);selected=null;save();render();};
    el('studiowb-duplicate').onclick=()=>{if(!canAddClip())return;if(!trackIsEditable(trackState,selectedClip.track)){notice('Pista bloqueada.');return;}if(selectedClip.start+selectedClip.duration*2>600){notice('La copia supera el límite de la línea de tiempo.');return;}checkpoint();const copy={...selectedClip,id:crypto.randomUUID(),start:selectedClip.start+selectedClip.duration};workspace.clips.push(copy);selected=copy.id;save();render();};
@@ -785,7 +842,7 @@ timeline()+'</div><nav class="wb-mobile-dock" aria-label="Paneles del estudio">'
  root.innerHTML='<div class="studio-pane"><p>Preparando biblioteca multimedia local…</p></div>';
  init();
  return ()=>{
-  scrubCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
+  scrubCleanup?.();envelopeCleanup?.();root.querySelector('.wb-shortcut-dialog')?.close();
   editorDocument.removeEventListener('keydown',keyboardListener);
   editorDocument.removeEventListener('pointerdown',editorActivation,true);
   editorDocument.removeEventListener('focusin',editorActivation);

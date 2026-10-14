@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {houstonStatus,AGENT_ROLES,HOUSTON_ORIGIN,agentState} from '../lib/houston-status.js';
+import {houstonUsage,houstonStatus,AGENT_ROLES,HOUSTON_ORIGIN,agentState} from '../lib/houston-status.js';
 import {makeHandler} from '../api/console-066.js';
 import {ensureAgents} from '../deploy/console066-houston/bootstrap.mjs';
 const secret='test-only-'.repeat(8);
@@ -41,4 +41,9 @@ test('restart import keeps existing agents and their instructions',async()=>{
   const existing=AGENT_ROLES.map((a,i)=>({id:String(i),name:a.name}));let posts=0;
   const fetcher=async(url,opts)=>{if(opts.method==='POST'){posts++;throw new Error('must not overwrite');}return json(existing);};
   const count=await ensureAgents({token:secret,seedRoot:new URL('../agents/',import.meta.url).pathname,fetcher});assert.equal(count,6);assert.equal(posts,0);
+});
+
+test('usage reads existing provider quota without exposing account credentials',async()=>{
+ const result=await houstonUsage({HOUSTON_HOST_TOKEN:secret},async(url,init)=>{assert.equal(init.method,undefined);assert.equal(init.redirect,'error');return json(url.endsWith('/agents')?[{id:'growth',name:'Crecimiento y poscompra'}]:[{provider:'openai-codex',status:'ok',plan:'plus',token:secret,windows:[{id:'week',usedPercent:100,resetsAt:'2026-10-15T00:00:00Z',private:secret}]}]);});
+ assert.equal(result.providers[0].windows[0].usedPercent,100);assert.equal(result.providers[0].windows[0].resetsAt,'2026-10-15T00:00:00Z');assert.ok(!JSON.stringify(result).includes(secret));
 });

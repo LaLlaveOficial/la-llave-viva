@@ -1,12 +1,13 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {AGENT_ROLES} from '../lib/houston-status.js';
 import {houstonRoutines,ROUTINES} from '../lib/houston-routines.js';
 const env={HOUSTON_HOST_TOKEN:'x'.repeat(64)};
 function engine(){
- const saved={c:[],p:[]},writes=[];let timezone='UTC';
+ const saved=Object.fromEntries(AGENT_ROLES.map(a=>[a.slug,[]])),writes=[];let timezone='UTC';
  const fetcher=async(url,init)=>{
   const path=new URL(url).pathname.replace('/engine',''),body=init.body?JSON.parse(init.body):null;let data;
   if(init.method!=='GET')writes.push({path,body});
-  if(path==='/agents')data=[{id:'c',name:'Contenido Caso 066'},{id:'p',name:'Prensa y reseñas'}];
+  if(path==='/agents')data=AGENT_ROLES.map(a=>({id:a.slug,name:a.name}));
   else if(path==='/v1/preferences/timezone'){if(body)timezone=body.value;data={value:timezone};}
   else if(path.endsWith('/providers'))data=[{id:'openai-codex',configured:true}];
   else if(path.endsWith('/routine_runs'))data={items:[]};
@@ -17,13 +18,22 @@ function engine(){
  };return {fetcher,writes,saved};
 }
 test('setup is retry safe, uses Chile time, and preserves explicit no-send guards',async()=>{
- const e=engine();const first=await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(first.timezone,'America/Santiago');assert.equal(first.routines.length,2);
- await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(e.writes.filter(w=>w.path.endsWith('/routines')).length,2);
+ const e=engine();const first=await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(first.timezone,'America/Santiago');assert.equal(first.routines.length,6);
+ await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(e.writes.filter(w=>w.path.endsWith('/routines')).length,6);
  for(const [slug,p] of Object.entries(ROUTINES)){const row=first.routines.find(r=>r.slug===slug);assert.equal(row.schedule,p.schedule);assert.equal(row.enabled,true);}
- assert.match(e.saved.c[0].prompt,/No envíes mensajes/);assert.equal(e.saved.c[0].provider,'openai-codex');assert.ok(!JSON.stringify(first).includes(env.HOUSTON_HOST_TOKEN));
- await houstonRoutines({action:'pause',slug:'contenidos'},env,e.fetcher);assert.equal(e.saved.c[0].enabled,false);assert.equal(e.saved.p[0].enabled,true);
+ assert.match(e.saved.contenidos[0].prompt,/No envíes mensajes/);assert.equal(e.saved.contenidos[0].provider,'openai-codex');assert.ok(!JSON.stringify(first).includes(env.HOUSTON_HOST_TOKEN));
+ await houstonRoutines({action:'pause',slug:'contenidos'},env,e.fetcher);assert.equal(e.saved.contenidos[0].enabled,false);assert.equal(e.saved.prensa[0].enabled,true);
 });
 test('untrusted action, slug and target fail before any upstream request',async()=>{
  const e=engine();await assert.rejects(houstonRoutines({action:'run',slug:'../other'},env,e.fetcher),/inválida/);
  await assert.rejects(houstonRoutines({action:'setup'},{...env,HOUSTON_ORIGIN:'https://other.example'},e.fetcher),/privada/);assert.equal(e.writes.length,0);
+});
+
+test('rotation covers every hour and setup upgrades existing schedules without duplicates',async()=>{
+ const e=engine();await houstonRoutines({action:'setup'},env,e.fetcher);
+ e.saved.contenidos[0].schedule='15 9 * * *';e.saved.contenidos[0].enabled=false;
+ const result=await houstonRoutines({action:'setup'},env,e.fetcher);
+ assert.equal(e.saved.contenidos.length,1);assert.equal(e.saved.contenidos[0].enabled,true);assert.equal(e.saved.contenidos[0].schedule,ROUTINES.contenidos.schedule);
+ const hours=result.routines.flatMap(r=>r.schedule.split(' ')[1].split(',').map(Number));assert.deepEqual(hours.sort((a,b)=>a-b),Array.from({length:24},(_,i)=>i));
+ for(const routines of Object.values(e.saved)){assert.match(routines[0].prompt,/Olivia Regis/);assert.match(routines[0].prompt,/Libra Books/);assert.match(routines[0].prompt,/No crees otras rutinas/);}
 });

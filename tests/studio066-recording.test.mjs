@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isWebMData,supportedWebMMime,exportCanvasWebM} from '../public/centro-066/studio-recording.js';
+import {isWebMData,supportedWebMMime,exportCanvasWebM,exportCanvasRecording} from '../public/centro-066/studio-recording.js';
 
 test('WebM detection requires EBML magic, not arbitrary compressed file size',async()=>{
  assert.equal(await isWebMData(new Blob([new Uint8Array([0x1a,0x45,0xdf,0xa3])])),true);
@@ -54,4 +54,19 @@ test('the recording rejects unsupported browsers and aborted requests',async()=>
   exportCanvasWebM({canvas:{captureStream(){}},seconds:2,fps:24,onFrame:()=>{},signal:controller.signal,Recorder:NoRecorder,createStream:class {}}),
   /cancelada/
  );
+});
+test('playback and the export clock wait for the encoder start event, including a slow startup',async()=>{
+ const old={raf:globalThis.requestAnimationFrame,caf:globalThis.cancelAnimationFrame},events=[];
+ const video={requestFrame(){events.push('frame');},stop(){}};
+ class Recorder{
+  static isTypeSupported(t){return t==='video/webm';}
+  start(){this.state='recording';events.push('start-request');setTimeout(()=>{events.push('encoder-ready');this.onstart?.();},80);}
+  stop(){if(this.state==='inactive')return;this.state='inactive';this.ondataavailable?.({data:new Blob([new Uint8Array([0x1a,0x45,0xdf,0xa3])])});this.onstop?.();}
+ }
+ try{
+  globalThis.requestAnimationFrame=fn=>setTimeout(()=>fn(performance.now()),5);globalThis.cancelAnimationFrame=clearTimeout;
+  let initial=true;const result=await exportCanvasRecording({canvas:{captureStream:()=>({getVideoTracks:()=>[video],getTracks:()=>[video]})},seconds:.1,fps:24,Recorder,createStream:class{},onFrame:async t=>{if(initial){initial=false;await new Promise(r=>setTimeout(r,50));}if(t>0)assert.ok(events.includes('playback'));},onStart:()=>events.push('playback')});
+  assert.ok(result.leadSeconds>=.12&&result.leadSeconds<.4,'The server trim must include initial frame preparation and encoder startup');
+  assert.ok(events.indexOf('encoder-ready')<events.indexOf('playback'));assert.ok(events.indexOf('playback')<events.lastIndexOf('frame'));
+ }finally{if(old.raf===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=old.raf;if(old.caf===undefined)delete globalThis.cancelAnimationFrame;else globalThis.cancelAnimationFrame=old.caf;}
 });

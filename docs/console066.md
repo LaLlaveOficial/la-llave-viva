@@ -60,3 +60,35 @@ node tests/console066-integration.mjs
 Se ejecutó contra Postgres local PGlite: migración repetible, 31 candidatos y 17 tareas, login, lecturas/guardados, aprobación exacta, retiro de aprobación al editar, conflicto entre versiones, duplicados y auditoría atómica. La interfaz se verificó con DOM simulado (filtro por país, edición, guardado y estados de conexión). No se logró inspección visual con navegador en este entorno; falta comprobar presentación móvil y escritorio en la vista previa antes de producción.
 
 Fuentes técnicas consultadas: https://vercel.com/docs/headers/request-headers y https://vercel.com/docs/routing/rewrites.
+
+## Rotación de Houston (11-oct-2026)
+
+Los seis agentes tienen rutinas persistentes en Houston/Railway, sin necesitar una pestaña abierta. La acción `setup` crea las faltantes y actualiza programación e instrucciones de las existentes, sin duplicar sus nombres. Repetir la operación no crea otras rutinas. La activación se confirma leyendo Houston; un despliegue por sí solo no activa rutinas.
+
+La rotación usa America/Santiago: radar a las 00/06/12/18; contactos 01/07/13/19; contenido 02/08/14/20; prensa 03/09/15/21; analítica 04/10/16/22; crecimiento 05/11/17/23. Cada agente ejecuta cuatro veces al día. No se ejecutan comunicaciones, publicaciones ni cambios publicitarios. Se conservan los límites y pausas del motor; 24/7 significa cobertura programada, no seis procesos consumiendo IA continuamente.
+
+La programación no da al motor acceso nuevo a Gmail, CRM o métricas: si no puede consultar una fuente, debe declararlo y no producir análisis inventados. Las tareas manuales de marketing siguen recibiendo las métricas y estados guardados mediante `marketingText`.
+
+## Datos y ventas para Houston (11-oct-2026)
+
+El cliente `node /houston/llave-context.mjs context <agente>` consulta un gateway accesible solo desde loopback del contenedor. El gateway añade la autenticación de servidor al endpoint fijo `/api/agent-066`; nunca entrega secretos al cliente. Peticiones públicas y headers de IP reenviada no autorizan el gateway. El endpoint Vercel valida el token de Houston en tiempo constante y no admite operaciones de publicación, envío, pagos o cambios Ads.
+
+Cada rutina recibe CRM público sin notas ni mensajes privados, pagos agregados, recuentos de suscriptores con consentimiento y observaciones fechadas. Contenido, analítica y crecimiento intentan actualizar Google Ads, Meta, GA4 y Metricool en paralelo, como máximo una vez cada dos horas. El límite global de lectura de proveedores es 70 segundos; una fuente fallida conserva su última lectura e informa el estado. Los datos históricos de pagos incluyen pruebas; no equivalen automáticamente a ventas comerciales.
+
+La búsqueda usa Tavily básico si se configura `TAVILY_API_KEY` en Vercel por el propietario; sin esa clave se utiliza Google News RSS para descubrimiento de noticias. Este último no ofrece búsqueda completa de perfiles de Instagram/TikTok y las fechas del feed requieren verificación en la fuente. Hay un límite de 24 búsquedas del equipo al día. No se usa Bing RSS para marketing: sus condiciones limitan ese feed a uso personal no comercial.
+
+Los agentes guardan propuestas mediante `node /houston/llave-context.mjs save <agente>` con JSON por stdin (kind, title, text). Son registros `agent-output` en la auditoría existente, siempre `pending_review`. Marketing muestra los textos completos y permite aprobar el texto exacto. Aprobar no publica ni envía. No se duplican secuencias de suscripción ni se cambian los flujos de compra existentes.
+
+Crecimiento prioriza segmentos de lectores con interés de compra, piezas completas diferenciadas para Instagram/TikTok, CTAs hacia `/comprar`, UTM por pieza y experimentos de conversión. Comunidades y perfiles públicos nunca se etiquetan como compradores o suscriptores confirmados sin evidencia y consentimiento.
+
+Búsqueda pública: Tavily basic en modo gratuito keyless oficial si no hay clave de cuenta, con límite diario interno y respaldo Google News RSS identificado. Solo descubre perfiles indexados: no garantiza acceso completo a TikTok/Instagram. Crecimiento distingue intención pública, compradores confirmados y difusión; auditoría con evidencia, pilares, guiones, embudo, respuestas propuestas y medición. Casa Tomada/Mar de Tinta excluidos por correo enviado el 11-oct-2026.
+
+## Gerencia y producción HyperFrames (12-oct-2026)
+
+El rol existente `crecimiento` asume gerencia de marketing, sin crear otro agente ni otra conexión. Mantiene su identificador y horarios; el prompt solicita diagnóstico con fecha, prioridades de ventas, responsables, dependencias, plazos y criterios de decisión, revisando los borradores existentes. Las acciones externas siguen requiriendo aprobación específica.
+
+Marketing incluye producción privada de MP4 con HyperFrames 0.8.149 (Apache-2.0), GSAP 3.14.2 y Chromium/FFmpeg en el servidor Houston. La ruta `/video-066` requiere el token privado existente; la consola solo la expone tras verificar sesión y origen. No acepta HTML, scripts, URLs ni comandos del usuario: compone una plantilla fija con campos de texto escapados y portada real local. Render a 24 fps, 1080p, 6/10/15 segundos, vertical/cuadrado/horizontal, un trabajo a la vez y modo de memoria baja. El proceso no recibe credenciales del host ni de proveedores.
+
+Se conservan proyecto y estado bajo `/data/video-066`. Reinicios detectan renders interrumpidos y los marcan fallidos. Reintentos con el mismo identificador no crean otro proyecto. Se limita a 60 proyectos y 4 MB por MP4 para la descarga a través de Vercel. No hay publicación, mensajes, música, voces ni generación cinematográfica de escenas en este primer flujo. HyperFrames no consume créditos HeyGen; Houston consume el cupo de IA existente y renderizar usa recursos del alojamiento existente. No es una promesa de infraestructura gratuita o capacidad ilimitada.
+
+El UI identifica los errores de cuota como fallos de una ejecución fechada, separados de la consulta actual de cupo. No oculta errores ni los considera resueltos sin una ejecución confirmada.

@@ -7,12 +7,15 @@ import {proposeAdsChange,approveAdsChange,adsChangeHistory} from '../lib/google-
 import {connectRequest,metricoolSync} from '../lib/metricool-connect.js';
 import {MARKETING_MISSIONS,marketingText} from '../lib/console-marketing.js';
 import {houstonRoutines} from '../lib/houston-routines.js';
+import {videoRequest} from '../lib/video-066.js';
+import {studioEncodeRequest} from '../lib/studio-encode066.js';
+import {managerReport} from '../lib/manager-report.js';
 import {privateMetrics,validateMetricImport} from '../lib/console-metrics.js';
 import {validateStudioProject,validateStudioShot} from '../lib/studio066.js';
 import {studioGenerationApi} from '../lib/studio-generation-api.js';
 import {studioCloudApi} from '../lib/studio-cloud066.js';
 import { neon } from '@neondatabase/serverless';
-import {houstonStatus} from '../lib/houston-status.js';
+import {houstonUsage,houstonStatus} from '../lib/houston-status.js';
 import {houstonConnect} from '../lib/houston-connect.js';
 import {houstonMission,validateMission} from '../lib/houston-missions.js';
 import {configuration,sameOrigin,readToken,newToken,hashToken,cookie,rateKey,verifyConfiguredPassword,validateLeadUpdate,validateNewLead,TASK_STATES} from '../lib/console-security.js';
@@ -28,7 +31,7 @@ export function makeHandler(connect = neon, env = process.env) {
     if (req.method === 'POST' && !sameOrigin(req,config)) return res.status(403).json({error:'Origen no permitido.'});
     const op = req.query?.op || 'data';
     const body = req.body;
-    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 12000)) return res.status(400).json({error:'Solicitud inválida.'});
+    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > (op==='studio-encode-chunk'?750000:12000))) return res.status(400).json({error:'Solicitud inválida.'});
     try {
       const sql = connect(config.databaseUrl);
       if (op === 'login' && req.method === 'POST') {
@@ -52,6 +55,12 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(op.startsWith('studio-encode-')){
+        const action=op.slice('studio-encode-'.length),get=['status','file'].includes(action);
+        if(!['init','chunk','start','status','file','cancel'].includes(action)||req.method!==(get?'GET':'POST'))return res.status(405).json({error:'Operación de exportación no permitida.'});
+        try{return res.status(200).json(await studioEncodeRequest(action,get?{id:req.query.id,index:req.query.index}:body,env));}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
       if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
       if(op==='google-ads-reports'&&req.method==='GET')return res.status(200).json({...await googleAdsReports(sql),changes:await adsChangeHistory(sql),missions:await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-analysis' ORDER BY id DESC LIMIT 5`,capabilities:(await sql`SELECT detail FROM console066_audit WHERE entity='google-ads-capabilities' ORDER BY id DESC LIMIT 1`)[0]?.detail||{approvedChanges:false}});
       if(op==='google-ads-discard'&&req.method==='POST'){
@@ -119,15 +128,38 @@ export function makeHandler(connect = neon, env = process.env) {
         catch(e){return res.status(502).json({error:e.message});}
       }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
+      if(op==='video-list'&&req.method==='GET')return res.status(200).json(await videoRequest('list',{},env));
+      if(op==='video-render'&&req.method==='POST')return res.status(202).json(await videoRequest('render',body,env));
+      if(op==='video-file'&&req.method==='GET'){
+        const bytes=await videoRequest('file',{id:req.query.id},env);
+        res.setHeader('Content-Type','video/mp4');res.setHeader('Content-Disposition',`${req.query.download==='1'?'attachment':'inline'}; filename="la-llave-066.mp4"`);
+        return res.status(200).send(bytes);
+      }
       if(op==='houston-routines'){
         try{return res.status(200).json(await houstonRoutines(req.method==='GET'?{action:'read'}:body,env));}
         catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(op==='manager-report'&&req.method==='GET'){
+        const text=await managerReport(sql,()=>videoRequest('list',{},env));
+        res.setHeader('Content-Type','text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition','attachment; filename="la-llave-gerente-24h.txt"');
+        return res.status(200).send(text);
+      }
+      if(op==='agent-outputs'&&req.method==='GET'){
+        const rows=await sql`SELECT id,detail,created_at FROM console066_audit WHERE entity='agent-output' ORDER BY id DESC LIMIT 40`;
+        return res.status(200).json({outputs:rows.map(r=>({id:r.id,...r.detail,createdAt:r.created_at}))});
+      }
+      if(op==='agent-output-approve'&&req.method==='POST'){
+        if(!Number.isSafeInteger(body.id)||body.id<1)return res.status(400).json({error:'Propuesta inválida.'});
+        const rows=await sql`UPDATE console066_audit SET detail=detail||jsonb_build_object('status','approved','approvedAt',now()) WHERE id=${body.id} AND entity='agent-output' AND detail->>'status'='pending_review' RETURNING id`;
+        return res.status(rows.length?200:409).json(rows.length?{ok:true,published:false,sent:false}:{error:'La propuesta ya fue procesada.'});
       }
       if(op==='metrics-import'&&req.method==='POST'){
         const item=validateMetricImport(body);if(!item)return res.status(400).json({error:'Revisa la marca, periodo y columnas de Metricool.'});
         await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('metrics',0,'import',${JSON.stringify(item)}::jsonb)`;
         return res.status(200).json({ok:true,network:item.network,importedAt:item.importedAt});
       }
+      if(op==='houston-usage'&&req.method==='GET')return res.status(200).json(await houstonUsage(env));
       if (op === 'houston' && req.method === 'GET') return res.status(200).json(await houstonStatus(env));
       if (op === 'houston-mission' && req.method === 'POST') {
         if(!validateMission(body))return res.status(400).json({error:'Revisa la tarea y el agente.'});
