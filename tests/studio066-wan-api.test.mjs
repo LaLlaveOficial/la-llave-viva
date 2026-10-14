@@ -35,3 +35,16 @@ test('native result is returned only for the measured resolution',async()=>{
   assert.equal((await studioWanApi(sql,'studio-wan-status',req,env,fetcher)).status,expected);
  }
 });
+test('capabilities reflect the durable daily quota and expose no credential',async()=>{
+ for(const blocked of [true,false]){
+  const r=await studioWanApi(async()=>[{blocked}],'studio-wan-capabilities',{method:'GET'},env);
+  assert.equal(r.data.canSubmit,!blocked);assert.equal(r.data.canCheck,true);
+  assert.ok(!JSON.stringify(r).includes(env.RUNPOD_API_KEY));
+ }
+});
+test('pausing submission still permits recovery of an existing job',async()=>{
+ let calls=0;
+ const r=await studioWanApi(async()=>[{id,status:'UNKNOWN',provider_id:null}],
+  'studio-wan-status',{method:'GET',query:{id,projectId:'1'}},{...env,STUDIO_WAN_ENABLED:'false'},()=>{calls++;});
+ assert.equal(r.status,200);assert.equal(r.data.job.status,'UNKNOWN');assert.equal(calls,0);
+});
