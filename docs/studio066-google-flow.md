@@ -14,7 +14,7 @@ Una única generación real en Keloke con Veo 3.1 Lite consumió 10 créditos in
 
 La cuenta personal Santibáñez mostró nivel Pro y 1.050 créditos en Flow; Keloke quedó en 40. Son saldos observados, no un contador conectado al estudio. No certifican continuidad de Paula, Rosa o Enrique.
 
-17 pruebas de generación, contrato y DOM y el build pasaron; la importación real también comprobó copia del prompt y enlaces de referencias. La integración permanece en una rama de vista previa. PR 18 mantiene conflictos con main que deben resolverse antes de una publicación autorizada.
+17 pruebas de generación, contrato y DOM y el build pasaron; la importación real también comprobó copia del prompt y enlaces de referencias. La integración permanece en una rama de vista previa. La rama integra la versión principal con los conflictos resueltos. La publicación en producción requiere revisar las pruebas de integración y autorizarla.
 
 ## Recuperación y controles compartidos
 
