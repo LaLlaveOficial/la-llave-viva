@@ -58,7 +58,7 @@ export function studioView(root,request,notice) {
     if(!p)return '<div class="studio-pane">'+empty+'<p>Abre Proyectos para comenzar.</p><button data-studio-tab="projects">Ir a proyectos</button></div>';
     const shots=state.shots.filter(s=>Number(s.project_id)===state.projectId);
     const s=currentShot();
-    const data=s||{title:'',script:'',reference_notes:'',aspect:'9:16',resolution:'1080p',duration_seconds:5,fps:24,variants:2,provider:'pendiente'};
+    const data=s||{title:'',script:'',reference_notes:'',aspect:'9:16',resolution:'1080p',duration_seconds:5,fps:24,variants:1,provider:'pendiente'};
     const summary=s?'<span class="studio-caption">Versión '+Number(s.version||0)+'</span>':'<span class="studio-caption">Nuevo plano</span>';
     const shotList=shots.map(item=>
       '<button type="button" class="studio-shot-card'+(s&&Number(s.id)===Number(item.id)?' active':'')+'" data-shot-id="'+item.id+'">'+
@@ -75,7 +75,7 @@ export function studioView(root,request,notice) {
       '<label>Orientación<select name="aspect">'+opts(ratios,data.aspect)+'</select></label>'+
       '<label>Calidad de salida<select name="resolution">'+opts(qualities,data.resolution)+'</select></label>'+
       '<label>Duración<select name="duration">'+durations.map(v=>option(v,data.duration_seconds,v+' segundos')).join('')+'</select></label>'+
-      '<label>Variantes<select name="variants">'+[1,2,3,4].map(v=>option(v,data.variants,v+' clip'+(v>1?'s':''))).join('')+'</select></label>'+
+      '<input type="hidden" name="variants" value="1"><p>Una muestra por generación.</p>'+
       '<label>Fotogramas por segundo<select name="fps">'+fpsValues.map(v=>option(v,data.fps,v+' FPS')).join('')+'</select></label>'+
       '<label>Motor previsto<select name="provider">'+providers.map(([key,label])=>option(key,data.provider,label)).join('')+'</select></label>'+
       '</div><p class="studio-help">Estas son preferencias de salida. El proveedor real puede tener límites diferentes; 2K/4K o 60 FPS pueden requerir postprocesado. Ningún motor está conectado.</p>'+
@@ -108,7 +108,7 @@ export function studioView(root,request,notice) {
     if(!root.isConnected)return;
     if(stopWorkbench){stopWorkbench();stopWorkbench=null;}
     if(stopGenerator){stopGenerator();stopGenerator=null;}
-    root.innerHTML='<section class="studio-root'+(state.tab==='editor'?' editor-workspace':'')+'"><div class="studio-banner studio-banner-compact"><div class="studio-banner-copy"><span class="studio-caption">ESPACIO DE TRABAJO · ESTUDIO 066</span><p>Fotogramas, referencias, prompts y montaje de tus proyectos.</p></div><span class="studio-readiness">Vista previa · Motores de generación y cargos deshabilitados</span></div>'+
+    root.innerHTML='<section class="studio-root'+(state.tab==='editor'?' editor-workspace':'')+'"><div class="studio-banner studio-banner-compact"><div class="studio-banner-copy"><span class="studio-caption">ESPACIO DE TRABAJO · ESTUDIO 066</span><p>Fotogramas, referencias, prompts y montaje de tus proyectos.</p></div><span class="studio-readiness">Vista previa · Google Flow + montaje local</span></div>'+
       '<div class="studio-tabs" role="group" aria-label="Secciones del estudio">'+navTabs(state.tab)+'</div>'+
       (state.tab==='projects'?drawProjects():state.tab==='shots'?drawShots():state.tab==='generate'?'<div id="studio-generation-host"></div>':state.tab==='voices'?drawVoices():state.tab==='editor'?'<div id="studio-workbench-host"></div>':drawAds())+
       '</section>';
@@ -143,7 +143,7 @@ export function studioView(root,request,notice) {
       e.preventDefault();
       const f=new FormData(shotForm);
       const old=currentShot();
-      const body={action:old?'update':'create',projectId:state.projectId,title:String(f.get('title')||''),script:String(f.get('script')||''),referenceNotes:String(f.get('referenceNotes')||''),aspect:String(f.get('aspect')),resolution:String(f.get('resolution')),duration:Number(f.get('duration')),fps:Number(f.get('fps')),variants:Number(f.get('variants')),provider:String(f.get('provider'))};
+      const body={action:old?'update':'create',projectId:state.projectId,title:String(f.get('title')||''),script:String(f.get('script')||''),referenceNotes:String(f.get('referenceNotes')||''),aspect:String(f.get('aspect')),resolution:String(f.get('resolution')),duration:Number(f.get('duration')),fps:Number(f.get('fps')),variants:1,provider:String(f.get('provider'))};
       if(old){body.id=Number(old.id);body.version=Number(old.version);}
       const btn=shotForm.querySelector('[type=submit]');btn.disabled=true;
       try{const saved=await request('studio-shot',body);state.shotId=Number(saved.shot.id);await refresh();notice('Plano y configuración guardados. No se generó ningún clip.');}

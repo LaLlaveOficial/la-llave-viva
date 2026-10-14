@@ -54,3 +54,5 @@
 @media (max-width:1450px){.gen-workspace{grid-template-columns: minmax(180px,.9fr) minmax(330px,1.5fr)}.gen-form{grid-column:1/-1;max-height:none}.gen-form .gen-ref-slots{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:870px){.gen-workspace{grid-template-columns:1fr}.gen-history,.gen-preview-panel,.gen-form{grid-column:1/-1}.gen-ref-slots{grid-template-columns:repeat(2,minmax(0,1fr))}.gen-stage{max-height:380px;min-height:270px}}
 @media (max-width:480px){.gen-fields{grid-template-columns:1fr}.gen-ref-slots{grid-template-columns:1fr 1fr}.gen-workspace>*{padding:12px}}
+
+.hf-panel [hidden]{display:none!important}

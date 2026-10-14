@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateGeneration,newGenerationDraft,parseGenerationHistory,makeGenerationRecord} from '../public/centro-066/studio-generation.js';
+import {validateGeneration,newGenerationDraft,parseGenerationHistory,makeGenerationRecord,buildFlowPrompt} from '../public/centro-066/studio-generation.js';
 import {studioGenerationView} from '../public/centro-066/studio-generation.js';
 
 const assets=[
@@ -72,4 +72,17 @@ test('generator DOM has reference slots, preview, disabled real generation and a
   for(const [key,value] of Object.entries(previous)){if(value===undefined)delete globalThis[key];else globalThis[key]=value;}
   dom.window.close();
  }
+});
+
+test('Flow uses one sample and copies explicit continuity and constraints',()=>{
+ const r=newGenerationDraft();assert.equal(r.variants,1);assert.equal(r.model,'veo');assert.equal(r.duration,4);
+ assert.equal(buildFlowPrompt({...r,prompt:' Slow push-in. ',continuity:' Same wet clothing. ',negative:' No logos. '}),'Slow push-in.\n\nContinuity: Same wet clothing.\n\nAvoid: No logos.');
+});
+test('imported duration survives local and remote metadata validation',async()=>{
+ const {validateGenerationMetadata}=await import('../lib/studio-generation-server.js');
+ const request=validateGeneration(draft({duration:4,variants:1,refs:[{assetId:'11111111-1111-4111-8111-111111111111',role:'start'}]}),[{id:'11111111-1111-4111-8111-111111111111',kind:'image'}]).value;
+ const record={...makeGenerationRecord('22222222-2222-4222-8222-222222222222',request),results:[{assetId:'33333333-3333-4333-8333-333333333333',duration:8}]};
+ assert.equal(parseGenerationHistory([record])[0].results[0].duration,8);
+ const input={...record,action:'create',projectId:1};assert.equal(validateGenerationMetadata(input).results[0].duration,8);
+ assert.equal(validateGenerationMetadata({...input,results:[{...record.results[0],duration:Infinity}]}),null);
 });

@@ -3,17 +3,18 @@
 import {mediaDB,listMedia,addMedia,readMedia,workspaceKey,defaultWorkspace,parseWorkspace,addTimelineClip} from './studio-media.js';
 import {WanFreeClient} from './studio-hf-client.js';
 import {mountWanPanel} from './studio-hf-panel.js';
+import {exportProjectBundle,importProjectBundle,discardRestoredAssets} from './studio-project-backup.js';
 
 export const generationModels=[
  ['pendiente','Seleccionar motor (API pendiente)'],
  ['kling','Kling · integración pendiente'],
- ['veo','Veo · integración pendiente'],
+ ['veo','Google Flow · Veo (Santibáñez)'],
  ['firefly','Adobe Firefly · integración pendiente'],
  ['wan','Wan · servidor GPU pendiente'],
- ['ltx','LTX · servidor GPU pendiente']
+ ['ltx','LTX · disponible en el panel gratuito']
 ];
 export const generationFormats=['9:16','16:9','1:1','1.91:1'];
-export const generationDurations=[3,5,8,10,15,20];
+export const generationDurations=[3,4,5,6,8,10,15,20];
 const durations=generationDurations;
 const MAX_RECORDS=80;
 const MAX_REF=3;
@@ -24,7 +25,7 @@ const keyFor=(project)=>'llave-studio066-generation-v1:'+String(project?.id||'sc
 const trackKeyFor=(project)=>workspaceKey+':'+String(project?.id||'scratch');
 
 export function newGenerationDraft(){
- return {mode:'frames',title:'Nuevo clip · Caso 066',prompt:'',negative:'',continuity:'',model:'pendiente',aspect:'9:16',resolution:'1080p',duration:5,fps:24,variants:2,audio:false,seed:'',preserveIdentity:true,preserveComposition:true,refs:[]};
+ return {mode:'frames',title:'Nuevo clip · Caso 066',prompt:'',negative:'',continuity:'',model:'veo',aspect:'9:16',resolution:'720p',duration:4,fps:24,variants:1,audio:true,seed:'',preserveIdentity:true,preserveComposition:true,refs:[]};
 }
 export function validateGeneration(input,assets=[]){
  if(!input||typeof input!=='object')return {error:'Solicitud inválida.'};
@@ -55,11 +56,27 @@ export function validateGeneration(input,assets=[]){
 export function parseGenerationHistory(input){
  if(!Array.isArray(input))return [];
  return input.slice(0,MAX_RECORDS).filter(x=>x&&typeof x==='object'&&typeof x.id==='string'&&x.id.length<90&&x.request&&typeof x.request==='object'&&typeof x.request.title==='string'&&typeof x.request.prompt==='string'&&Array.isArray(x.results)&&x.results.length<=4&&['prepared','imported'].includes(x.status))
- .map(x=>({...x,results:x.results.filter(v=>v&&typeof v.assetId==='string'&&v.assetId.length<100).map(v=>({assetId:v.assetId,addedAt:v.addedAt||''}))}));
+ .map(x=>({...x,results:x.results.filter(v=>v&&typeof v.assetId==='string'&&v.assetId.length<100).map(v=>({assetId:v.assetId,addedAt:v.addedAt||'',...(Number.isFinite(v.duration)&&v.duration>0&&v.duration<=600?{duration:v.duration}:{})}))}));
 }
 export function makeGenerationRecord(id,data){
  return {id,request:data,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),status:'prepared',results:[]};
 }
+
+export function buildFlowPrompt(request){
+ return [request.prompt.trim(),request.continuity.trim()?"Continuity: "+request.continuity.trim():"",request.negative.trim()?"Avoid: "+request.negative.trim():""].filter(Boolean).join("\n\n");
+}
+export function probeImportedVideo(file){
+ return new Promise((resolve,reject)=>{
+  if(!file||file.size===0||file.size>150*1024*1024)return reject(new Error('El video debe pesar entre 1 B y 150 MB.'));
+  const video=document.createElement('video'),url=URL.createObjectURL(file);
+  const done=(error,info)=>{clearTimeout(timer);video.onloadedmetadata=null;video.onerror=null;video.removeAttribute('src');video.load();URL.revokeObjectURL(url);error?reject(error):resolve(info);};
+  const timer=setTimeout(()=>done(new Error('No se pudieron leer los datos del video.')),15000);
+  video.onloadedmetadata=()=>{const duration=video.duration;if(!Number.isFinite(duration)||duration<=0||duration>600||!video.videoWidth||!video.videoHeight)return done(new Error('Video incompatible o duración fuera de rango.'));done(null,{duration,width:video.videoWidth,height:video.videoHeight});};
+  video.onerror=()=>done(new Error('El navegador no puede reproducir este video.'));
+  video.preload='metadata';video.src=url;
+ });
+}
+
 export function studioGenerationView(root,notice,project,openTimeline,request){
  let db=null,assets=[],history=[],draft=newGenerationDraft(),selected=null,ready=false;
  let busy=false,active=true,previewURLs=new Map(),activePreview=null,mobileView='configure';
@@ -67,9 +84,10 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  const projectId=Number(project?.id)||null;
  const remoteOK=Boolean(projectId&&typeof request==='function');
  const upsertRemote=async(record,action)=>{
+  record.syncPending=true;
   if(!remoteOK)return null;
   const res=await request('studio-generation',{action,projectId,id:record.id,version:record.version??0,request:record.request,results:record.results});
-  record.version=res.record.version;
+  record.version=res.record.version;delete record.syncPending;
   return res.record;
  };
  const key=keyFor(project);
@@ -77,10 +95,10 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  const media=()=>assets.filter(x=>x.kind==='image');
  const clipAssets=()=>assets.filter(x=>x.kind==='video');
  const keep=()=>{
-  try{localStorage.setItem(key,JSON.stringify({draft,history}));}catch{notice('No se guardaron los ajustes. La cuota del navegador puede estar llena.');}
+  try{localStorage.setItem(key,JSON.stringify({draft,history,selected,activePreview,mobileView}));}catch{notice('No se guardaron los ajustes. La cuota del navegador puede estar llena.');}
  };
  const restore=()=>{
-  try{const value=JSON.parse(localStorage.getItem(key)||'null');history=parseGenerationHistory(value?.history);if(value?.draft&&typeof value.draft==='object'){const partial=value.draft;draft={...newGenerationDraft(),...partial,refs:Array.isArray(partial.refs)?partial.refs.slice(0,3):[]};}}
+  try{const value=JSON.parse(localStorage.getItem(key)||'null');history=parseGenerationHistory(value?.history);selected=history.some(r=>r.id===value?.selected)?value.selected:null;activePreview=typeof value?.activePreview==='string'?value.activePreview:null;mobileView=['history','preview','configure'].includes(value?.mobileView)?value.mobileView:'configure';if(value?.draft&&typeof value.draft==='object'){const partial=value.draft;draft={...newGenerationDraft(),...partial,variants:1,refs:Array.isArray(partial.refs)?partial.refs.slice(0,3):[]};}}
   catch{history=[];draft=newGenerationDraft();}
  };
  const metadata=r=>r?.request||draft;
@@ -98,6 +116,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  const roleLabel=x=>({'start':'Fotograma inicial','end':'Fotograma final','character':'Personaje','environment':'Escenario','composition':'Composición','style':'Estilo','wardrobe':'Vestuario'}[x]||x);
  function historyPanel(){
   return '<section class="gen-history"><div class="gen-heading"><div><span class="studio-caption">BIBLIOTECA · SOLICITUDES</span><h3>Historial</h3></div><button class="subtle" type="button" id="gen-new">+ Nueva</button></div>'+
+   '<div class="gen-request-actions"><button type="button" id="gen-backup">Descargar respaldo completo</button><label class="gen-add-files">Restaurar respaldo<input type="file" id="gen-restore" accept=".studio066"></label></div><p class="studio-help">El respaldo incluye archivos, referencias, historial y timeline de este proyecto.</p>'+
    '<p class="studio-help">Preparaciones y clips importados manualmente. Ninguna solicitud se envía a un motor de IA.</p>'+
    '<div class="gen-record-list">'+(history.map(h=>'<button type="button" class="gen-record'+(selected===h.id?' active':'')+'" data-generation="'+esc(h.id)+'"><strong>'+esc(h.request.title)+'</strong><span>'+esc(h.request.model)+' · '+esc(h.request.aspect)+' · '+h.request.duration+'s</span><small>'+h.results.length+' clips importados · '+(h.results.length?'Importado':'Preparado')+'</small></button>').join('')||'<p class="studio-help">Todavía no hay solicitudes. Prepara la primera desde el panel derecho.</p>')+'</div>'+
    '<h4>Referencias disponibles <small>'+media().length+' archivos</small></h4><p class="studio-help">Toca una imagen para añadirla al siguiente espacio de referencia. No se enviará a ningún motor.</p>'+
@@ -114,7 +133,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     return '<div class="gen-ref-slot"><div class="gen-ref-thumb" data-ref-picture="'+i+'"><span>'+ (asset?'Imagen elegida':(draft.mode==='frames'?(i===0?'Inicio':'Final'):'Referencia '+(i+1)))+'</span></div>'+
       '<label>'+ (draft.mode==='frames'?(i===0?'Inicio':'Final'):'Imagen '+(i+1))+
       '<select data-ref-asset="'+i+'">'+choice('',asset?.id||'','Seleccionar imagen')+all.map(a=>choice(a.id,asset?.id||'',a.name)).join('')+'</select></label>'+
-      (asset?'<label>Rol<select data-ref-role="'+i+'">'+refRoles(draft.mode,i).map(([role,label])=>choice(role,item.role,label)).join('')+'</select></label>':'')+'</div>';
+      (asset?'<a data-ref-download="'+i+'">Descargar referencia</a><label>Rol<select data-ref-role="'+i+'">'+refRoles(draft.mode,i).map(([role,label])=>choice(role,item.role,label)).join('')+'</select></label>':'')+'</div>';
    }).join('')+'</div>'+
    '<p class="studio-help">'+selectedIDs.size+' de '+limit+' referencias seleccionadas. Los archivos no se envían a un proveedor.</p>';
  }
@@ -139,7 +158,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     '<label>Relación de aspecto<select name="aspect">'+generationFormats.map(v=>choice(v,draft.aspect,v)).join('')+'</select></label>'+
     '<label>FPS<select name="fps">'+[24,30,60].map(v=>choice(v,draft.fps,v+' FPS')).join('')+'</select></label>'+
     '<label>Duración<select name="duration">'+durations.map(v=>choice(v,draft.duration,v+' segundos')).join('')+'</select></label>'+
-    '<label>Variantes<select name="variants">'+[1,2,3,4].map(v=>choice(v,draft.variants,v+' clip'+(v===1?'':'s'))).join('')+'</select></label>'+
+    '<input type="hidden" name="variants" value="1"><p class="studio-help">Una sola muestra por generación.</p>'+
     '</div><label class="gen-check"><input type="checkbox" name="audio" '+(draft.audio?'checked':'')+'> Solicitar audio si el motor es compatible</label></details>'+
     '<details open><summary>Referencias</summary><div class="gen-mode"><label class="gen-mode-option"><input type="radio" name="mode" value="frames" '+(draft.mode==='frames'?'checked':'')+'> Frames (1–2)</label><label class="gen-mode-option"><input type="radio" name="mode" value="images" '+(draft.mode==='images'?'checked':'')+'> Images (1–3)</label></div><div id="gen-reference-area">'+refGrid()+'</div></details>'+
     '<details><summary>Ajustes avanzados</summary><label>Seed (opcional)<input type="number" inputmode="numeric" min="0" max="4294967295" step="1" name="seed" value="'+esc(draft.seed)+'"></label>'+
@@ -147,7 +166,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     '<label class="gen-check"><input type="checkbox" name="preserveIdentity" '+(draft.preserveIdentity?'checked':'')+'> Priorizar identidad del personaje</label>'+
     '<label class="gen-check"><input type="checkbox" name="preserveComposition" '+(draft.preserveComposition?'checked':'')+'> Priorizar composición del fotograma</label></details>'+
     '<div class="gen-cta"><button type="submit" id="gen-save">Guardar preparación</button><button type="button" disabled title="Conecta primero un motor de video autorizado.">Generar clip · Motor pendiente</button></div>'+
-    '<p class="studio-help">Aquí no se generan clips ni se consumen créditos. Duración, calidad, seed, audio y cantidad de variantes se validarán contra el motor cuando esté autorizado.</p></form>';
+    '<p class="studio-help">Genera en Flow con Santibáñez y x1. Con Veo, fotogramas: 4, 6 u 8 s; imágenes de referencia: 8 s. Después importa el resultado aquí.</p><div class="gen-cta"><button type="button" id="gen-copy-flow">Copiar prompt para Flow</button><a href="https://flow.google.com/" target="_blank" rel="noopener noreferrer">Abrir Google Flow</a></div><p class="studio-help">Las referencias se descargan desde cada fotograma. Estos controles no envían archivos ni consumen créditos.</p></form>';
  }
  function captureForm(){
   const f=root.querySelector('#gen-form');if(!f)return;
@@ -155,7 +174,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   draft={...draft,
    title:String(a.get('title')||''),prompt:String(a.get('prompt')||''),negative:String(a.get('negative')||''),continuity:String(a.get('continuity')||''),
    mode:String(a.get('mode')||'frames'),model:String(a.get('model')||'pendiente'),resolution:String(a.get('resolution')||'1080p'),aspect:String(a.get('aspect')||'9:16'),
-   duration:Number(a.get('duration')),fps:Number(a.get('fps')),variants:Number(a.get('variants')),
+   duration:Number(a.get('duration')),fps:Number(a.get('fps')),variants:1,
    seed:String(a.get('seed')||''),audio:a.has('audio'),preserveIdentity:a.has('preserveIdentity'),preserveComposition:a.has('preserveComposition')
   };
  }
@@ -171,7 +190,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   if(asset.kind==='video'){node.controls=true;node.preload='metadata';node.playsInline=true;}
   node.className='gen-stage-media';const st=root.querySelector('#gen-stage');st.replaceChildren(node);
   const caption=root.querySelector('#gen-preview-caption');if(caption)caption.textContent=asset.name;
-  activePreview=assetId;
+  activePreview=assetId;keep();
  }
  async function refreshThumbs(){
   for(const tile of root.querySelectorAll('[data-gen-image-thumb]')){
@@ -185,6 +204,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    const asset=assets.find(a=>a.id===id);if(!asset)continue;
    const u=await urlFor(id);if(!u||!t.isConnected)continue;
    const img=document.createElement('img');img.src=u;img.alt='Imagen de referencia: '+asset.name;img.loading='lazy';t.replaceChildren(img);
+   const download=root.querySelector('[data-ref-download="'+index+'"]');if(download){download.href=u;download.download=asset.name;}
    t.onclick=()=>preview(id);
   }
  }
@@ -194,8 +214,17 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   root.innerHTML='<div class="gen-workspace" data-gen-mobile-pane="'+mobileView+'">'+historyPanel()+previewPanel()+settingsPanel()+'<nav class="gen-mobile-dock" aria-label="Paneles de generación">'+[['history','Biblioteca'],['preview','Visor'],['configure','Prompts']].map(([id,label])=>'<button type="button" data-gen-mobile-tab="'+id+'" aria-pressed="'+(mobileView===id)+'">'+label+'</button>').join('')+'</nav></div>';
   wire();refreshThumbs();
   const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').append(hfRoot);
-  clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,onResult:async(file)=>{
-   const asset=await addMedia(db,file);assets=await listMedia(db);activePreview=asset.id;await preview(asset.id);notice('Clip de Wan guardado en la biblioteca local.');return asset;
+  clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,initialProvider:['ltx','wan'].includes(draft.model)?draft.model:'ltx',
+  onProviderChange:provider=>{captureForm();draft.model=provider;const selector=root.querySelector('[name="model"]');if(selector)selector.value=provider;keep();},
+  getRequest:async provider=>{
+   captureForm();const checked=validateGeneration(draft,assets);if(checked.error)throw new Error(checked.error);
+   if(draft.model!==provider)throw new Error('Selecciona '+provider.toUpperCase()+' en el motor de la escena o en este panel.');
+   if(draft.mode!=='frames'||![3,5].includes(draft.duration))throw new Error('LTX y Wan requieren fotogramas y duración de 3 o 5 segundos. Ajusta la escena antes de generar.');
+   if(provider==='wan'&&draft.refs.length>1)throw new Error('Wan solo usa el fotograma inicial. Quita el final o elige LTX.');
+   const req=checked.value;const originals=await Promise.all(req.refs.map(r=>readMedia(db,r.assetId)));if(originals.some(a=>!a?.blob))throw new Error('Falta un fotograma de la escena.');
+   return {request:req,image:originals[0].blob,endImage:originals[1]?.blob||null,prompt:provider==='ltx'?buildFlowPrompt(req):buildFlowPrompt({...req,negative:''}),negative:req.negative,duration:req.duration,aspect:req.aspect,seed:req.seed===''?42:Number(req.seed)};
+  },onResult:async(file,info,shared)=>{
+   const asset=await addMedia(db,file);const record=makeGenerationRecord(crypto.randomUUID(),{...shared.request,refs:shared.request.refs.map(r=>({...r})),variants:1});record.results=[{assetId:asset.id,addedAt:new Date().toISOString(),duration:info.duration}];record.status='imported';history.unshift(record);history=history.slice(0,MAX_RECORDS);selected=record.id;keep();assets=await listMedia(db);activePreview=asset.id;const hist=root.querySelector('.gen-history'),visor=root.querySelector('.gen-preview-panel');if(hist)hist.outerHTML=historyPanel();if(visor)visor.outerHTML=previewPanel();wire();await preview(asset.id);notice('Clip gratuito guardado en la biblioteca local.');return asset;
   },onTimeline:(asset,info)=>{
    const k=trackKeyFor(project);let workspace;
    try{workspace=parseWorkspace(JSON.parse(localStorage.getItem(k)||'null'))||defaultWorkspace();}catch{workspace=defaultWorkspace();}
@@ -205,6 +234,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    workspace.clips.push(clip);
    try{localStorage.setItem(k,JSON.stringify(workspace));notice('Clip generado añadido a V1.');openTimeline?.();}catch{notice('No se pudo guardar el timeline.');}
   }});
+
   if(activePreview)preview(activePreview);
  }
  const refreshImages=()=>{
@@ -238,7 +268,20 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
  }
  function wire(){
   const one=id=>root.querySelector('#'+id);
-  root.querySelectorAll('button[data-gen-mobile-tab]').forEach(btn=>btn.onclick=()=>{captureForm();mobileView=btn.dataset.genMobileTab;render();});
+  one('gen-backup').onclick=async()=>{
+   captureForm();keep();const button=one('gen-backup');button.disabled=true;
+   try{const workspace=parseWorkspace(JSON.parse(localStorage.getItem(trackKeyFor(project))||'null'));const blob=await exportProjectBundle(db,{draft,history,selected,activePreview,mobileView,workspace});const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='estudio066-proyecto-'+String(project?.id||'local')+'.studio066';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);notice('Respaldo completo descargado. Consérvalo para recuperar los archivos en otro navegador.');}catch(error){notice('No se creó el respaldo: '+error.message);}finally{if(button.isConnected)button.disabled=false;}
+  };
+  one('gen-restore').onchange=async ev=>{
+   const file=ev.target.files?.[0];if(!file)return;
+   const original=localStorage.getItem(key),originalTrack=localStorage.getItem(trackKeyFor(project));let imported=null;
+   try{
+    imported=await importProjectBundle(db,file,(records,entries)=>{const media=entries.map(a=>({...a,kind:a.mime.split('/')[0]}));return parseGenerationHistory(records).length===records.length&&records.every(r=>validateGeneration(r.request,media).value);});
+    const snap=imported.snapshot;localStorage.setItem(key,JSON.stringify(snap));if(snap.workspace)localStorage.setItem(trackKeyFor(project),JSON.stringify(snap.workspace));else localStorage.removeItem(trackKeyFor(project));
+    draft=snap.draft;history=snap.history;selected=snap.selected;activePreview=snap.activePreview;mobileView=snap.mobileView;assets=await listMedia(db);render();notice('Proyecto recuperado: archivos, referencias, parámetros y timeline. Los originales anteriores siguen en la biblioteca.');
+   }catch(error){if(imported){await discardRestoredAssets(db,imported.created);try{original===null?localStorage.removeItem(key):localStorage.setItem(key,original);originalTrack===null?localStorage.removeItem(trackKeyFor(project)):localStorage.setItem(trackKeyFor(project),originalTrack);}catch{}}notice('No se restauró el proyecto: '+error.message);}
+  };
+  root.querySelectorAll('button[data-gen-mobile-tab]').forEach(btn=>btn.onclick=()=>{captureForm();mobileView=btn.dataset.genMobileTab;keep();render();});
   root.querySelectorAll('[data-gen-quick-ref]').forEach(btn=>btn.onclick=()=>{
    captureForm();const id=btn.dataset.genQuickRef;
    const idx=draft.refs.findIndex(r=>r.assetId===id),limit=draft.mode==='frames'?2:3;
@@ -251,7 +294,15 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   root.querySelectorAll('[data-generation]').forEach(btn=>btn.onclick=()=>{captureForm();selected=btn.dataset.generation;activePreview=null;keep();render();});
   root.querySelectorAll('[data-preview-result]').forEach(btn=>btn.onclick=()=>preview(btn.dataset.previewResult));
   one('gen-new').onclick=()=>{draft=newGenerationDraft();selected=null;activePreview=null;keep();render();};
-  one('gen-clear-preview').onclick=()=>{activePreview=null;const st=one('gen-stage');if(st)st.innerHTML='<div class="gen-placeholder"><span class="gen-play-icon">▶</span><strong>Visor vacío</strong><small>Elige un fotograma o un clip importado.</small></div>';};
+  one('gen-clear-preview').onclick=()=>{activePreview=null;keep();const st=one('gen-stage');if(st)st.innerHTML='<div class="gen-placeholder"><span class="gen-play-icon">▶</span><strong>Visor vacío</strong><small>Elige un fotograma o un clip importado.</small></div>';};
+  one('gen-copy-flow').onclick=async()=>{
+   captureForm();const checked=validateGeneration(draft,assets);
+   if(checked.error)return notice(checked.error);
+   if(draft.model==='veo'&&(!['9:16','16:9'].includes(draft.aspect)||![4,6,8].includes(draft.duration)||(draft.mode==='images'&&draft.duration!==8)))return notice('Veo en Flow: formato 9:16 o 16:9; fotogramas 4, 6 u 8 segundos, referencias de imágenes 8 segundos.');
+   const text=buildFlowPrompt(checked.value);
+   try{await navigator.clipboard.writeText(text);notice('Prompt copiado. En Flow elige Santibáñez, el modelo, formato y duración de esta ficha, y x1.');}
+   catch{const u=URL.createObjectURL(new Blob([text],{type:'text/plain'}));const a=document.createElement('a');a.href=u;a.download='prompt-flow.txt';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);notice('Prompt descargado para pegarlo en Flow.');}
+  };
   const form=one('gen-form');
   form.oninput=ev=>{if(ev.target.name==='mode')return;captureForm();keep();};
   form.onchange=ev=>{
@@ -282,7 +333,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    if(files.length>available){notice('La solicitud admite máximo '+record.request.variants+' variantes. Selecciona '+available+' clips como máximo.');return;}
    let added=0;
    for(const file of files){if(!file.type.startsWith('video/')){notice('Selecciona archivos de video compatibles.');continue;}
-    try{const a=await addMedia(db,file);record.results.push({assetId:a.id,addedAt:new Date().toISOString()});added++;}
+    try{const info=await probeImportedVideo(file);const a=await addMedia(db,file);record.results.push({assetId:a.id,addedAt:new Date().toISOString(),duration:info.duration});added++;}
     catch(error){notice(error.message);}
    }
    if(added){record.status='imported';record.updatedAt=new Date().toISOString();assets=await listMedia(db);activePreview=record.results.at(-1)?.assetId||null;
@@ -290,7 +341,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     keep();render();notice(added+' clip(s) importados. No fueron generados por OP 066.');}
   };
   const send=one('gen-to-timeline');
-  if(send)send.onclick=()=>{
+  if(send)send.onclick=async()=>{
    const r=selectedRecord();
    const v=r?.results?.find(x=>x.assetId===activePreview)||r?.results?.[0];if(!v)return;
    const asset=assets.find(a=>a.id===v.assetId);
@@ -301,7 +352,10 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    catch{workspace=defaultWorkspace();}
    if(workspace.clips.length>=120)return notice('Límite de 120 clips del timeline.');
    if(workspace.clips.length===0){workspace.aspect=r.request.aspect;workspace.quality=['720p','1080p'].includes(r.request.resolution)?r.request.resolution:'1080p';workspace.fps=[24,30].includes(r.request.fps)?r.request.fps:24;}
-   const clip=addTimelineClip({...asset,duration:r.request.duration},workspace.clips);
+   let actualDuration=v.duration;
+   if(!Number.isFinite(actualDuration)){try{const original=await readMedia(db,asset.id);actualDuration=(await probeImportedVideo(original.blob)).duration;}catch(error){return notice(error.message);}}
+   const clip=addTimelineClip({...asset,duration:actualDuration},workspace.clips);
+   if(clip.start+clip.duration>600)return notice('El clip supera la duración disponible del timeline.');
    clip.prompt=[r.request.prompt,r.request.negative?'Avoid: '+r.request.negative:'',r.request.continuity?'Continuity: '+r.request.continuity:''].filter(Boolean).join('\n').slice(0,3000);clip.generationId=r.id;
    workspace.clips.push(clip);
    try{localStorage.setItem(k,JSON.stringify(workspace));notice('Clip añadido a V1. Abriendo timeline.');openTimeline?.();}
@@ -322,7 +376,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
     const res=await fetch('/api/console-066?op=studio-generations&projectId='+encodeURIComponent(projectId),{credentials:'same-origin'});
     const response=await res.json();if(!res.ok)throw new Error(response.error||'No se pudo recuperar el historial.');
     const remote=parseGenerationHistory(response.records.map(row=>({...row,id:row.id,createdAt:row.created_at,updatedAt:row.updated_at})));
-    const known=new Set(remote.map(x=>x.id));history=[...remote,...history.filter(x=>!known.has(x.id))].slice(0,MAX_RECORDS);
+    const known=new Set(remote.map(x=>x.id));history=[...remote.map(r=>history.find(local=>local.id===r.id&&local.syncPending)||r),...history.filter(x=>!known.has(x.id))].slice(0,MAX_RECORDS);
     keep();
    }catch(error){notice('Sin sincronización remota: '+error.message+'. Se conservarán los datos locales.');}}
    ready=true;render();
