@@ -208,7 +208,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
    try{localStorage.setItem(k,JSON.stringify(workspace));notice('Clip generado añadido a V1.');openTimeline?.();}catch{notice('No se pudo guardar el timeline.');}
   }});
   const nativeRoot=document.createElement('section');nativeRoot.className='hf-panel';root.querySelector('.gen-form').append(nativeRoot);
-  clearNativePanel=mountNativeWanPanel(nativeRoot,{projectId,onResult:async(file)=>{
+  clearNativePanel=mountNativeWanPanel(nativeRoot,{projectId,onFindAsset:id=>assets.find(asset=>asset.id===id),onResult:async(file)=>{
    const asset=await addMedia(db,file);assets=await listMedia(db);activePreview=asset.id;await preview(asset.id);notice('Clip nativo de Wan guardado en la biblioteca.');return asset;
   },onTimeline:(asset,info)=>{
    const k=trackKeyFor(project);let workspace;
