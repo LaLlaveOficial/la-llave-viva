@@ -1,15 +1,25 @@
 // Experimental Wan adapter. Credentials exist only in this instance's memory.
 export const WAN_SPACE='https://zerogpu-aoti-wan2-2-fp8da-aoti-faster.hf.space';
+export const LTX_SPACE='https://linoyts-ltx-2-3-first-last-frame.hf.space';
+export const FREE_VIDEO_PROVIDERS=Object.freeze({
+ wan:Object.freeze({name:'Wan 2.2 · 14B',origin:WAN_SPACE,expectedFps:16,audio:false,inputs:['image','textbox','slider','textbox','slider','slider','slider','slider','checkbox']}),
+ ltx:Object.freeze({name:'LTX-2.3 · inicio y final',origin:LTX_SPACE,expectedFps:24,audio:true,inputs:['image','image','audio','textbox','slider','checkbox','slider','checkbox','number','number']})
+});
 const HUB='https://huggingface.co';
 const MAX_VIDEO=150*1024*1024;
 export class WanFreeClient {
- #token=''; #fetch;
+ #token=''; #fetch; #provider='wan'; #running=false; #anonymous=false;
+ get provider(){return this.#provider;}
+ get profile(){return FREE_VIDEO_PROVIDERS[this.#provider];}
+ selectProvider(id){if(this.#running)throw new Error('Espera a que termine la generación.');if(!Object.hasOwn(FREE_VIDEO_PROVIDERS,id))throw new Error('Motor gratuito no autorizado.');this.#provider=id;}
  constructor(fetcher=globalThis.fetch){this.#fetch=fetcher.bind(globalThis);}
- get connected(){return Boolean(this.#token);}
- disconnect(){this.#token='';}
+ get connected(){return Boolean(this.#token)||this.#anonymous;}
+ get anonymous(){return this.#anonymous;}
+ useAnonymous(){if(this.#running)throw new Error('Espera a que termine la generación.');this.#token='';this.#anonymous=true;}
+ disconnect(){this.#token='';this.#anonymous=false;}
  async #request(url,options={},token=this.#token){
   const origin=new URL(url).origin;
-  if(![HUB,WAN_SPACE].includes(origin))throw new Error('Destino no autorizado.');
+  if(![HUB,WAN_SPACE,LTX_SPACE].includes(origin))throw new Error('Destino no autorizado.');
   const response=await this.#fetch(url,{...options,credentials:'omit',redirect:'error',referrerPolicy:'no-referrer',headers:{...options.headers,...(token?{Authorization:'Bearer '+token}:{})}});
   if(!response.ok)throw new Error(response.status===401?'Token no válido.':response.status===403?'Hugging Face rechazó el acceso.':'El proveedor no respondió correctamente (HTTP '+response.status+').');
   return response;
@@ -26,22 +36,35 @@ export class WanFreeClient {
   this.#token=token;
   return {name:String(account.name||'Cuenta gratuita').slice(0,100)};
  }
- async generate({image,prompt,negative='',duration=3,seed=42},signal,onStatus=()=>{}){
+ async generate({image,endImage=null,prompt,negative='',duration=3,seed=42,steps=6,aspect='9:16'},signal,onStatus=()=>{}){
+  if(this.#running)throw new Error('Ya hay una generación en curso.');
+  const provider=this.#provider,profile=this.profile,space=profile.origin;
   if(!this.connected)throw new Error('Conecta primero tu cuenta gratuita.');
   if(!image||!/^image\/(png|jpeg|webp)$/.test(image.type)||image.size<1||image.size>8*1024*1024)throw new Error('Usa una imagen PNG, JPEG o WebP de hasta 8 MB.');
   if(!String(prompt).trim()||String(prompt).length>4000||String(negative).length>2000||![3,5].includes(duration)||!Number.isSafeInteger(seed)||seed<0||seed>2147483647)throw new Error('Revisa el prompt y los parámetros de la prueba.');
+  if(endImage&&(provider!=='ltx'||!/^image\/(png|jpeg|webp)$/.test(endImage.type)||endImage.size<1||endImage.size>8*1024*1024))throw new Error('El fotograma final requiere LTX y una imagen de hasta 8 MB.');
+  if(![4,6,8].includes(steps)||!['9:16','16:9','1:1'].includes(aspect))throw new Error('Perfil gratuito inválido.');
+  if(provider==='ltx'&&negative.trim())throw new Error('LTX no admite prompt negativo separado. Describe las restricciones en el prompt.');
+  this.#running=true;
+  try{
   const token=this.#token; // A request cannot silently adopt a different account.
-  onStatus('Enviando referencia a Hugging Face…');
-  const form=new FormData();form.append('files',image,image.name||'reference.jpg');
-  const uploaded=await (await this.#request(WAN_SPACE+'/gradio_api/upload',{method:'POST',body:form,signal},token)).json();
-  if(!Array.isArray(uploaded)||uploaded.length!==1||typeof uploaded[0]!=='string'||!uploaded[0].startsWith('/tmp/'))throw new Error('No se recibió la referencia subida.');
-  const config=await (await this.#request(WAN_SPACE+'/config',{signal},token)).json();
+  const config=await (await this.#request(space+'/config',{signal},token)).json();
   const fn=config.dependencies?.find(d=>d.api_name==='generate_video');
-  if(!Number.isSafeInteger(fn?.id))throw new Error('La API de Wan cambió. La prueba necesita revisión.');
+  const components=new Map((config.components||[]).map(c=>[c.id,c]));
+  if(!Number.isSafeInteger(fn?.id)||!Array.isArray(fn.inputs)||fn.inputs.length!==profile.inputs.length||fn.inputs.some((id,i)=>components.get(id)?.type!==profile.inputs[i]))throw new Error('La API del motor cambió. Revisa la integración antes de enviar referencias.');
+  onStatus('Enviando referencia a Hugging Face…');
+  const upload=async(file)=>{
+   const form=new FormData();form.append('files',file,file.name||'reference.jpg');
+   const uploaded=await (await this.#request(space+'/gradio_api/upload',{method:'POST',body:form,signal},token)).json();
+   if(!Array.isArray(uploaded)||uploaded.length!==1||typeof uploaded[0]!=='string'||!uploaded[0].startsWith('/tmp/'))throw new Error('No se recibió la referencia subida.');
+   return {path:uploaded[0],meta:{_type:'gradio.FileData'}};
+  };
+  const first=await upload(image),last=endImage?await upload(endImage):null;
   const session=crypto.randomUUID();
-  const data=[{path:uploaded[0],meta:{_type:'gradio.FileData'}},prompt,4,negative,duration,1,1,seed,false];
-  await this.#request(WAN_SPACE+'/gradio_api/queue/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fn_index:fn.id,session_hash:session,data}),signal},token);
-  const events=await this.#request(WAN_SPACE+'/gradio_api/queue/data?session_hash='+encodeURIComponent(session),{signal},token);
+  const [width,height]=({'9:16':[576,1024],'16:9':[1024,576],'1:1':[1024,1024]})[aspect];
+  const data=provider==='ltx'?[first,last,null,prompt,duration,false,seed,false,height,width]:[first,prompt,steps,negative,duration,1,1,seed,false];
+  await this.#request(space+'/gradio_api/queue/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fn_index:fn.id,session_hash:session,data}),signal},token);
+  const events=await this.#request(space+'/gradio_api/queue/data?session_hash='+encodeURIComponent(session),{signal},token);
   if(!events.body)throw new Error('El proveedor no abrió la cola de generación.');
   const reader=events.body.getReader(),decoder=new TextDecoder();let pending='',result;
   try {
@@ -59,7 +82,7 @@ export class WanFreeClient {
      if(event.msg==='process_completed'){
       if(!event.success){
        const error=String(event.output?.error||'');
-       throw new Error(/quota/i.test(error)?'Se agotó o no alcanza la cuota gratuita. Espera su renovación; no se activa ningún servicio pagado.':'Wan no completó la generación. La referencia ya se envió; revisa el proveedor antes de volver a intentarlo.');
+       throw new Error(/quota/i.test(error)?'Se agotó o no alcanza la cuota gratuita. Espera su renovación; no se activa ningún servicio pagado.':'El motor no completó la generación. La referencia ya se envió; revisa el proveedor antes de volver a intentarlo.');
       }
       result=event.output?.data;break;
      }
@@ -68,9 +91,9 @@ export class WanFreeClient {
    }
   }finally{await reader.cancel().catch(()=>{});}
   const file=result?.[0];
-  if(!file?.url)throw new Error('Wan no devolvió un archivo de video.');
+  if(!file?.url)throw new Error('El motor no devolvió un archivo de video.');
   const url=new URL(file.url);
-  if(url.origin!==WAN_SPACE||!url.pathname.startsWith('/gradio_api/file='))throw new Error('Destino del video no autorizado.');
+  if(url.origin!==space||!url.pathname.startsWith('/gradio_api/file='))throw new Error('Destino del video no autorizado.');
   onStatus('Descargando el MP4…');
   const video=await this.#request(url.href,{signal},token);
   if(Number(video.headers.get('content-length'))>MAX_VIDEO)throw new Error('El clip supera el límite de 150 MB.');
@@ -80,5 +103,6 @@ export class WanFreeClient {
   finally{await body.cancel().catch(()=>{});}
   if(size<1)throw new Error('El archivo de video está vacío.');
   return new Blob(chunks,{type:'video/mp4'});
+  }finally{this.#running=false;}
  }
 }

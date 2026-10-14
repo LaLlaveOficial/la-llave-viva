@@ -1,0 +1,43 @@
+name: Estudio 066 native Wan contract and browser checks
+on:
+  pull_request:
+    paths:
+      - 'deploy/studio066-wan/**'
+      - 'lib/studio-wan066.js'
+      - 'public/centro-066/studio-wan-panel.js'
+      - 'public/centro-066/studio-generation.js'
+      - 'public/centro-066/studio-hf-*'
+      - 'tests/studio066-hf*'
+      - 'vercel.json'
+      - 'tests/studio066-wan-*'
+      - '.github/workflows/studio066-wan-ci.yml'
+permissions:
+  contents: read
+jobs:
+  native-wan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright jsdom fake-indexeddb
+      - run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: CPU and native fixture verification
+        run: |
+          node --test tests/studio066-wan-api.test.mjs tests/studio066-wan-auth.test.mjs
+          python3 tests/studio066-wan-worker.test.py
+          node --check api/console-066.js
+          node --check public/centro-066/studio-generation.js
+          node --check public/centro-066/studio-wan-panel.js
+      - name: Browser result import and job recovery with mocked provider
+        run: node tests/studio066-wan-browser.test.mjs
+      - name: Free LTX/Wan contracts and real browser import with simulated provider
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: |
+          node --test tests/studio066-hf.test.mjs tests/studio066-generation.test.mjs
+          node tests/studio066-hf-browser.test.mjs
+          npm run build
