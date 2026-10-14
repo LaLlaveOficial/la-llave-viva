@@ -213,7 +213,7 @@ export function studioGenerationView(root,notice,project,openTimeline,request){
   clearHfPanel?.();
   root.innerHTML='<div class="gen-workspace" data-gen-mobile-pane="'+mobileView+'">'+historyPanel()+previewPanel()+settingsPanel()+'<nav class="gen-mobile-dock" aria-label="Paneles de generación">'+[['history','Biblioteca'],['preview','Visor'],['configure','Prompts']].map(([id,label])=>'<button type="button" data-gen-mobile-tab="'+id+'" aria-pressed="'+(mobileView===id)+'">'+label+'</button>').join('')+'</nav></div>';
   wire();refreshThumbs();
-  const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').after(hfRoot);
+  const hfRoot=document.createElement('section');hfRoot.className='hf-panel';root.querySelector('.gen-form').append(hfRoot);
   clearHfPanel=mountWanPanel(hfRoot,{client:hfClient,initialProvider:['ltx','wan'].includes(draft.model)?draft.model:'ltx',
   onProviderChange:provider=>{captureForm();draft.model=provider;const selector=root.querySelector('[name="model"]');if(selector)selector.value=provider;keep();},
   getRequest:async provider=>{
