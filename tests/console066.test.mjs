@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {scryptSync} from 'node:crypto';
-import {configuration,cookie,readToken,verifyPassword,verifyConfiguredPassword,validateLeadUpdate} from '../lib/console-security.js';
+import {configuration,sameOrigin,cookie,readToken,verifyPassword,verifyConfiguredPassword,validateLeadUpdate} from '../lib/console-security.js';
 import {makeHandler} from '../api/console-066.js';
 const salt='ab'.repeat(16),password='test-only-access-066';
 const env={CONSOLE_ORIGIN:'https://lallaveoficial.com',CONSOLE_PASSWORD_HASH:salt+':'+scryptSync(password,salt,64).toString('hex'),CONSOLE_SESSION_SECRET:'test-only-secret-'.repeat(3),DATABASE_URL:'postgresql://test-only'};
@@ -19,3 +19,23 @@ test('expired or forged sessions cannot read leads',async()=>{let calls=0;const 
 test('blank approval and invalid states are rejected',()=>{const b={id:1,version:0,status:'Por verificar',notes:'',message:'',approved:true};assert.equal(validateLeadUpdate(b),null);assert.equal(validateLeadUpdate({...b,message:'Hola',status:'invalid'}),null);assert.ok(validateLeadUpdate({...b,message:'Hola'}));});
 test('stale update produces a conflict rather than overwriting a newer review',async()=>{let count=0;const handler=makeHandler(()=>async()=>++count===1?[{token_hash:'exists'}]:[],env);const r=req('POST','lead',{id:1,version:0,status:'Por verificar',notes:'',message:'Hola',approved:false});r.headers.cookie=cookie('a'.repeat(43));const res=response();await handler(r,res);assert.equal(res.code,409);assert.equal(count,2);});
 test('logout revokes the server session and expires cookie',async()=>{let count=0;const handler=makeHandler(()=>async()=>++count===1?[{token_hash:'exists'}]:[],env);const r=req('POST','logout',{});r.headers.cookie=cookie('a'.repeat(43));const res=response();await handler(r,res);assert.equal(res.code,200);assert.match(res.headers['Set-Cookie'],/Max-Age=0/);assert.equal(count,2);});
+
+test('preview accepts only exact platform deployment and branch origins',async()=>{
+ const preview={...env,VERCEL:'1',VERCEL_ENV:'preview',VERCEL_URL:'la-llave-viva-preview-team.vercel.app',VERCEL_BRANCH_URL:'la-llave-viva-git-feature-team.vercel.app'};
+ const cfg=configuration(preview);
+ for(const host of [preview.VERCEL_URL,preview.VERCEL_BRANCH_URL]){
+  const r=req('POST','login',{password});r.headers.origin='https://'+host;
+  const handler=makeHandler(()=>async(parts)=>String(parts).includes('console066_login_limits')?[{bucket:'global',attempts:1}]:[],preview);
+  const res=response();await handler(r,res);assert.equal(res.code,200);assert.match(res.headers['Set-Cookie'],/HttpOnly; Secure; SameSite=Strict/);
+ }
+ for(const origin of ['https://attacker.vercel.app','https://'+preview.VERCEL_URL+'.evil.com','http://'+preview.VERCEL_URL,'null',undefined]){
+  assert.equal(sameOrigin({headers:{origin,host:preview.VERCEL_URL,'x-forwarded-host':preview.VERCEL_URL}},cfg),false);
+ }
+ assert.equal(sameOrigin({headers:{origin:'https://'+preview.VERCEL_URL}},configuration({...preview,VERCEL_ENV:'production'})),false);
+ assert.equal(sameOrigin({headers:{origin:'https://'+preview.VERCEL_URL}},configuration({...preview,VERCEL:undefined})),false);
+});
+test('malformed preview environment hosts never become trusted origins',()=>{
+ for(const host of ['attacker.com','https://trusted.vercel.app','trusted.vercel.app/','trusted.vercel.app:443','user@trusted.vercel.app','trusted.vercel.app.evil.com']){
+  const cfg=configuration({...env,VERCEL:'1',VERCEL_ENV:'preview',VERCEL_URL:host});assert.deepEqual(cfg.origins,[env.CONSOLE_ORIGIN]);
+ }
+});
