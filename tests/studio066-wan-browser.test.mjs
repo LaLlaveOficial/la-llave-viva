@@ -43,7 +43,7 @@ try{
    const db=await mediaDB();window.imported=[];window.clips=[];window.assets=await listMedia(db);
    window.options={projectId:1,onFindAsset:id=>window.assets.find(x=>x.id===id),
     onResult:async file=>{const asset=await addMedia(db,file);window.imported.push(asset);window.assets.push(asset);return asset;},
-    onTimeline:(asset,info)=>window.clips.push(addTimelineClip({...asset,duration:info.duration},window.clips))};
+    onTimeline:(asset,info)=>{window.clipInfo=info;window.clips.push(addTimelineClip({...asset,duration:info.duration},window.clips));}};
    window.dispose=mountNativeWanPanel(document.getElementById('root'),window.options);
   },{stored,id});
   await page.locator('summary').click();
@@ -64,9 +64,11 @@ try{
  await running.page.waitForFunction(()=>window.imported.length===1);
  assert.equal(running.count(),1);
  const imported=await running.page.evaluate(()=>window.imported[0]);
- assert.equal(imported.width,704);assert.equal(imported.height,1280);assert.ok(Math.abs(imported.duration-73/24)<.1);
+ assert.equal(imported.kind,'video');assert.equal(imported.mime,'video/mp4');
  await running.page.locator('[data-timeline]').click();
  assert.equal(await running.page.evaluate(()=>window.clips.length),1);
+ const clipInfo=await running.page.evaluate(()=>window.clipInfo);
+ assert.equal(clipInfo.width,704);assert.equal(clipInfo.height,1280);assert.ok(Math.abs(clipInfo.duration-73/24)<.1);
  await running.page.evaluate(()=>{window.dispose();window.dispose=undefined;});
  await running.page.evaluate(async()=>{const {mountNativeWanPanel}=await import('/public/centro-066/studio-wan-panel.js');window.dispose=mountNativeWanPanel(document.getElementById('root'),window.options);});
  await running.page.waitForFunction(()=>!document.querySelector('[data-timeline]').disabled);
