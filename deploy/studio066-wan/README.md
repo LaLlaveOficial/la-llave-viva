@@ -21,7 +21,9 @@ The worker returns a base64 MP4 plus measured resolution/fps/duration. It encode
 
 ## Local checks
 
-`python3 tests/studio066-wan-worker.test.py` tests validation, the native command contract and actual fixture-MP4 decoding without a GPU or provider call. `node --test tests/studio066-wan-api.test.mjs` verifies disabled/over-budget configuration, input checks, duplicate job suppression, uncertain submission handling and result dimensions. Browser QA, container build and a real generation remain outstanding.
+`python3 tests/studio066-wan-worker.test.py` tests validation, the native command contract and actual fixture-MP4 decoding without a GPU or provider call. `node --test tests/studio066-wan-api.test.mjs tests/studio066-wan-auth.test.mjs` verifies disabled/over-budget configuration, input checks, duplicate job suppression, uncertain submission handling, result dimensions, console authentication and origin checks. `tests/studio066-wan-browser.test.mjs` exercises real MP4 import and timeline insertion, recovery without duplicate media, UNKNOWN locks and preparing the next test with mocked provider responses. Local browser installation was unavailable; the dedicated GitHub Actions workflow runs browser checks. Container build and a real generation remain outstanding.
+
+The panel retains its last job across navigation. A completed result reuses an already-imported library asset. An authenticated 404 or confirmed terminal status can unlock the explicit next-test action when the backend's daily quota permits it. UNKNOWN submissions cannot unlock it. Pausing new submissions does not disable authenticated status recovery.
 
 Sources checked on 2026-10-13:
 - https://github.com/Wan-Video/Wan2.2/blob/1ea34ff48f87168174e12956e200b1d908b1c5ff/wan/configs/wan_ti2v_5B.py
