@@ -54,12 +54,16 @@ async function growthView(c){
 function summary(){
  const count=state=>data.leads.filter(l=>l.status===state).length;
  const pending=count('Por verificar')+count('Listo para contactar');
+ const contacted=data.leads.filter(l=>['Contactado','En conversación','Cerrado'].includes(l.status)).length;
+ const rejected=data.leads.filter(l=>l.status==='Cerrado'&&l.notes.includes('[resultado:rechazado]')).length;
+ const closed=count('Cerrado')-rejected;
+ const uncontacted=data.leads.length-contacted;
  const cards=view==='tasks'?
  [['Tareas de plataforma',data.tasks.length],['Tareas pendientes',data.tasks.filter(t=>t.status!=='Completado').length],['Tareas completadas',data.tasks.filter(t=>t.status==='Completado').length]]:
- [['Oportunidades totales',data.leads.length],['Pendientes de enviar',pending],['Enviados · sin conversación',count('Contactado')],['En conversación',count('En conversación')],['Completados · cerrados',count('Cerrado')],['No contactar',count('No contactar')]];
+ [['Contactos obtenidos',data.leads.length],['Contactos con comunicación',contacted],['En conversación',count('En conversación')],['Sin respuesta a la propuesta',count('Contactado')],['Sin comunicación',uncontacted],['Rechazados por destinatario',rejected],['Otros cierres · descartes del autor',closed]];
  return '<div class="stats">'+cards.map(([label,n])=>'<div class="stat"><span>'+label+'</span><strong>'+n+'</strong></div>').join('')+'</div>'+
  (view==='tasks'?'<p class="note">Estas son tareas de plataforma, separadas de los contactos literarios.</p>':
- '<p class="note">Pendientes de enviar: '+count('Por verificar')+' por verificar y '+count('Listo para contactar')+' listos para contactar. Enviados, en conversación y cerrados se cuentan por separado. Aprobar un mensaje no confirma su envío; cerrar un contacto indica que su seguimiento terminó.</p>')+
+ '<p class="note">Cada ficha cuenta una vez, aunque tenga correo e Instagram. Con comunicación incluye conversaciones, propuestas sin respuesta y cierres. Sin comunicación: '+pending+' pendientes de verificar o enviar y '+count('No contactar')+' excluidos antes del contacto. Un acuse automático no cuenta como conversación. Un rechazo se registra con su motivo; los descartes del autor se muestran aparte. Sin respuesta significa que la propuesta sigue pendiente según la última revisión registrada.</p>')+
  '<div class="actions"><button id="refresh-opportunities" class="subtle">Actualizar contadores</button><span id="opportunity-checked" class="note">Actualización automática cada 30 segundos mientras la consola está visible.</span></div>';
 }
 function bindSummary(){const b=document.querySelector('#refresh-opportunities');if(b)b.onclick=()=>refreshOpportunities(true);}
