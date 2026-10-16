@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';import fs from 'node:fs/promises';import {scryptSync} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+import {makeHandler} from '../api/console-066.js';
+import {approvedBrandContext,agentWorkspaceContext,payloadHash} from '../lib/marketing-workspace.js';
+const db=new PGlite();
+await db.exec(await fs.readFile(new URL('../migrations/20261007_console066.sql',import.meta.url),'utf8'));
+const migration=await fs.readFile(new URL('../migrations/20261016_marketing_workspace.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
+await db.exec("CREATE TABLE orders(external_reference text PRIMARY KEY,payment_status text); INSERT INTO orders VALUES ('real-order','approved'),('test-september','approved'),('test-october','approved'),('pending-order','pending')");
+const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
+const salt='ab'.repeat(16),password='test-only-marketing';
+const env={CONSOLE_ORIGIN:'https://example.com',CONSOLE_PASSWORD_HASH:salt+':'+scryptSync(password,salt,64).toString('hex'),CONSOLE_SESSION_SECRET:'test-marketing-secret-'.repeat(3),DATABASE_URL:'postgresql://test'};
+const handler=makeHandler(()=>sql,env);let cookie='';
+async function call(op,body,origin=env.CONSOLE_ORIGIN){const res={headers:{},setHeader(k,v){this.headers[k]=v},status(n){this.statusCode=n;return this},json(v){this.body=v;return this}};await handler({method:body?'POST':'GET',query:{op},body,headers:{origin,'content-type':'application/json',cookie}},res);return res;}
+assert.equal((await call('marketing-workspace')).statusCode,401);
+const login=await call('login',{password});assert.equal(login.statusCode,200);cookie=login.headers['Set-Cookie'].split(';')[0];
+assert.equal((await call('marketing-save',{},'https://attacker.example')).statusCode,403);
+async function save(kind,id,data,status='draft',version=0){return call('marketing-save',{kind,id,data:{title:id,...data},status,version});}
+let r=await save('brand','brand',{author:'Enrique G. Santibañez',rules:'Una muestra por solicitud.'});assert.equal(r.statusCode,200);assert.equal(r.body.record.version,1);
+assert.equal((await save('brand','brand',{},'draft',0)).statusCode,409);
+assert.equal((await approvedBrandContext(sql)).length,0);
+r=await call('marketing-approve',{id:'brand',version:1});assert.equal(r.statusCode,200);assert.equal(r.body.sent,false);assert.equal((await approvedBrandContext(sql)).length,1);
+assert.equal((await call('marketing-approve',{id:'brand',version:1})).statusCode,409);
+r=await save('brand','brand',{author:'Enrique',rules:'Nueva revisión'},'draft',2);assert.equal(r.statusCode,200);assert.equal(r.body.record.approved_hash,null);assert.equal((await approvedBrandContext(sql)).length,0);
+let p=await save('product','physical',{title:'La Llave I',country:'Chile',format:'físico',url:'https://www.lallaveoficial.com/comprar',price:15990,currency:'CLP'});assert.equal(p.statusCode,200);
+p=await call('marketing-approve',{id:'physical',version:1});assert.equal(p.statusCode,200);assert.equal(p.body.record.approved_hash,payloadHash(p.body.record.data));
+const reply=await call('marketing-reply',{productId:'physical',channel:'tiktok',campaign:'booktrailer',content:'caso1'});assert.equal(reply.statusCode,200);assert.equal(reply.body.sent,false);assert.match(reply.body.text,/utm_campaign=booktrailer/);
+await save('case','sale-case',{orderRef:'real-order',question:'PRIVATE BUYER CONVERSATION'},'new');
+assert.equal((await call('marketing-purchase',{id:'sale-case',version:1})).statusCode,409);
+assert.equal((await save('order-label','label-real',{orderRef:'real-order',reason:'Pago de cliente real confirmado por propietario.'},'real')).statusCode,200);
+r=await call('marketing-purchase',{id:'sale-case',version:1});assert.equal(r.statusCode,200);assert.equal(r.body.record.status,'purchased');
+assert.equal((await save('case','sale-case',{orderRef:'other'},'new',2)).statusCode,409);
+assert.equal((await save('order-label','label-real',{orderRef:'real-order',reason:'Intento de cambiar clasificación.'},'test',1)).statusCode,409);
+await save('case','duplicate-case',{orderRef:'real-order'},'new');assert.equal((await call('marketing-purchase',{id:'duplicate-case',version:1})).statusCode,409);
+for(const ref of ['test-september','test-october']){await save('order-label','label-'+ref,{orderRef:ref,reason:'Compra de prueba confirmada por propietario.'},'test');await save('case','case-'+ref,{orderRef:ref},'new');assert.equal((await call('marketing-purchase',{id:'case-'+ref,version:1})).statusCode,409);}
+await save('order-label','pending-label',{orderRef:'pending-order',reason:'Clasificación explícita sin acreditar pago.'},'real');await save('case','pending-case',{orderRef:'pending-order'},'new');assert.equal((await call('marketing-purchase',{id:'pending-case',version:1})).statusCode,409);
+assert.equal((await save('order-label','missing-label',{orderRef:'missing',reason:'No existe este pedido para clasificar.'},'real')).statusCode,400);
+const content=await save('content','reel1',{copy:'Copy de prueba',dueAt:'2026-10-17T10:00:00Z'},'review');assert.equal(content.statusCode,200);assert.equal((await call('marketing-approve',{id:'reel1',version:1})).statusCode,200);
+assert.equal((await save('content','reel1',{copy:'Nueva versión'},'draft',2)).statusCode,200);
+const workspace=await call('marketing-workspace');assert.equal(workspace.statusCode,200);assert.equal(workspace.body.summary.purchases,1);assert.equal(workspace.body.summary.approvedPieces,0);
+assert.ok(!JSON.stringify(await agentWorkspaceContext(sql)).includes('PRIVATE BUYER CONVERSATION'));
+assert.equal((await db.query("SELECT count(*)::int n FROM console066_audit WHERE action='purchase-verified'")).rows[0].n,1);
+assert.equal((await db.query("SELECT count(*)::int n FROM orders")).rows[0].n,4);
+console.log('Marketing SQL/API integration passed: additive repeatable migration, auth/origin, optimistic concurrency, exact approval/reset, approved catalog/UTM, payment evidence, test separation, duplicate protection, private buyer isolation and unchanged orders.');
+await db.close();

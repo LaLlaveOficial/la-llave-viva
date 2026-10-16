@@ -1,3 +1,4 @@
+import {workspaceApi,approvedBrandContext} from '../lib/marketing-workspace.js';
 import {ga4Credential,ga4Sync} from '../lib/ga4-connect.js';
 import {metaAdsSync} from '../lib/meta-ads-connect.js';
 import {apolloCredential,apolloQuery,matchApolloCandidates,validateApolloSearch} from '../lib/apollo-connect.js';
@@ -127,6 +128,10 @@ export function makeHandler(connect = neon, env = process.env) {
         try{const gaEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};return res.status(200).json(op==='ga4-authorize'?await ga4Credential('authorize',gaEnv):await ga4Sync(sql,body,gaEnv));}
         catch(e){return res.status(502).json({error:e.message});}
       }
+      if(['marketing-workspace','marketing-save','marketing-approve','marketing-purchase','marketing-reply','marketing-history'].includes(op)){
+        if(req.method!==(op==='marketing-workspace'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        const {status,...result}=await workspaceApi(sql,op,body);return res.status(status).json(result);
+      }
       if(op==='metrics'&&req.method==='GET')return res.status(200).json(await privateMetrics(sql));
       if(op==='video-list'&&req.method==='GET')return res.status(200).json(await videoRequest('list',{},env));
       if(op==='video-render'&&req.method==='POST')return res.status(202).json(await videoRequest('render',body,env));
@@ -171,7 +176,8 @@ export function makeHandler(connect = neon, env = process.env) {
             const apollo=await sql`SELECT detail FROM console066_audit WHERE entity='apollo' AND action='apollo-search' ORDER BY id DESC LIMIT 1`;
             apolloContext=apollo[0]?.detail||null;
           }
-          body.text=marketingText(body.purpose,metrics,leads,apolloContext);
+          let brand=[];try{brand=await approvedBrandContext(sql);}catch{/* Missing workspace is reported to the agent, never fabricated. */}
+          body.text=marketingText(body.purpose,metrics,leads,apolloContext,brand);
         }
         try{return res.status(200).json(await houstonMission(body,env));}
         catch(e){return res.status(502).json({error:e.message});}
