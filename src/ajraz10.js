@@ -865,12 +865,6 @@ function activatePromo(
 }
 
 function injectCheckoutPromo() {
-  if (
-    !campaignActive() &&
-    !previewEnabled()
-  ) {
-    return;
-  }
 
   const form =
     document.querySelector(
@@ -1027,6 +1021,9 @@ function injectCheckoutPromo() {
     block.querySelector(
       "#ajraz10-code-input"
     );
+  if (!campaignActive() && !previewEnabled()) block.querySelector('.ajraz10-unlock').hidden = true;
+  const offeredCode = new URLSearchParams(location.search).get('promo') || '';
+  if (/^[A-Z0-9_-]{3,24}$/i.test(offeredCode)) codeInput.value = offeredCode.toUpperCase();
 
   const apply =
     block.querySelector(
