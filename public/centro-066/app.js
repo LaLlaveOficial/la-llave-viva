@@ -1,3 +1,4 @@
+import {marketingWorkspaceView} from './marketing-workspace.js';
 import {videoPanel} from './video-066.js';
 import {studioView} from './studio.js';
 import {ga4Panel} from './ga4.js';
@@ -13,11 +14,11 @@ function notice(message){const n=document.querySelector('#notice');n.textContent
 async function request(op,body){const r=await fetch(`/api/console-066?op=${op}`,{credentials:'same-origin',method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const result=await r.json();if(!r.ok){const e=new Error(result.error||'No se pudo completar la acción.');e.status=r.status;throw e;}return result;}
 async function load(){try{data=await request('data');render();}catch(e){if(e.status===401||e.status===503){login(e.status===503?e.message:'');}else login(e.message);}}
 function login(error=''){clearInterval(agentTimer);data=null;app.innerHTML=`<section class="login panel"><div class="brand">LA LLAVE <span>066</span></div><div class="eyebrow">CENTRO DE OPERACIONES</div><h1>Bienvenido, Kike.</h1><p class="intro">Un lugar para revisar oportunidades, preparar contactos y avanzar los pendientes.</p><form id="login"><label>Clave de acceso<input name="password" type="password" autocomplete="current-password" minlength="12" maxlength="256" required></label><button>Entrar a la consola</button><p class="error" role="alert">${escape(error)}</p></form><p class="note">Acceso privado. Los datos se muestran después de iniciar sesión.</p></section>`;document.querySelector('#login').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;try{await request('login',{password:new FormData(e.target).get('password')});await load();}catch(err){e.target.querySelector('.error').textContent=err.message;b.disabled=false;}};}
-const navItems=[['overview','Vista general','◈'],['metrics','Métricas y ventas','▥'],['googleAds','Google Ads','↗'],['marketing','Marketing','✦'],['studio','Estudio Creativo','◉'],['growth','Comunidad y redes','◎'],['apollo','Apollo','⌕'],['leads','Oportunidades','◇'],['messages','Mensajes','▤'],['tasks','Tareas de plataforma','☷'],['agents','Agentes y conexiones','⌘']];
+const navItems=[['overview','Vista general','◈'],['metrics','Métricas y ventas','▥'],['googleAds','Google Ads','↗'],['workspace','Centro de marketing','▦'],['marketing','Agentes de marketing','✦'],['studio','Estudio Creativo','◉'],['growth','Comunidad y redes','◎'],['apollo','Apollo','⌕'],['leads','Oportunidades','◇'],['messages','Mensajes','▤'],['tasks','Tareas de plataforma','☷'],['agents','Agentes y conexiones','⌘']];
 function render(){
- const names={overview:'Tu universo, en movimiento.',leads:'Oportunidades de lectura',messages:'Mensajes para revisar',tasks:'Tareas de plataforma',agents:'Agentes y conexiones',metrics:'Métricas y ventas',googleAds:'Google Ads',marketing:'Marketing',studio:'Estudio Creativo 066',growth:'Comunidad y redes',apollo:'Prospección Apollo'};
- const intros={overview:'La Llave · Centro de operaciones. Decide el próximo paso con tus datos a la vista.',leads:'Encuentra afinidad, revisa la fuente y convierte un hallazgo en una conversación.',messages:'Textos preparados, destinatarios claros y aprobación del mensaje exacto.',tasks:'El trabajo de plataforma, separado del seguimiento de contactos.',agents:'Consulta quién está trabajando, su función y los resultados de sus tareas.',metrics:'Ventas, audiencia y publicidad: cada dato conserva su fuente y periodo.',googleAds:'Campañas, recomendaciones y análisis con acceso directo a Google Ads.',marketing:'Prepara contenido y decisiones a partir de la información disponible.',studio:'Cine, fotogramas, voces y creatividades. Preparación privada sin generar gastos.',growth:'Instagram y TikTok: oportunidades, contenido y crecimiento de la comunidad.',apollo:'Organizaciones y contactos profesionales para investigar.'};
- app.innerHTML=`<div class="shell ${view==='studio'?'studio-mode':''}"><aside><a class="brand" href="https://www.lallaveoficial.com/" target="_blank" rel="noopener">LA LLAVE <span>066</span></a><div class="side-label">CENTRO DE OPERACIONES</div><nav aria-label="Secciones del centro">${navItems.map(([id,n,icon])=>`<button data-view="${id}" class="${view===id?'active':''}" ${view===id?'aria-current="page"':''}><span class="nav-icon" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</nav><div class="side-foot"><span class="signal-dot"></span> OPERACIÓN PRIVADA<br>La Llave I: Ciudad Central<button id="logout" class="subtle">Cerrar sesión</button></div></aside><main><div class="topbar"><div><div class="eyebrow">LA LLAVE / OPERACIONES 066</div><h1>${names[view]}</h1><p class="intro">${intros[view]}</p></div><span class="pill private-pill">Sesión privada</span></div>${view==='studio'?'':`<div id="opportunity-summary">${summary()}</div>`}<section id="content" aria-label="${names[view]}"></section><footer class="console-footer">LA LLAVE <span>066</span> <small>Datos con fuente. Decisiones con criterio.</small></footer></main></div>`;
+ const names={workspace:'Centro de marketing 066',overview:'Tu universo, en movimiento.',leads:'Oportunidades de lectura',messages:'Mensajes para revisar',tasks:'Tareas de plataforma',agents:'Agentes y conexiones',metrics:'Métricas y ventas',googleAds:'Google Ads',marketing:'Marketing',studio:'Estudio Creativo 066',growth:'Comunidad y redes',apollo:'Prospección Apollo'};
+ const intros={workspace:'Marca, atención comercial, calendario y experimentos en un mismo espacio.',overview:'La Llave · Centro de operaciones. Decide el próximo paso con tus datos a la vista.',leads:'Encuentra afinidad, revisa la fuente y convierte un hallazgo en una conversación.',messages:'Textos preparados, destinatarios claros y aprobación del mensaje exacto.',tasks:'El trabajo de plataforma, separado del seguimiento de contactos.',agents:'Consulta quién está trabajando, su función y los resultados de sus tareas.',metrics:'Ventas, audiencia y publicidad: cada dato conserva su fuente y periodo.',googleAds:'Campañas, recomendaciones y análisis con acceso directo a Google Ads.',marketing:'Prepara contenido y decisiones a partir de la información disponible.',studio:'Cine, fotogramas, voces y creatividades. Preparación privada sin generar gastos.',growth:'Instagram y TikTok: oportunidades, contenido y crecimiento de la comunidad.',apollo:'Organizaciones y contactos profesionales para investigar.'};
+ app.innerHTML=`<div class="shell ${view==='studio'?'studio-mode':''}"><aside><a class="brand" href="https://www.lallaveoficial.com/" target="_blank" rel="noopener">LA LLAVE <span>066</span></a><div class="side-label">CENTRO DE OPERACIONES</div><nav aria-label="Secciones del centro">${navItems.map(([id,n,icon])=>`<button data-view="${id}" class="${view===id?'active':''}" ${view===id?'aria-current="page"':''}><span class="nav-icon" aria-hidden="true">${icon}</span><span>${n}</span></button>`).join('')}</nav><div class="side-foot"><span class="signal-dot"></span> OPERACIÓN PRIVADA<br>La Llave I: Ciudad Central<button id="logout" class="subtle">Cerrar sesión</button></div></aside><main><div class="topbar"><div><div class="eyebrow">LA LLAVE / OPERACIONES 066</div><h1>${names[view]}</h1><p class="intro">${intros[view]}</p></div><span class="pill private-pill">Sesión privada</span></div>${['studio','workspace'].includes(view)?'':`<div id="opportunity-summary">${summary()}</div>`}<section id="content" aria-label="${names[view]}"></section><footer class="console-footer">LA LLAVE <span>066</span> <small>Datos con fuente. Decisiones con criterio.</small></footer></main></div>`;
  document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;render();});
  document.querySelector('#logout').onclick=async()=>{try{await request('logout',{});login();}catch(e){notice(e.message);}};content();if(view!=='studio')bindSummary();
 }
@@ -69,14 +70,14 @@ function summary(){
 function bindSummary(){const b=document.querySelector('#refresh-opportunities');if(b)b.onclick=()=>refreshOpportunities(true);}
 let opportunityChecking=false;
 async function refreshOpportunities(manual=false){
- if(!data||view==='studio'||opportunityChecking||busy||document.hidden||document.querySelector('dialog[open]'))return;
+ if(!data||['studio','workspace'].includes(view)||opportunityChecking||busy||document.hidden||document.querySelector('dialog[open]'))return;
  opportunityChecking=true;
  const b=document.querySelector('#refresh-opportunities');if(b)b.disabled=true;
  try{
   const fresh=await request('data');
   if(!data||busy||document.querySelector('dialog[open]'))return;
   data.leads=fresh.leads;data.tasks=fresh.tasks;data.integrations=fresh.integrations;
-  document.querySelector('#opportunity-summary').innerHTML=summary();bindSummary();
+  const summaryRoot=document.querySelector('#opportunity-summary');if(!summaryRoot)return;summaryRoot.innerHTML=summary();bindSummary();
   document.querySelector('#opportunity-checked').textContent='Actualizado: '+new Date().toLocaleTimeString('es-CL',{timeZone:'America/Santiago'});
   if(view==='leads'||view==='messages')results();
   if(view==='overview')overviewView(document.querySelector('#content'));
@@ -94,6 +95,7 @@ if(view==='overview'){overviewView(c);return;}
 if(view==='growth'){growthView(c);return;}
 if(view==='metrics'){metricsView(c);return;}
 if(view==='googleAds'){googleAdsView(c,request,notice);return;}
+if(view==='workspace'){marketingWorkspaceView(c,request,notice,escape,launchMarketingMission);return;}
 if(view==='marketing'){marketingView(c);return;}
 if(view==='studio'){studioView(c,request,notice);return;}
 if(view==='apollo'){apolloView(c);return;}
@@ -210,4 +212,9 @@ async function apolloView(c){
  document.querySelector('#apollo-check').onclick=async function(){this.disabled=true;try{paint(await request('apollo-check',{}));}catch(e){notice(e.message);}finally{this.disabled=false;}};
  document.querySelector('#apollo-search').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button');b.disabled=true;try{paint(await request('apollo-search',Object.fromEntries(new FormData(e.target))));}catch(err){notice(err.message);}finally{b.disabled=false;}};
  }catch(e){c.innerHTML='<p>'+escape(e.message)+'</p>';}
+}
+
+async function launchMarketingMission(purpose){
+ const roles={gerente:'crecimiento',comercial:'contactos',editorial:'contenidos',experimentos:'analitica',seo:'contenidos'};
+ try{const r=await request('houston'),a=r.agents.find(x=>x.slug===roles[purpose]);if(r.modelStatus!=='Conectado'||!a?.id)throw new Error('El agente no está disponible. Revisa Agentes y conexiones.');missionDialog(a,false,{purpose,text:'Preparar '+purpose+' usando la memoria y registros guardados para revisión.'});}catch(e){notice(e.message);}
 }
