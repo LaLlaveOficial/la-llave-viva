@@ -1,6 +1,9 @@
+import {makeInstagramWebhook} from '../lib/instagram-webhook.js';
+export const config={api:{bodyParser:false}};
 import {neon} from '@neondatabase/serverless';
 import {agentAuthorized,agentContext,agentSlug,agentSearch,refreshAgentMetrics,validateAgentOutput} from '../lib/agent-data.js';
 export function makeAgentHandler(connect=neon,env=process.env){return async(req,res)=>{
+ if(req.query?.op==='instagram-webhook')return makeInstagramWebhook(connect,env)(req,res);
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');
  if(!agentAuthorized(req,env))return res.status(401).json({error:'Acceso interno requerido.'});
  const slug=req.query?.agent;if(!agentSlug(slug))return res.status(400).json({error:'Agente inválido.'});
@@ -22,6 +25,11 @@ export function makeAgentHandler(connect=neon,env=process.env){return async(req,
    return res.status(200).json(await agentContext(sql,slug,refresh));
   }
   if(req.method==='POST'&&op==='save'){
+   if(req.body===undefined){
+    const chunks=[];let size=0;
+    for await(const chunk of req){const b=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);size+=b.length;if(size>12000)return res.status(413).json({error:'Solicitud demasiado grande.'});chunks.push(b);}
+    try{req.body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return res.status(400).json({error:'JSON inválido.'});}
+   }
    if(!String(req.headers?.['content-type']||'').startsWith('application/json')||req.body?.agent!==slug)return res.status(400).json({error:'Solicitud inválida.'});
    const output=validateAgentOutput(req.body);if(!output)return res.status(400).json({error:'Propuesta inválida.'});
    const rows=await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('agent-output',0,'draft',${JSON.stringify(output)}::jsonb) RETURNING id`;

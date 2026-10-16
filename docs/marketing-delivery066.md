@@ -14,7 +14,7 @@ La reserva atómica por pieza/versión impide repetir una solicitud. Solo se dec
 
 ## Instagram
 
-Webhook público: `/api/instagram-066`. No utiliza la sesión de consola; autentica eventos con HMAC SHA-256 sobre el cuerpo original y exige cuenta/destinatario coincidentes. No admite importación de seguidores, envíos masivos, comentarios ni lectura histórica. Conserva únicamente entradas de texto recibidas por ese webhook.
+Webhook público: `/api/instagram-066`, reescrito a `agent-066?op=instagram-webhook` para mantener el límite de 12 funciones del plan. La ruta interna de agentes conserva su autorización independiente; POST save analiza JSON limitado a 12 KB cuando la plataforma entrega el cuerpo sin procesar. No utiliza la sesión de consola; autentica eventos con HMAC SHA-256 sobre el cuerpo original y exige cuenta/destinatario coincidentes. No admite importación de seguidores, envíos masivos, comentarios ni lectura histórica. Conserva únicamente entradas de texto recibidas por ese webhook.
 
 Variables privadas necesarias: `INSTAGRAM_ACCOUNT_ID`, `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_VERIFY_TOKEN` (mínimo 32 caracteres), `INSTAGRAM_INBOX_ENABLED=1`. Token dedicado de cuenta profesional con los permisos y suscripción de mensajes correspondientes al flujo Instagram Login. No reutilizar tokens de Ads o CAPI. Configurar y autorizar en Meta/Vercel de forma privada; no pegar secretos en documentos ni chats.
 
