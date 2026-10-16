@@ -6,11 +6,9 @@ Objetivo: convertir el contenido de La Llave I: Ciudad Central en conversaciones
 
 ## Estado y alcance
 
-Investigación de documentación pública y especificación funcional. No es una auditoría de código privado, una prueba de rendimiento de los proveedores ni una implementación desplegada. Kike confirmó las correcciones de nombres: TryCrush, Meet Millie AI, Visibly AI, Plixi y StoryLab.ai. Se incorporan además Hyper, n8n y Chatwoot.
+Actualizado el 16 de octubre de 2026. La investigación dio paso a una implementación propia en LaLlaveOficial/la-llave-viva. PR #19 desplegó evidencia fechada de conectores; PR #20 desplegó el Centro de marketing con marca/catálogo aprobados, consultas de compra, separación de pruebas y pagos, calendario/adaptaciones, experimentos, briefs SEO, observaciones en IA, historial y contexto para los agentes existentes.
 
-Repositorio canónico confirmado: LaLlaveOficial/la-llave-viva, rama main. Se inspeccionaron el árbol de archivos, docs/console066.md, las métricas privadas, las misiones de marketing y la interfaz. Ya existen CRM, agregados de pagos, conexiones Ads/GA4/Metricool, Houston y estudio. Se amplía esa base; los permisos actuales de producción aún necesitan comprobación específica.
-
-El documento previo «autogerente-066-estado-y-mandato.txt», leído durante esta revisión, registra verificaciones del 12 de octubre. Se trata como antecedente histórico: ni permisos, ni integraciones, ni estados de ejecución se consideran revalidados hoy.
+El siguiente bloque incorpora adaptadores revisados para programación Metricool y bandeja Instagram. Requieren conexión y permisos específicos; no equivalen a publicación ni mensajería activas. Consultar `marketing-delivery066.md` y `marketing-workspace066.md` para el alcance y pruebas. Las referencias de proveedores de este documento no significan que se instalaron o clonaron esas plataformas.
 
 ## Inventario de referencias
 
@@ -120,10 +118,6 @@ n8n es fair-code bajo Sustainable Use License; no debe presentarse como licencia
 
 REA queda como herramienta opcional de investigación sobre software accesible y autorizado. No recupera por sí sola backend privado, instrucciones internas, datos o pesos de modelos de un SaaS. No es una dependencia necesaria para desarrollar estos módulos.
 
-## Primera entrega de implementación propuesta
-
-Resolver el código canónico y auditar rutas existentes. Después implementar una sección aislada de «Estado comercial» con contratos de conectores y estados verificables. Empezar con lectura y datos reales; si se usan fixtures en desarrollo, marcarlos como demostración y nunca mezclarlos con métricas reales. Añadir el flujo comercial después de validar fuentes y permisos. La publicación en producción tendrá una revisión del cambio concreto.
-
 ## Fuentes públicas consultadas
 
 - https://tryholo.ai/
@@ -150,8 +144,3 @@ Resolver el código canónico y auditar rutas existentes. Después implementar u
 - https://www.chatwoot.com/features
 
 Revisión documental: 16 de octubre de 2026. Las promesas de rendimiento de proveedores no se consideran resultados comprobados para La Llave.
-
-
-## Primer cambio preparado
-
-Se añade evidencia fechada de Google Ads, Meta Ads, GA4, Instagram y TikTok mediante Metricool a la vista de métricas. Distingue lectura reciente (24 h), histórica y sin fecha verificable. Una importación manual no acredita lectura OAuth. No afirma vigencia de permisos ni habilita publicaciones. Pruebas de límites temporales, falta de datos e importaciones incluidas. El cambio está pendiente de revisión y despliegue.

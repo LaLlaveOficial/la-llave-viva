@@ -1,7 +1,7 @@
 name: Operación 066 · marketing
 on:
   pull_request:
-    paths: ['lib/**', 'api/console-066.js', 'public/centro-066/**', 'migrations/20261016_marketing_workspace.sql', 'tests/marketing-workspace*', '.github/workflows/marketing066-ci.yml']
+    paths: ['lib/**', 'api/console-066.js', 'api/instagram-066.js', 'public/centro-066/**', 'migrations/20261016*.sql', 'tests/marketing-workspace*', 'tests/marketing-delivery*', '.github/workflows/marketing066-ci.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,7 +20,9 @@ jobs:
       - name: Pruebas de contratos y seguridad
         run: node --test tests/marketing-workspace.test.mjs tests/console066.test.mjs tests/console-marketing.test.mjs tests/console-metrics.test.mjs tests/agent-data.test.mjs tests/manager-report.test.mjs tests/source-evidence.test.mjs
       - name: Postgres y handler autenticado
-        run: node tests/marketing-workspace-integration.mjs
+        run: |
+          node tests/marketing-workspace-integration.mjs
+          node tests/marketing-delivery-integration.mjs
       - name: Interfaz en navegador
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
