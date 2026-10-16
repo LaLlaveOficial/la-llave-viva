@@ -1,8 +1,5 @@
 import {
   BOOK_PRICE,
-  DISCOUNT_AMOUNT,
-  DISCOUNTED_BOOK_PRICE,
-  PROMO_CODE,
   cleanEmail,
   cleanText,
   ensurePromoTables,
@@ -417,7 +414,7 @@ export default async function handler(
    * = 14.391
    */
   const totalAmount =
-    DISCOUNTED_BOOK_PRICE +
+    promo.discountedBookPrice +
     shippingCost;
 
   const {
@@ -479,7 +476,7 @@ export default async function handler(
         ${street},
         ${numberText},
         ${extra || null},
-        ${DISCOUNTED_BOOK_PRICE},
+        ${promo.discountedBookPrice},
         ${shippingCost},
         ${totalAmount},
         'CLP'
@@ -498,10 +495,10 @@ export default async function handler(
       VALUES (
         ${externalReference},
         ${email},
-        ${PROMO_CODE},
+        ${promo.code},
         ${BOOK_PRICE},
-        ${DISCOUNT_AMOUNT},
-        ${DISCOUNTED_BOOK_PRICE}
+        ${promo.discountAmount},
+        ${promo.discountedBookPrice}
       )
     `;
   } catch (error) {
@@ -527,13 +524,13 @@ export default async function handler(
     items: [
       {
         id:
-          "LA-LLAVE-I-CIUDAD-CENTRAL-AJRAZ10",
+          `LA-LLAVE-I-CIUDAD-CENTRAL-${promo.code}`,
 
         title:
           "La Llave I: Ciudad Central — Edición impresa",
 
         description:
-          "Edición impresa oficial de La Llave I: Ciudad Central · Acceso AJRAZ10 confirmado y aplicado.",
+          `Edición impresa oficial de La Llave I: Ciudad Central · Promoción ${promo.code} aplicada.`,
 
         picture_url:
           `${siteUrl}/assets/la-llave-edicion-fisica.png`,
@@ -548,7 +545,7 @@ export default async function handler(
           "CLP",
 
         unit_price:
-          DISCOUNTED_BOOK_PRICE,
+          promo.discountedBookPrice,
       },
     ],
 
@@ -618,11 +615,11 @@ export default async function handler(
     additional_info: [
       "Pedido web La Llave I",
 
-      `Promoción: ${PROMO_CODE}`,
+      `Promoción: ${promo.code}`,
 
-      "Correo promocional verificado: sí",
+      "Beneficio validado para el correo de suscripción: sí",
 
-      `Descuento libro: $${DISCOUNT_AMOUNT} CLP`,
+      `Descuento libro: $${promo.discountAmount} CLP`,
 
       `Región: ${
         REGION_NAMES[
@@ -759,7 +756,7 @@ export default async function handler(
               email,
 
             book_price:
-              DISCOUNTED_BOOK_PRICE,
+              promo.discountedBookPrice,
 
             shipping_amount:
               shippingCost,
@@ -817,7 +814,7 @@ export default async function handler(
 
         promo: {
           code:
-            PROMO_CODE,
+            promo.code,
 
           verified:
             true,
@@ -826,10 +823,10 @@ export default async function handler(
             BOOK_PRICE,
 
           discount_amount:
-            DISCOUNT_AMOUNT,
+            promo.discountAmount,
 
           book_price:
-            DISCOUNTED_BOOK_PRICE,
+            promo.discountedBookPrice,
 
           shipping_amount:
             shippingCost,

@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import {scryptSync} from 'node:crypto';
+import {customerFixture} from './customer-mail-fixture.mjs';
+import {makeHandler} from '../api/console-066.js';
+import {customerMailApi,validateMailDraft,renderCampaign,validateSubscriberOffer,chileDay} from '../lib/customer-mail066.js';
+import {validateVerifiedPromoEntitlement} from '../lib/ajraz10-verification.js';
+import {halloweenDraft} from '../public/centro-066/customer-mail.js';
+const {db,sql}=await customerFixture();
+try{
+ const salt='ab'.repeat(16),password='test-only-customer';
+ const env={CONSOLE_ORIGIN:'https://example.com',CONSOLE_PASSWORD_HASH:salt+':'+scryptSync(password,salt,64).toString('hex'),CONSOLE_SESSION_SECRET:'test-customer-secret-'.repeat(3),DATABASE_URL:'postgresql://test'};
+ const handler=makeHandler(()=>sql,env);let cookie='';
+ async function call(op,body,origin=env.CONSOLE_ORIGIN){const res={headers:{},setHeader(k,v){this.headers[k]=v},status(n){this.statusCode=n;return this},json(v){this.body=v;return this}};await handler({method:body?'POST':'GET',query:{op},body,headers:{origin,'content-type':'application/json',cookie}},res);return res;}
+ assert.equal((await call('customers-list',{})).statusCode,401);
+ const login=await call('login',{password});cookie=login.headers['Set-Cookie'].split(';')[0];
+ assert.equal((await call('mail-save',{},'https://evil.example')).statusCode,403);
+ let r=await call('customers-list',{});assert.equal(r.statusCode,200);assert.equal(r.body.orders.length,2);assert.equal(r.body.orders.find(o=>o.payment_status==='pending').abandonment.kind,'possible_abandonment');assert.ok(!JSON.stringify(r.body).includes('unsubscribe_token'));
+ const order={orderRef:'LLAVE-QA-PAID',version:0,fulfillment:'shipped',carrier:'Courier QA',tracking:'QA123'};
+ assert.equal((await call('customer-order-save',{...order,orderRef:'LLAVE-QA-PENDING'})).statusCode,409);
+ assert.equal((await call('customer-order-save',{...order,carrier:''})).statusCode,400);
+ assert.equal((await call('customer-order-save',order)).statusCode,200);assert.equal((await call('customer-order-save',order)).statusCode,409);
+ assert.equal((await call('customer-order-save',{...order,version:1,fulfillment:'delivered'})).statusCode,200);
+ const data={...halloweenDraft(),validFrom:chileDay(),validUntil:'2027-10-31'};
+ assert.equal(validateMailDraft({id:'bad',version:0,data:{...data,validFrom:'2026-02-31'}}),null);
+ assert.equal(validateMailDraft({id:'bad',version:0,data:{...data,code:'AJRAZ10'}}),null);
+ assert.equal(validateMailDraft({id:'bad',version:0,data:{...data,subject:'Subject\r\nBcc:bad'}}),null);
+ assert.ok(!renderCampaign({...data,body:'{{nombre}} <script>bad</script>'},{name:'<img src=x>',unsubscribe_token:'a'.repeat(64)}).html.includes('<script>'));
+ const c=(await call('mail-save',{id:'halloween-qa',version:0,data})).body.campaign;
+ assert.equal((await call('mail-preview',{id:c.id})).body.eligible,2,'case-insensitive dedup, consent and opt-out');
+ r=await call('mail-prepare',{id:c.id,version:c.version});assert.equal(r.statusCode,200);assert.equal(r.body.count,2);const hash=r.body.hash;
+ assert.equal((await call('mail-save',{id:c.id,version:1,data})).statusCode,409);
+ assert.equal((await call('mail-approve',{id:c.id,version:1,hash:'wrong',confirm:true})).statusCode,409);
+ assert.equal((await call('mail-approve',{id:c.id,version:1,hash,confirm:true})).statusCode,200,'snapshot must survive PostgreSQL bigint / jsonb serialization');
+ assert.equal((await validateSubscriberOffer(sql,'reader@example.test',data.code)).discountedBookPrice,14391);
+ assert.equal((await validateVerifiedPromoEntitlement(sql,'reader@example.test',data.code)).discountAmount,1599,'checkout validator supports new campaign');
+ assert.equal((await validateSubscriberOffer(sql,'noconsent@example.test',data.code)).ok,false);
+ assert.equal((await validateSubscriberOffer(sql,'reader@example.test',data.code,new Date('2027-11-02'))).ok,false);
+ await db.exec("UPDATE mailing_subscribers SET status='unsubscribed',unsubscribed_at=now() WHERE email='buyer@example.test'");
+ const deliveries=[];const fetcher=async(url,options)=>{deliveries.push(JSON.parse(options.body));return {ok:true,status:200,json:async()=>({id:'synthetic-1'})};};
+ const payload={id:c.id,version:1,hash,confirm:true};
+ const send=()=>customerMailApi(sql,'mail-send',payload,{RESEND_API_KEY:'synthetic-not-a-real-key'},fetcher);
+ const responses=await Promise.all([send(),send()]);assert.ok(responses.every(x=>x.status===200));assert.equal(deliveries.length,1,'concurrent batches send only once and recheck opt-out');
+ assert.equal(deliveries[0].to[0],'reader@example.test');assert.match(deliveries[0].html,/Darte de baja/);assert.equal((await send()).status,409);assert.equal(deliveries.length,1);
+ // Unknown provider outcome is never blindly retried.
+ const second=(await call('mail-save',{id:'unknown-qa',version:0,data:{...data,code:''}})).body.campaign;
+ const prepared=(await call('mail-prepare',{id:second.id,version:1})).body;
+ await call('mail-approve',{id:second.id,version:1,hash:prepared.hash,confirm:true});
+ let attempts=0;const unknown=()=>customerMailApi(sql,'mail-send',{id:second.id,version:1,hash:prepared.hash,confirm:true},{RESEND_API_KEY:'synthetic'},async()=>{attempts++;throw Error('network timeout');});
+ await unknown();await unknown();assert.equal(attempts,1);assert.equal((await sql`SELECT status FROM console066_mail_recipients WHERE campaign_id='unknown-qa'`)[0].status,'unknown');
+ console.log('Customer/mail SQL + authenticated API passed: repeatable migration, CSRF/auth, contact privacy, fulfillment/concurrency, dedup/consent/opt-out, exact approval, generic coupon checkout, expiry, HTML escaping, send claims and no retry of uncertain outcomes. No real emails or payments.');
+}finally{await db.close();}
