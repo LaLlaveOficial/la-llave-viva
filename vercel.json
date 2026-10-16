@@ -1,7 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {"api/console-066.js": {"maxDuration": 120},"api/agent-066.js": {"maxDuration": 120}},
+  "functions": {
+    "api/console-066.js": {
+      "maxDuration": 120
+    },
+    "api/agent-066.js": {
+      "maxDuration": 120
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/instagram-066",
+      "destination": "/api/agent-066?op=instagram-webhook"
+    },
     {
       "source": "/operaciones-066",
       "destination": "/centro-066/index.html"

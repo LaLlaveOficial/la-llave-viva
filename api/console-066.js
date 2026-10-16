@@ -1,3 +1,5 @@
+import {publicationApi} from '../lib/metricool-publication.js';
+import {inboxApi} from '../lib/instagram-inbox.js';
 import {workspaceApi,approvedBrandContext} from '../lib/marketing-workspace.js';
 import {ga4Credential,ga4Sync} from '../lib/ga4-connect.js';
 import {metaAdsSync} from '../lib/meta-ads-connect.js';
@@ -127,6 +129,14 @@ export function makeHandler(connect = neon, env = process.env) {
       if(['ga4-sync','ga4-authorize'].includes(op)&&req.method==='POST'){
         try{const gaEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};return res.status(200).json(op==='ga4-authorize'?await ga4Credential('authorize',gaEnv):await ga4Sync(sql,body,gaEnv));}
         catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(['publication-list','publication-prepare','publication-execute'].includes(op)){
+        if(req.method!==(op==='publication-list'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        const {status,...result}=await publicationApi(sql,op,body,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN});return res.status(status).json(result);
+      }
+      if(['instagram-inbox','instagram-thread','instagram-prepare','instagram-send','instagram-discard'].includes(op)){
+        if(req.method!==(op==='instagram-inbox'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        const {status,...result}=await inboxApi(sql,op,body,env);return res.status(status).json(result);
       }
       if(['marketing-workspace','marketing-save','marketing-approve','marketing-purchase','marketing-reply','marketing-history'].includes(op)){
         if(req.method!==(op==='marketing-workspace'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
