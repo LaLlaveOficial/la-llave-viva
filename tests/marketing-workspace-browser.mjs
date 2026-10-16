@@ -36,5 +36,13 @@ try{
  await page.getByRole('button',{name:'Programación',exact:true}).click();await page.getByRole('heading',{name:'Programación con Metricool'}).waitFor();await page.getByText('Programación desactivada en el servidor. No se crean publicaciones.',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Bandeja Instagram',exact:true}).click();await page.getByRole('heading',{name:'Bandeja de Instagram'}).waitFor();await page.getByText('Conexión pendiente',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);const records=(await api('marketing-workspace')).data.records;assert.equal(records.filter(r=>r.kind==='content').length,2);assert.equal(records.find(r=>r.kind==='brand').status,'approved');
+ // Regression: Postgres bigint audit IDs arrive as strings; exact approvals must send numbers.
+ await page.evaluate(async()=>{
+  const {googleAdsView}=await import('/centro-066/google-ads.js');const mount=document.createElement('section');document.body.replaceChildren(mount);
+  const proposal={id:'123',detail:{status:'validated',createdAt:new Date().toISOString(),reason:'QA exacta',change:{action:'negative_keyword',campaignId:'7',value:'otro titulo',matchType:'EXACT'},before:{}}};
+  await googleAdsView(mount,async(op,body)=>{if(op==='google-ads')return {ready:true,status:'QA'};if(op==='google-ads-reports')return {reports:[],sections:[],changes:[proposal],missions:[],capabilities:{approvedChanges:true}};if(op==='google-ads-approve'){window.exactApprovalQA=body;return {detail:{status:'verified'}};}},()=>{});
+ });
+ await page.getByRole('button',{name:'Revisar y aprobar cambio',exact:true}).click();await page.getByRole('button',{name:'Apruebo este cambio y ejecutarlo',exact:true}).click();
+ assert.deepEqual(await page.evaluate(()=>window.exactApprovalQA),{id:123,confirm:true});assert.deepEqual(errors,[]);
  console.log('Browser + Postgres + authenticated handler passed: brand approval, catalog, UTM, content/adaptation, experiments, SEO, version history, mobile layout and no JavaScript errors. No providers called.');
 }finally{if(browser)await browser.close();server.close();await db.close();}
