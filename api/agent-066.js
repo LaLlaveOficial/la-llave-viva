@@ -3,7 +3,7 @@ import {makeInstagramWebhook} from '../lib/instagram-webhook.js';
 export const config={api:{bodyParser:false}};
 import {neon} from '@neondatabase/serverless';
 import {agentAuthorized,agentContext,agentSlug,agentSearch,refreshAgentMetrics,validateAgentOutput} from '../lib/agent-data.js';
-export function makeAgentHandler(connect=neon,env=process.env){return async(req,res)=>{
+export function makeAgentHandler(connect=neon,env=process.env,{maintain=operationsTick}={}){return async(req,res)=>{
  if(req.query?.op==='instagram-webhook')return makeInstagramWebhook(connect,env)(req,res);
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');
  if(!agentAuthorized(req,env))return res.status(401).json({error:'Acceso interno requerido.'});
@@ -13,7 +13,7 @@ export function makeAgentHandler(connect=neon,env=process.env){return async(req,
  try{
   if(req.method==='POST'&&op==='maintenance'){
    if(slug!=='analitica')return res.status(403).json({error:'Operación reservada a supervisión.'});
-   return res.status(200).json(await operationsTick(sql,env));
+   return res.status(200).json(await maintain(sql,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN}));
   }
   if(req.method==='GET'&&op==='search'){
    if(!['radar-lectores','prensa','crecimiento'].includes(slug))return res.status(403).json({error:'Este agente no tiene búsqueda habilitada.'});
