@@ -14,3 +14,11 @@ test('maintenance cannot be called with browser session or another agent role',a
  let r=res();await handler({method:'POST',query:{agent:'analitica',op:'maintenance'},headers:{cookie:'owner=session'}},r);assert.equal(r.code,401);assert.equal(dbCalls,0);
  r=res();await handler({method:'POST',query:{agent:'contenidos',op:'maintenance'},headers:{authorization:'Bearer '+env.HOUSTON_HOST_TOKEN}},r);assert.equal(r.code,403);
 });
+
+test('authenticated background maintenance forwards platform identity for direct Google reads',async()=>{
+ const env={DATABASE_URL:'test',HOUSTON_HOST_TOKEN:'s'.repeat(64),VERCEL_OIDC_TOKEN:'fallback-test'},seen=[];
+ const handler=makeAgentHandler(()=>async()=>[],env,{maintain:async(sql,e)=>{seen.push(e.VERCEL_OIDC_TOKEN);return {status:'complete',modelCalls:0};}});
+ const response=()=>({setHeader(){},status(n){this.code=n;return this;},json(x){this.body=x;return this;}});
+ for(const headers of [{authorization:'Bearer '+env.HOUSTON_HOST_TOKEN,'x-vercel-oidc-token':'platform-test'},{authorization:'Bearer '+env.HOUSTON_HOST_TOKEN}]){const r=response();await handler({method:'POST',query:{agent:'analitica',op:'maintenance'},headers},r);assert.equal(r.code,200);assert.equal(r.body.modelCalls,0);assert.ok(!JSON.stringify(r.body).includes('platform-test'));}
+ assert.deepEqual(seen,['platform-test','fallback-test']);
+});
