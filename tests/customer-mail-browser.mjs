@@ -18,7 +18,7 @@ try{
  await page.getByRole('heading',{name:'Clientes con pago aprobado',exact:true}).waitFor();
  await page.getByRole('button',{name:'Pedidos y entregas',exact:true}).click();
  await page.getByRole('row').filter({hasText:'LLAVE-QA-PAID'}).getByRole('button',{name:'Ver pedido'}).click();
- let d=page.getByRole('dialog');await d.getByLabel('Estado de entrega').selectOption('shipped');await d.getByLabel('Transportista',{exact:true}).fill('Courier QA');await d.getByLabel('Número de seguimiento').fill('QA123');await d.getByRole('button',{name:'Guardar seguimiento'}).click();await page.getByText('Despachado',{exact:true}).waitFor();
+ let d=page.getByRole('dialog');await d.getByLabel('Estado de entrega').selectOption('shipped');await d.getByLabel('Transportista',{exact:true}).fill('Courier QA');await d.getByLabel('Número de seguimiento').fill('QA123');await d.getByRole('button',{name:'Guardar seguimiento'}).click();await page.getByRole('cell',{name:'Despachado',exact:true}).waitFor();
  await page.getByRole('button',{name:'Checkouts pendientes',exact:true}).click();await page.getByText('Checkout sin aprobación después de 2 horas. Motivo desconocido.',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Campañas de email',exact:true}).click();await page.getByRole('button',{name:'Preparar Halloween · 10%',exact:true}).click();
  d=page.getByRole('dialog');assert.match(await d.getByLabel('Mensaje',{exact:true}).inputValue(),/Santibañez/);await d.getByRole('button',{name:'Guardar borrador'}).click();await page.getByRole('heading',{name:'Halloween · Archivo 066',exact:true}).waitFor();

@@ -24,7 +24,7 @@ if(process.argv[1]===new URL(import.meta.url).pathname){
   const second={...draft,id:'qa-post-two'};await facebookApi(sql,'facebook-draft',second);await facebookApi(sql,'facebook-approve',{id:second.id,version:1});
   const parallel=await Promise.all([facebookApi(sql,'facebook-prepare',{id:p.id,version:p.version}),facebookApi(sql,'facebook-prepare',{id:second.id,version:2})]);assert.equal(parallel.filter(r=>r.prepared).length,1);assert.equal(parallel.filter(r=>r.status===409).length,1);
   const pack=parallel.find(r=>r.prepared);assert.equal(pack.externalAction,false);assert.ok(pack.text.includes('utm_source=facebook'));assert.ok(pack.text.includes('6lo8wcJGizQ'));assert.equal(pack.page.id,FACEBOOK_PAGE.id);
-  p=(await sql`SELECT * FROM console066_fb_posts WHERE status='prepared'`)[0];
+  p=(await sql`SELECT * FROM console066_fb_posts WHERE status='prepared'`)[0];assert.equal((await facebookApi(sql,'facebook-read')).posts.find(x=>x.id===p.id).renderedText,pack.text);
   assert.equal((await facebookApi(sql,'facebook-receipt',{id:p.id,version:p.version,result:'published',identityConfirmed:true,evidence:'Observación QA: publicación visible en el grupo.',url:'https://www.facebook.com/groups/wrong/posts/123/'})).status,400);
   const receipt=await facebookApi(sql,'facebook-receipt',{id:p.id,version:p.version,result:'published',identityConfirmed:true,evidence:'Observación QA: publicación visible en el grupo.',url:g.url+'posts/123456/'});assert.equal(receipt.source,'owner_recorded');
   const blocked=(await sql`SELECT * FROM console066_fb_posts WHERE status='approved'`)[0];assert.equal((await facebookApi(sql,'facebook-prepare',{id:blocked.id,version:blocked.version})).status,409);
