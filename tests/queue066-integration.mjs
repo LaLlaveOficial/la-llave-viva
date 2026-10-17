@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 import {managerFixture} from './manager066-integration.mjs';
 import {enqueue066,claim066,finish066,fail066,recover066,probe066} from '../lib/queue066.js';
-import {operationsTick} from '../lib/operations066.js';
+import {operationsTick,operationsStatus} from '../lib/operations066.js';
 const {db,sql}=await managerFixture();
 try{
  for(const name of ['operations066','queue066']){const m=await fs.readFile(new URL('../migrations/20261017_'+name+'.sql',import.meta.url),'utf8');await db.exec(m);await db.exec(m);}
@@ -23,5 +23,6 @@ try{
  let reads=0;const out=await operationsTick(sql,{}, {owner:'vercel-backup',refresh:async()=>{reads++;return {sources:[{source:'ga4',status:'updated'}]};},prepare:async()=>({created:0})});assert.equal(out.status,'complete');assert.equal(out.executor,'vercel-backup');assert.equal(out.attempt,2);assert.equal(reads,1);assert.equal(await finish066(sql,killed,{bad:true}),false);assert.equal((await operationsTick(sql,{}, {refresh:()=>{throw Error('must not run');}})).status,'already_reserved');
  const projection=(await sql`SELECT status,finished_at,detail FROM console066_operations_runs WHERE slot=${slot}`)[0];assert.equal(projection.status,'complete');assert.ok(projection.finished_at);assert.equal(projection.detail.executor,'vercel-backup');
  assert.equal((await sql`SELECT count(*)::int n FROM console066_queue_events WHERE job_id=${ops.id} AND action='completed'`)[0].n,1);
+ await sql`UPDATE console066_operations_runs SET status='running',finished_at=NULL WHERE slot=${slot}`;await sql`UPDATE console066_queue SET state='blocked',reason='attempt_limit' WHERE id=${ops.id}`;assert.equal((await operationsStatus(sql)).status,'failed');
  console.log('Queue failover passed: dedup, concurrent claims, expired lease, stale fences, retry cap, quota block, uncertain external action, backup recovery and atomic completion/projection.');
 }finally{await db.close();}
