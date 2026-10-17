@@ -29,17 +29,17 @@ test('untrusted action, slug and target fail before any upstream request',async(
  await assert.rejects(houstonRoutines({action:'setup'},{...env,HOUSTON_ORIGIN:'https://other.example'},e.fetcher),/privada/);assert.equal(e.writes.length,0);
 });
 
-test('rotation covers every hour and setup upgrades existing schedules without duplicates',async()=>{
+test('analysis uses three daily model turns while setup remains deduplicated',async()=>{
  const e=engine();await houstonRoutines({action:'setup'},env,e.fetcher);
  e.saved.contenidos[0].schedule='15 9 * * *';e.saved.contenidos[0].enabled=false;
  const result=await houstonRoutines({action:'setup'},env,e.fetcher);
  assert.equal(e.saved.contenidos.length,1);assert.equal(e.saved.contenidos[0].enabled,true);assert.equal(e.saved.contenidos[0].schedule,ROUTINES.contenidos.schedule);
- const analytic=result.routines.find(r=>r.slug==='analitica');assert.equal(analytic.schedule,'0 * * * *');
+ const analytic=result.routines.find(r=>r.slug==='analitica');assert.equal(analytic.schedule,'0 9,15,21 * * *');
  for(const routines of Object.values(e.saved)){assert.match(routines[0].prompt,/Olivia Regis/);assert.match(routines[0].prompt,/Libra Books/);assert.match(routines[0].prompt,/No crees otras rutinas/);}
 });
 
 test('targeted setup leaves other schedules and paused routines untouched',async()=>{
  const e=engine();await houstonRoutines({action:'setup'},env,e.fetcher);e.saved.prensa[0].enabled=false;e.saved.analitica[0].schedule='0 4 * * *';e.writes.length=0;
- await houstonRoutines({action:'setup',slug:'analitica'},env,e.fetcher);assert.equal(e.saved.prensa[0].enabled,false);assert.equal(e.saved.analitica[0].schedule,'0 * * * *');assert.equal(e.writes.length,1);assert.match(e.writes[0].path,/analitica/);
+ await houstonRoutines({action:'setup',slug:'analitica'},env,e.fetcher);assert.equal(e.saved.prensa[0].enabled,false);assert.equal(e.saved.analitica[0].schedule,'0 9,15,21 * * *');assert.equal(e.writes.length,1);assert.match(e.writes[0].path,/analitica/);
  await assert.rejects(houstonRoutines({action:'setup',slug:'constructor'},env,e.fetcher),/inválida/);
 });
