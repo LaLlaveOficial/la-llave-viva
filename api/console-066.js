@@ -1,3 +1,4 @@
+import {operationsStatus} from '../lib/operations066.js';
 import {managerApi} from '../lib/manager066.js';
 import {customerMailApi} from '../lib/customer-mail066.js';
 import {publicationApi} from '../lib/metricool-publication.js';
@@ -184,7 +185,7 @@ export function makeHandler(connect = neon, env = process.env) {
         await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('metrics',0,'import',${JSON.stringify(item)}::jsonb)`;
         return res.status(200).json({ok:true,network:item.network,importedAt:item.importedAt});
       }
-      if(op==='houston-usage'&&req.method==='GET')return res.status(200).json(await houstonUsage(env));
+      if(op==='houston-usage'&&req.method==='GET')return res.status(200).json({...await houstonUsage(env).catch(()=>({providers:[],note:'No se pudo consultar el cupo de IA. La supervisión operativa se consulta por separado.'})),operations:await operationsStatus(sql)});
       if (op === 'houston' && req.method === 'GET') return res.status(200).json(await houstonStatus(env));
       if (op === 'houston-mission' && req.method === 'POST') {
         if(!validateMission(body))return res.status(400).json({error:'Revisa la tarea y el agente.'});

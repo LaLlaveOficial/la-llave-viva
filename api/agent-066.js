@@ -1,3 +1,4 @@
+import {operationsTick} from '../lib/operations066.js';
 import {makeInstagramWebhook} from '../lib/instagram-webhook.js';
 export const config={api:{bodyParser:false}};
 import {neon} from '@neondatabase/serverless';
@@ -10,6 +11,10 @@ export function makeAgentHandler(connect=neon,env=process.env){return async(req,
  if(!env.DATABASE_URL)return res.status(503).json({error:'Base de datos no disponible.'});
  const sql=connect(env.DATABASE_URL),op=req.query?.op||'context';
  try{
+  if(req.method==='POST'&&op==='maintenance'){
+   if(slug!=='analitica')return res.status(403).json({error:'Operación reservada a supervisión.'});
+   return res.status(200).json(await operationsTick(sql,env));
+  }
   if(req.method==='GET'&&op==='search'){
    if(!['radar-lectores','prensa','crecimiento'].includes(slug))return res.status(403).json({error:'Este agente no tiene búsqueda habilitada.'});
    const q=req.query?.q;
