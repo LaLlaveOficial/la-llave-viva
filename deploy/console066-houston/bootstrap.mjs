@@ -10,7 +10,7 @@ export async function ensureAgents({base='http://127.0.0.1:4318',token=process.e
   };
   let existing=await request('/agents');
   if(!Array.isArray(existing))throw new Error('Lista de agentes inválida.');
-  for(const slug of ['radar-lectores','contactos','prensa','contenidos','analitica','crecimiento']){
+  for(const slug of ['radar-lectores','contactos','prensa','contenidos','analitica','crecimiento','facebook-comunidad']){
     const spec=JSON.parse(await readFile(join(seedRoot,slug,'houston.json'),'utf8'));
     if(existing.some(a=>a.name===spec.name))continue;
     const claudeMd=await readFile(join(seedRoot,slug,'CLAUDE.md'),'utf8');

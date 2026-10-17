@@ -19,3 +19,5 @@ No requiere n8n ni credenciales nuevas. Consume lecturas y cómputo de la infrae
 ## Consumo del análisis
 
 La rutina de interpretación de analítica usa IA a las 09:00, 15:00 y 21:00 de Santiago (antes era cada hora). La sincronización operativa mantiene el ciclo horario sin modelo. La actualización del horario se aplica únicamente a `analitica` mediante setup dirigido; no reactiva ni modifica las otras rutinas. Esto evita 21 turnos programados de analítica al día, sin garantizar disponibilidad futura de la cuota compartida.
+
+Las lecturas completas conservan caché de una hora. Una lectura parcial se reutiliza por quince minutos; una petición posterior puede renovar las fuentes para que un fallo de autorización ya corregido no quede retenido una hora adicional después de reiniciar Houston. No se crean reintentos en bucle.

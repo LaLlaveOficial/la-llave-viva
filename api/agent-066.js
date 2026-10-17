@@ -1,3 +1,4 @@
+import {facebookCandidate,facebookDraft} from '../lib/facebook-groups066.js';
 import {operationsTick} from '../lib/operations066.js';
 import {makeInstagramWebhook} from '../lib/instagram-webhook.js';
 export const config={api:{bodyParser:false}};
@@ -16,7 +17,7 @@ export function makeAgentHandler(connect=neon,env=process.env,{maintain=operatio
    return res.status(200).json(await maintain(sql,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN}));
   }
   if(req.method==='GET'&&op==='search'){
-   if(!['radar-lectores','prensa','crecimiento'].includes(slug))return res.status(403).json({error:'Este agente no tiene búsqueda habilitada.'});
+   if(!['radar-lectores','prensa','crecimiento','facebook-comunidad'].includes(slug))return res.status(403).json({error:'Este agente no tiene búsqueda habilitada.'});
    const q=req.query?.q;
    const recent=await sql`SELECT COUNT(*)::int AS count FROM console066_audit WHERE entity='agent-search' AND created_at>now()-interval '24 hours'`;
    if(recent[0]?.count>=24)return res.status(429).json({error:'Se alcanzó el límite diario de búsqueda del equipo.'});
@@ -29,13 +30,15 @@ export function makeAgentHandler(connect=neon,env=process.env,{maintain=operatio
    if(['analitica','crecimiento','contenidos'].includes(slug))refresh=await refreshAgentMetrics(sql,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN});
    return res.status(200).json(await agentContext(sql,slug,refresh));
   }
-  if(req.method==='POST'&&op==='save'){
+  if(req.method==='POST'&&['save','facebook-candidate','facebook-draft'].includes(op)){
+   if(op!=='save'&&slug!=='facebook-comunidad')return res.status(403).json({error:'Operación reservada al agente de Facebook.'});
    if(req.body===undefined){
     const chunks=[];let size=0;
     for await(const chunk of req){const b=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);size+=b.length;if(size>12000)return res.status(413).json({error:'Solicitud demasiado grande.'});chunks.push(b);}
     try{req.body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{return res.status(400).json({error:'JSON inválido.'});}
    }
    if(!String(req.headers?.['content-type']||'').startsWith('application/json')||req.body?.agent!==slug)return res.status(400).json({error:'Solicitud inválida.'});
+   if(op!=='save'){const {status,...result}=await (op==='facebook-candidate'?facebookCandidate(sql,req.body,{agent:true}):facebookDraft(sql,req.body));return res.status(status).json(result);}
    const output=validateAgentOutput(req.body);if(!output)return res.status(400).json({error:'Propuesta inválida.'});
    if(output.managerJobId){
     const rows=await sql`WITH claimed AS (UPDATE console066_manager_jobs SET state='drafted',version=version+1,updated_at=now(),output_id=nextval(pg_get_serial_sequence('console066_audit','id')) WHERE id=${output.managerJobId} AND role=${slug} AND state='queued' RETURNING output_id),saved AS (INSERT INTO console066_audit(id,entity,entity_id,action,detail) OVERRIDING SYSTEM VALUE SELECT output_id,'agent-output',0,'draft',${JSON.stringify(output)}::jsonb FROM claimed RETURNING id) SELECT id FROM saved`;

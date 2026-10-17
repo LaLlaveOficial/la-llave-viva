@@ -60,7 +60,7 @@ export const internalAgentClient=req=>['127.0.0.1','::1','::ffff:127.0.0.1'].inc
 
 export async function relayAgentData(req,res,url,env=process.env,fetcher=fetch){
  const agent=url.searchParams.get('agent'),op=url.searchParams.get('op')||'context';
- if(!['radar-lectores','contactos','prensa','contenidos','analitica','crecimiento'].includes(agent)||!['context','search','save'].includes(op)||!['GET','POST'].includes(req.method)||(req.method==='POST')!==(op==='save'))return void res.writeHead(400).end();
+ if(!['radar-lectores','contactos','prensa','contenidos','analitica','crecimiento','facebook-comunidad'].includes(agent)||!['context','search','save','facebook-candidate','facebook-draft'].includes(op)||!['GET','POST'].includes(req.method)||(req.method==='POST')!==(['save','facebook-candidate','facebook-draft'].includes(op)))return void res.writeHead(400).end();
  if(!env.HOUSTON_HOST_TOKEN||env.HOUSTON_HOST_TOKEN.length<32)return void res.writeHead(503).end();
  const target=new URL('https://www.lallaveoficial.com/api/agent-066');target.searchParams.set('agent',agent);target.searchParams.set('op',op);
  if(op==='search')target.searchParams.set('q',(url.searchParams.get('q')||'').slice(0,351));

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';import fs from 'node:fs/promises';
-import {managerFixture} from './manager066-integration.mjs';import {operationsTick,operationsStatus} from '../lib/operations066.js';
+import {managerFixture} from './manager066-integration.mjs';import {refreshAgentMetrics} from '../lib/agent-data.js';import {operationsTick,operationsStatus} from '../lib/operations066.js';
 const {db,sql}=await managerFixture();
 try{
  const migration=await fs.readFile(new URL('../migrations/20261017_operations066.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
@@ -10,5 +10,10 @@ try{
  // A failed metrics source must not prevent the independent internal queue stage.
  await sql`DELETE FROM console066_operations_runs`;let prepared=false;
  const failure=await operationsTick(sql,{}, {refresh:async()=>{throw Error('private payload');},prepare:async()=>{prepared=true;return {created:0};}});assert.ok(prepared);assert.equal(failure.status,'partial');assert.ok(!JSON.stringify(failure).includes('private payload'));
+ await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"updated"}]}'::jsonb,now()-interval '40 minutes')`;
+ await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"unavailable"}]}'::jsonb,now()-interval '20 minutes')`;
+ let refreshed=0;const syncs={ga4:async()=>{refreshed++;return {};}};await refreshAgentMetrics(sql,{},syncs);assert.equal(refreshed,1);assert.equal((await refreshAgentMetrics(sql,{},syncs)).cached,true);assert.equal(refreshed,1);
+ await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"unavailable"}]}'::jsonb)`;
+ assert.equal((await refreshAgentMetrics(sql,{},syncs)).cached,true);assert.equal(refreshed,1);
  console.log('Operations integration passed: atomic hourly gate, concurrent calls, independent queue, partial provider failure and safe persistent status.');
 }finally{await db.close();}

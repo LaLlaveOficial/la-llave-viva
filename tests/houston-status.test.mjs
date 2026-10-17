@@ -40,7 +40,7 @@ test('telemetry route requires the same private console session as the CRM',asyn
 test('restart import keeps existing agents and their instructions',async()=>{
   const existing=AGENT_ROLES.map((a,i)=>({id:String(i),name:a.name}));let posts=0;
   const fetcher=async(url,opts)=>{if(opts.method==='POST'){posts++;throw new Error('must not overwrite');}return json(existing);};
-  const count=await ensureAgents({token:secret,seedRoot:new URL('../agents/',import.meta.url).pathname,fetcher});assert.equal(count,6);assert.equal(posts,0);
+  const count=await ensureAgents({token:secret,seedRoot:new URL('../agents/',import.meta.url).pathname,fetcher});assert.equal(count,7);assert.equal(posts,0);
 });
 
 test('usage reads existing provider quota without exposing account credentials',async()=>{

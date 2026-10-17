@@ -1,7 +1,7 @@
 name: Operación 066 · marketing
 on:
   pull_request:
-    paths: ['lib/**', 'api/console-066.js', 'api/agent-066.js', 'vercel.json', 'public/centro-066/**', 'migrations/202610*.sql', 'deploy/console066-houston/**', 'tests/operations066*', 'tests/marketing-workspace*', 'tests/marketing-delivery*', 'tests/customer-mail*', 'tests/manager066*', 'src/ajraz10.js', 'api/create-promo-preference.js', '.github/workflows/marketing066-ci.yml']
+    paths: ['lib/**', 'api/console-066.js', 'api/agent-066.js', 'vercel.json', 'public/centro-066/**', 'migrations/202610*.sql', 'deploy/console066-houston/**', 'tests/operations066*', 'tests/facebook-groups066*', 'agents/**', 'tests/marketing-workspace*', 'tests/marketing-delivery*', 'tests/customer-mail*', 'tests/manager066*', 'src/ajraz10.js', 'api/create-promo-preference.js', '.github/workflows/marketing066-ci.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +26,7 @@ jobs:
           node tests/customer-mail-integration.mjs
           node tests/manager066-integration.mjs
           node tests/operations066-integration.mjs
+          node tests/facebook-groups066-integration.mjs
       - name: Interfaz en navegador
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
@@ -33,5 +34,6 @@ jobs:
           node tests/marketing-workspace-browser.mjs
           node tests/customer-mail-browser.mjs
           node tests/manager066-browser.mjs
+          node tests/facebook-groups066-browser.mjs
       - name: Compilar
         run: npm run build
