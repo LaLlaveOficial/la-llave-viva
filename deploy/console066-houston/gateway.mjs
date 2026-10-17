@@ -1,3 +1,4 @@
+import {startOperationsLoop} from './operations-loop.mjs';
 import http from 'node:http';
 import {spawn} from 'node:child_process';
 import {mkdir,chown,stat,readFile} from 'node:fs/promises';
@@ -76,8 +77,9 @@ async function start(){
   const engine=spawn(process.execPath,['/houston/dist/host/main.mjs'],{stdio:'inherit',env:process.env});
   const server=createGateway();server.listen(Number(process.env.PORT||8080),'0.0.0.0');
   void bootstrapAgents();
+  const stopOperations=startOperationsLoop();
   let stopping=false;
-  const stop=()=>{if(stopping)return;stopping=true;server.close();engine.kill('SIGTERM');setTimeout(()=>process.exit(0),10000).unref();};
+  const stop=()=>{if(stopping)return;stopping=true;stopOperations();server.close();engine.kill('SIGTERM');setTimeout(()=>process.exit(0),10000).unref();};
   process.on('SIGTERM',stop);process.on('SIGINT',stop);
   engine.on('error',()=>{server.close();process.exitCode=1;});
   engine.on('exit',code=>{server.close();process.exit(stopping?0:(code||1));});
