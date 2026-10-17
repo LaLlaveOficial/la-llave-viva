@@ -18,8 +18,8 @@ function engine(){
  };return {fetcher,writes,saved};
 }
 test('setup is retry safe, uses Chile time, and preserves explicit no-send guards',async()=>{
- const e=engine();const first=await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(first.timezone,'America/Santiago');assert.equal(first.routines.length,6);
- await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(e.writes.filter(w=>w.path.endsWith('/routines')).length,6);
+ const e=engine();const first=await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(first.timezone,'America/Santiago');assert.equal(first.routines.length,7);
+ await houstonRoutines({action:'setup'},env,e.fetcher);assert.equal(e.writes.filter(w=>w.path.endsWith('/routines')).length,7);
  for(const [slug,p] of Object.entries(ROUTINES)){const row=first.routines.find(r=>r.slug===slug);assert.equal(row.schedule,p.schedule);assert.equal(row.enabled,true);}
  assert.match(e.saved.contenidos[0].prompt,/No envíes mensajes/);assert.equal(e.saved.contenidos[0].provider,'openai-codex');assert.ok(!JSON.stringify(first).includes(env.HOUSTON_HOST_TOKEN));
  await houstonRoutines({action:'pause',slug:'contenidos'},env,e.fetcher);assert.equal(e.saved.contenidos[0].enabled,false);assert.equal(e.saved.prensa[0].enabled,true);

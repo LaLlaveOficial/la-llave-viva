@@ -1,3 +1,4 @@
+import {facebookApi} from '../lib/facebook-groups066.js';
 import {operationsStatus} from '../lib/operations066.js';
 import {managerApi} from '../lib/manager066.js';
 import {customerMailApi} from '../lib/customer-mail066.js';
@@ -61,6 +62,10 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(['facebook-read','facebook-candidate','facebook-group-save','facebook-draft','facebook-approve','facebook-prepare','facebook-receipt'].includes(op)){
+        if(req.method!==(op==='facebook-read'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        const {status,...result}=await facebookApi(sql,op,body);return res.status(status).json(result);
+      }
       if(['manager-read','manager-tick','manager-policy','manager-signal-save','manager-job-state','manager-creative'].includes(op)){
         if(req.method!==(op==='manager-read'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
         const {status,...result}=await managerApi(sql,op,body);return res.status(status).json(result);
@@ -191,6 +196,7 @@ export function makeHandler(connect = neon, env = process.env) {
         if(!validateMission(body))return res.status(400).json({error:'Revisa la tarea y el agente.'});
         if(body.action==='start'&&body.purpose){
           const mission=MARKETING_MISSIONS[body.purpose];if(!mission||mission.slug!==body.slug)return res.status(400).json({error:'Tarea de marketing inválida.'});
+          if(body.purpose==='facebook'){body.text=mission.text;}else{
           const metrics=await privateMetrics(sql);const leads=await sql`SELECT name,status FROM console066_leads WHERE status IN ('Contactado','En conversación','No contactar') ORDER BY updated_at DESC LIMIT 30`;
           let apolloContext=null;
           if(body.purpose==='contactos'){
@@ -199,6 +205,7 @@ export function makeHandler(connect = neon, env = process.env) {
           }
           let brand=[];try{brand=await approvedBrandContext(sql);}catch{/* Missing workspace is reported to the agent, never fabricated. */}
           body.text=marketingText(body.purpose,metrics,leads,apolloContext,brand);
+          }
         }
         try{return res.status(200).json(await houstonMission(body,env));}
         catch(e){return res.status(502).json({error:e.message});}
