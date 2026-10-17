@@ -1,5 +1,6 @@
 import {facebookCandidate,facebookDraft} from '../lib/facebook-groups066.js';
 import {operationsTick} from '../lib/operations066.js';
+import {timingSafeEqual} from 'node:crypto';
 import {makeInstagramWebhook} from '../lib/instagram-webhook.js';
 export const config={api:{bodyParser:false}};
 import {neon} from '@neondatabase/serverless';
@@ -7,6 +8,13 @@ import {agentAuthorized,agentContext,agentSlug,agentSearch,refreshAgentMetrics,v
 export function makeAgentHandler(connect=neon,env=process.env,{maintain=operationsTick}={}){return async(req,res)=>{
  if(req.query?.op==='instagram-webhook')return makeInstagramWebhook(connect,env)(req,res);
  res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');
+ if(req.query?.op==='queue-cron'){
+  const expected=typeof env.CRON_SECRET==='string'&&env.CRON_SECRET.length>=32?'Bearer '+env.CRON_SECRET:null,actual=req.headers?.authorization;
+  if(req.method!=='GET'||!expected||typeof actual!=='string'||Buffer.byteLength(actual)!==Buffer.byteLength(expected)||!timingSafeEqual(Buffer.from(actual),Buffer.from(expected)))return res.status(401).json({error:'Acceso interno requerido.'});
+  if(!env.DATABASE_URL)return res.status(503).json({error:'Base de datos no disponible.'});
+  try{return res.status(200).json(await maintain(connect(env.DATABASE_URL),{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN},{owner:'vercel-backup'}));}
+  catch{return res.status(503).json({error:'Respaldo no disponible. La tarea se conserva.'});}
+ }
  if(!agentAuthorized(req,env))return res.status(401).json({error:'Acceso interno requerido.'});
  const slug=req.query?.agent;if(!agentSlug(slug))return res.status(400).json({error:'Agente inválido.'});
  if(!env.DATABASE_URL)return res.status(503).json({error:'Base de datos no disponible.'});
