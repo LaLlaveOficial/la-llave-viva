@@ -32,6 +32,11 @@ export function makeAgentHandler(connect=neon,env=process.env){return async(req,
    }
    if(!String(req.headers?.['content-type']||'').startsWith('application/json')||req.body?.agent!==slug)return res.status(400).json({error:'Solicitud inválida.'});
    const output=validateAgentOutput(req.body);if(!output)return res.status(400).json({error:'Propuesta inválida.'});
+   if(output.managerJobId){
+    const rows=await sql`WITH claimed AS (UPDATE console066_manager_jobs SET state='drafted',version=version+1,updated_at=now(),output_id=nextval(pg_get_serial_sequence('console066_audit','id')) WHERE id=${output.managerJobId} AND role=${slug} AND state='queued' RETURNING output_id),saved AS (INSERT INTO console066_audit(id,entity,entity_id,action,detail) OVERRIDING SYSTEM VALUE SELECT output_id,'agent-output',0,'draft',${JSON.stringify(output)}::jsonb FROM claimed RETURNING id) SELECT id FROM saved`;
+    if(!rows.length)return res.status(409).json({error:'La tarea no corresponde a este agente o ya tiene una entrega.'});
+    return res.status(201).json({saved:true,id:rows[0].id,status:'pending_review',published:false,sent:false});
+   }
    const rows=await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES ('agent-output',0,'draft',${JSON.stringify(output)}::jsonb) RETURNING id`;
    return res.status(201).json({saved:true,id:rows[0].id,status:'pending_review',published:false,sent:false});
   }

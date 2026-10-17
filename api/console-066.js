@@ -1,3 +1,4 @@
+import {managerApi} from '../lib/manager066.js';
 import {customerMailApi} from '../lib/customer-mail066.js';
 import {publicationApi} from '../lib/metricool-publication.js';
 import {inboxApi} from '../lib/instagram-inbox.js';
@@ -59,6 +60,10 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(['manager-read','manager-tick','manager-policy','manager-signal-save','manager-job-state','manager-creative'].includes(op)){
+        if(req.method!==(op==='manager-read'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        const {status,...result}=await managerApi(sql,op,body);return res.status(status).json(result);
+      }
       if(['customers-list','customer-order-save','mail-list','mail-save','mail-preview','mail-prepare','mail-approve','mail-send'].includes(op)){
         if(req.method!==(op==='mail-list'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
         const {status,...result}=await customerMailApi(sql,op,body,env);return res.status(status).json(result);

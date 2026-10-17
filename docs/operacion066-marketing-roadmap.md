@@ -10,6 +10,10 @@ Actualizado el 16 de octubre de 2026. La investigación dio paso a una implement
 
 El siguiente bloque incorpora adaptadores revisados para programación Metricool y bandeja Instagram. Requieren conexión y permisos específicos; no equivalen a publicación ni mensajería activas. Consultar `marketing-delivery066.md` y `marketing-workspace066.md` para el alcance y pruebas. Las referencias de proveedores de este documento no significan que se instalaron o clonaron esas plataformas.
 
+## Ampliación de gerencia · 16-oct-2026
+
+La primera entrega de Gerencia 066 añade cola diaria persistente, encargos por rol, entregas vinculadas, radar de fuentes y plantillas exportables. Consultar `manager066.md` para lo implementado y las siguientes fases. No equivale al objetivo completo de producción generativa, autonomía publicitaria ni captación automática de seguidores. n8n sigue sin instalar.
+
 ## Inventario de referencias
 
 Las capacidades siguientes son las descritas por los proveedores. La selección para OP066 es una propuesta propia y no implica contratar o copiar sus sistemas privados.
