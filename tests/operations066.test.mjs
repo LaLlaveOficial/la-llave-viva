@@ -22,3 +22,10 @@ test('authenticated background maintenance forwards platform identity for direct
  for(const headers of [{authorization:'Bearer '+env.HOUSTON_HOST_TOKEN,'x-vercel-oidc-token':'platform-test'},{authorization:'Bearer '+env.HOUSTON_HOST_TOKEN}]){const r=response();await handler({method:'POST',query:{agent:'analitica',op:'maintenance'},headers},r);assert.equal(r.code,200);assert.equal(r.body.modelCalls,0);assert.ok(!JSON.stringify(r.body).includes('platform-test'));}
  assert.deepEqual(seen,['platform-test','fallback-test']);
 });
+test('independent cron is fail-closed and cannot be invoked with the Houston credential',async()=>{
+ const env={DATABASE_URL:'test',CRON_SECRET:'c'.repeat(64),HOUSTON_HOST_TOKEN:'h'.repeat(64)};let calls=0;
+ const handler=makeAgentHandler(()=>async()=>[],env,{maintain:async(sql,e,opts)=>{calls++;assert.equal(opts.owner,'vercel-backup');return {status:'complete'};}});
+ const res=()=>({setHeader(){},status(n){this.code=n;return this;},json(x){this.body=x;return this;}});
+ for(const [method,authorization,code]of [['GET',undefined,401],['GET','Bearer '+env.HOUSTON_HOST_TOKEN,401],['POST','Bearer '+env.CRON_SECRET,401],['GET','Bearer '+env.CRON_SECRET,200]]){const r=res();await handler({method,query:{op:'queue-cron'},headers:{authorization}},r);assert.equal(r.code,code);}
+ assert.equal(calls,1);
+});

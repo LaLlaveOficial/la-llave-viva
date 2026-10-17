@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [{"path":"/api/agent-066?op=queue-cron","schedule":"15 10 * * *"}],
   "functions": {
     "api/console-066.js": {
       "maxDuration": 120

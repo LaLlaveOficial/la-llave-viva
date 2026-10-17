@@ -3,12 +3,13 @@ import {managerFixture} from './manager066-integration.mjs';import {refreshAgent
 const {db,sql}=await managerFixture();
 try{
  const migration=await fs.readFile(new URL('../migrations/20261017_operations066.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
+ await db.exec(await fs.readFile(new URL('../migrations/20261017_queue066.sql',import.meta.url),'utf8'));
  assert.equal((await operationsStatus(sql)).status,'not_started');let calls=0;
  const deps={refresh:async()=>{calls++;return {checkedAt:new Date().toISOString(),sources:[{source:'ga4',status:'updated'},{source:'googleAds',status:'unavailable'}]};}};
  const results=await Promise.all([operationsTick(sql,{},deps),operationsTick(sql,{},deps)]);assert.equal(calls,1);assert.equal(results.filter(x=>x.status==='already_reserved').length,1);assert.equal(results.filter(x=>x.status==='partial').length,1);
  const status=await operationsStatus(sql);assert.equal(status.status,'partial');assert.ok(status.finished_at);assert.equal(status.detail.modelCalls,0);assert.equal(status.detail.sent,false);assert.equal((await sql`SELECT count(*)::int AS n FROM console066_manager_jobs`)[0].n,6);
  // A failed metrics source must not prevent the independent internal queue stage.
- await sql`DELETE FROM console066_operations_runs`;let prepared=false;
+ await sql`DELETE FROM console066_operations_runs`;await sql`DELETE FROM console066_queue_events`;await sql`DELETE FROM console066_queue`;let prepared=false;
  const failure=await operationsTick(sql,{}, {refresh:async()=>{throw Error('private payload');},prepare:async()=>{prepared=true;return {created:0};}});assert.ok(prepared);assert.equal(failure.status,'partial');assert.ok(!JSON.stringify(failure).includes('private payload'));
  await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"updated"}]}'::jsonb,now()-interval '40 minutes')`;
  await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"unavailable"}]}'::jsonb,now()-interval '20 minutes')`;

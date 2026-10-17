@@ -1,5 +1,6 @@
 import {facebookApi} from '../lib/facebook-groups066.js';
-import {operationsStatus} from '../lib/operations066.js';
+import {operationsStatus,operationsTick} from '../lib/operations066.js';
+import {queueStatus066,probe066} from '../lib/queue066.js';
 import {managerApi} from '../lib/manager066.js';
 import {customerMailApi} from '../lib/customer-mail066.js';
 import {publicationApi} from '../lib/metricool-publication.js';
@@ -62,6 +63,12 @@ export function makeHandler(connect = neon, env = process.env) {
       if (!token) return res.status(401).json({error:'Inicia sesión para continuar.'});
       const session = await sql`SELECT token_hash FROM console066_sessions WHERE token_hash=${hashToken(token)} AND expires_at>now()`;
       if (session.length !== 1) return res.status(401).json({error:'Tu sesión terminó. Ingresa nuevamente.'});
+      if(['queue-read','queue-run','queue-probe'].includes(op)){
+        if(req.method!==(op==='queue-read'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        if(op==='queue-read')return res.status(200).json(await queueStatus066(sql));
+        if(op==='queue-probe')return res.status(200).json(await probe066(sql));
+        return res.status(200).json(await operationsTick(sql,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN},{owner:'vercel-backup'}));
+      }
       if(['facebook-read','facebook-candidate','facebook-group-save','facebook-draft','facebook-approve','facebook-prepare','facebook-receipt'].includes(op)){
         if(req.method!==(op==='facebook-read'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
         const {status,...result}=await facebookApi(sql,op,body);return res.status(status).json(result);
