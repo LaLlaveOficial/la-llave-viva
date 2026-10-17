@@ -14,3 +14,6 @@ CREATE TABLE IF NOT EXISTS console066_fb_posts (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS console066_fb_one_pending ON console066_fb_posts(group_id) WHERE status IN ('prepared','submitted','uncertain');
 CREATE TABLE IF NOT EXISTS console066_fb_discovery_days(day text PRIMARY KEY, candidates integer NOT NULL CHECK(candidates BETWEEN 1 AND 6));
+
+ALTER TABLE console066_fb_groups ADD COLUMN IF NOT EXISTS facebook_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS console066_fb_group_identity ON console066_fb_groups(facebook_id) WHERE facebook_id IS NOT NULL;

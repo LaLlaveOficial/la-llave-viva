@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';import fs from 'node:fs/promises';
 import {managerFixture} from './manager066-integration.mjs';import {facebookApi,facebookCandidate,groupURL,FACEBOOK_PAGE} from '../lib/facebook-groups066.js';import {makeAgentHandler} from '../api/agent-066.js';
 export async function facebookFixture(){const {db,sql}=await managerFixture();const m=await fs.readFile(new URL('../migrations/20261017_facebook_groups066.sql',import.meta.url),'utf8');await db.exec(m);await db.exec(m);return {db,sql};}
 const input={name:'Club QA de thriller',url:'https://www.facebook.com/groups/066qa/',country:'Chile',genres:['thriller'],evidence:'Fuente sintética QA: comunidad de conversación sobre libros de thriller.'};
-export const reviewed=(g)=>({id:g.id,version:g.version,...g.data,genres:g.data.genres,pagesAllowed:'yes',promotionAllowed:'yes',linksAllowed:'yes',rules:'Reglas sintéticas QA: la presentación de libros propios y sus enlaces está permitida.',rulesReviewed:true,conditionsConfirmed:false,membership:'member',membershipEvidence:'Observación sintética QA: La Llave I figura como miembro aceptado.',identityConfirmed:true});
+export const reviewed=(g)=>({id:g.id,version:g.version,facebookId:g.facebook_id||'9990660001',...g.data,genres:g.data.genres,pagesAllowed:'yes',promotionAllowed:'yes',linksAllowed:'yes',rules:'Reglas sintéticas QA: la presentación de libros propios y sus enlaces está permitida.',rulesReviewed:true,conditionsConfirmed:false,membership:'member',membershipEvidence:'Observación sintética QA: La Llave I figura como miembro aceptado.',identityConfirmed:true});
 if(process.argv[1]===new URL(import.meta.url).pathname){
  const {db,sql}=await facebookFixture();
  try{
@@ -19,6 +19,7 @@ if(process.argv[1]===new URL(import.meta.url).pathname){
   assert.equal((await facebookApi(sql,'facebook-draft',{...draft,version:p.version})).status,200);p=(await sql`SELECT * FROM console066_fb_posts WHERE id=${draft.id}`)[0];
   assert.equal((await facebookApi(sql,'facebook-prepare',{id:p.id,version:p.version})).status,409);
   assert.equal((await facebookApi(sql,'facebook-approve',{id:p.id,version:p.version})).approved,true);p=(await sql`SELECT * FROM console066_fb_posts WHERE id=${draft.id}`)[0];
+  assert.equal((await facebookApi(sql,'facebook-candidate',{...input,url:'https://www.facebook.com/groups/9990660001/'})).existing,true);
   assert.equal((await facebookApi(sql,'facebook-draft',{...draft,id:'evil-link',text:draft.text+' https://evil.example'})).status,400);
   const second={...draft,id:'qa-post-two'};await facebookApi(sql,'facebook-draft',second);await facebookApi(sql,'facebook-approve',{id:second.id,version:1});
   const parallel=await Promise.all([facebookApi(sql,'facebook-prepare',{id:p.id,version:p.version}),facebookApi(sql,'facebook-prepare',{id:second.id,version:2})]);assert.equal(parallel.filter(r=>r.prepared).length,1);assert.equal(parallel.filter(r=>r.status===409).length,1);

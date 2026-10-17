@@ -1,6 +1,6 @@
 # Comunidad Facebook 066
 
-Agente dedicado `facebook-comunidad` (Comunidad Facebook 066), instalado junto a los seis roles existentes. Investigación a las 10:00 y 18:00 de Santiago, máximo dos búsquedas y tres candidatos por tarea; base de datos limita a seis candidatos nuevos del agente por día. Los candidatos repetidos se deduplican por URL canónica. El presupuesto de búsquedas del equipo se conserva. La rutina se activa de forma dirigida, sin reactivar otras rutinas.
+Agente dedicado `facebook-comunidad` (Comunidad Facebook 066), instalado junto a los seis roles existentes. Investigación a las 10:00 y 18:00 de Santiago, máximo dos búsquedas y tres candidatos por tarea; base de datos limita a seis candidatos nuevos del agente por día. Los candidatos repetidos se deduplican por URL y por ID numérico confirmado; la aprobación exige ese ID para evitar tratar una URL con nombre y otra numérica como grupos distintos. El presupuesto de búsquedas del equipo se conserva. La rutina se activa de forma dirigida, sin reactivar otras rutinas.
 
 ## Identidad y acceso comprobado
 
