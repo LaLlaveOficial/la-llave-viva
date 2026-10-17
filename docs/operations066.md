@@ -15,3 +15,7 @@ El resultado almacena fecha de inicio, cierre y estados de cada fuente. Agentes 
 3. Confirmar despliegues terminales y una fila real de supervisión. Registrar por separado fuentes no disponibles.
 
 No requiere n8n ni credenciales nuevas. Consume lecturas y cómputo de la infraestructura existente, aunque no consume turnos de IA. Los motores generativos, publicación, preferencias voluntarias y automatización de mailing siguen siendo entregas separadas.
+
+## Consumo del análisis
+
+La rutina de interpretación de analítica usa IA a las 09:00, 15:00 y 21:00 de Santiago (antes era cada hora). La sincronización operativa mantiene el ciclo horario sin modelo. La actualización del horario se aplica únicamente a `analitica` mediante setup dirigido; no reactiva ni modifica las otras rutinas. Esto evita 21 turnos programados de analítica al día, sin garantizar disponibilidad futura de la cuota compartida.
