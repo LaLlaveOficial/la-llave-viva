@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';import fs from 'node:fs/promises';import {scryptSync} from 'node:crypto';
 import {customerFixture} from './customer-mail-fixture.mjs';import {payloadHash} from '../lib/marketing-workspace.js';
-import {managerApi,managerTick,planManager,validatePublicSignal,creativeSVG} from '../lib/manager066.js';
+import {managerApi,managerAgentContext,managerTick,planManager,validatePublicSignal,creativeSVG} from '../lib/manager066.js';
 import {makeHandler} from '../api/console-066.js';import {makeAgentHandler} from '../api/agent-066.js';
 export async function managerFixture(){
  const {db,sql}=await customerFixture();const migration=await fs.readFile(new URL('../migrations/20261016_manager066.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
@@ -22,8 +22,11 @@ if(process.argv[1]===new URL(import.meta.url).pathname){
   let r=await call('manager-read');assert.equal(r.code,200);assert.equal(r.data.jobs.length,6);assert.equal(r.data.jobs.filter(j=>j.kind==='creative').length,4);assert.equal(r.data.jobs.filter(j=>j.role==='radar-lectores').length,1);
   const image=r.data.jobs.find(j=>j.kind==='creative'),research=r.data.jobs.find(j=>j.kind==='research');
   const svg=await call('manager-creative',{id:image.id});assert.equal(svg.code,200);assert.match(svg.data.svg,/Santibañez/);assert.ok(!creativeSVG({...image.data,hook:'<script>alert(1)</script>'}).includes('<script>'));
-  const agent=makeAgentHandler(()=>sql,env),body={agent:'contenidos',kind:'instagram',title:'Propuesta para revisión',text:'Texto completo de propuesta sintética.',managerJobId:image.id};
+  const agent=makeAgentHandler(()=>sql,env),body={agent:'contenidos',kind:image.channel,title:'Propuesta para revisión',text:'Texto completo de propuesta sintética.',managerJobId:image.id};
   const save=async(data)=>{const r=response();await agent({method:'POST',headers:{authorization:'Bearer '+env.HOUSTON_HOST_TOKEN,'content-type':'application/json'},query:{agent:data.agent,op:'save'},body:data},r);return r;};
+  const {managerJobId:ignored,...generic}=body;
+  assert.equal((await save(generic)).code,409);
+  assert.equal((await save({...body,kind:body.kind==='instagram'?'facebook':'instagram'})).code,409);
   assert.equal((await save({...body,agent:'analitica'})).code,409);assert.equal((await save(body)).code,201);assert.equal((await save(body)).code,409);assert.equal((await call('manager-read')).data.jobs.find(j=>j.id===image.id).output_text,body.text);
   assert.equal((await save({...body,managerJobId:research.id})).code,409);
   await db.exec("UPDATE console066_marketing_records SET version=2,status='draft',approved_hash=NULL,approved_at=NULL WHERE id='brand'");
@@ -32,6 +35,8 @@ if(process.argv[1]===new URL(import.meta.url).pathname){
   assert.equal((await call('manager-signal-save',signal)).code,200);assert.equal((await call('manager-signal-save',{...signal,id:'duplicate'})).code,409);
   assert.equal(validatePublicSignal({...signal,evidence:'Correo privado reader@example.test'}),null);assert.equal(validatePublicSignal({...signal,sourceUrl:'https://example.com/?token=private'}),null);assert.equal(validatePublicSignal({...signal,observedAt:'2099-01-01'}),null);
   assert.equal((await call('manager-policy',{version:1,enabled:false,maxDailyDrafts:6})).code,200);assert.equal((await call('manager-policy',{version:1,enabled:true,maxDailyDrafts:12})).code,409);assert.equal(planManager([], {enabled:false}).jobs.length,0);
+  const ctx=await managerAgentContext(sql,'contenidos');
+  assert.equal(ctx.jobs[0].state,'queued');assert.ok(ctx.backlog.some(r=>r.role==='contenidos'&&r.state==='drafted'&&r.total===1));
   assert.equal((await call('manager-job-state',{id:image.id,version:2,state:'published'})).code,400);
   assert.equal((await sql`SELECT count(*)::int n FROM console066_audit WHERE entity='agent-output'`)[0].n,1);assert.equal((await sql`SELECT count(*)::int n FROM console066_mail_recipients WHERE status='sent'`)[0].n,0);
   console.log('Manager Postgres/API passed: auth/CSRF, atomic daily dedup/caps, approved brand/product dependency, stale creative rejection, role-bound one-shot deliveries, linked output evidence, public-signal validation, pause/concurrency and no external actions/spend.');

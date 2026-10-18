@@ -37,3 +37,10 @@ Referencias oficiales consultadas el 16-oct-2026:
 - https://docs.n8n.io/build/understand-workflows/understand-executions/view-all-executions.md
 
 No se afirma superioridad universal. Criterios de progreso: piezas exportadas y aprobadas, consultas atendidas correctamente, compras reales y margen; cobertura de datos, costos, incidencias y duplicados.
+
+
+## Entregas vinculadas y prioridad de cola (18 octubre 2026)
+
+El contexto presenta primero los encargos `queued`, por antigüedad, e incluye recuentos por rol y estado. Las rutinas de contenidos, analítica y radar atienden hasta cuatro encargos pendientes por ejecución. Cada resultado se guarda por separado con `managerJobId`, rol y tipo de contenido compatibles. La API rechaza propuestas genéricas mientras el mismo rol tenga encargos en cola, sin modificar estos encargos ni simular entregas. El guardado del resultado y la transición a `drafted` son atómicos; reintentos no duplican una entrega. `drafted` solo acredita texto para revisión, nunca medios generados, publicación, envío o cierre.
+
+«Actualizar instrucciones» modifica únicamente el prompt de la rutina seleccionada, conserva el horario y la pausa y no inicia una ejecución. La programación existente se mantiene. Los fallos de proveedor o la falta de fuentes deben aparecer como bloqueos, sin inventar resultados ni comprar créditos.
