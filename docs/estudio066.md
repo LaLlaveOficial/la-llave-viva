@@ -212,3 +212,10 @@ Los subtítulos se dibujan dentro del video exportado y se guardan en el proyect
 Selecciona un clip, coloca el cabezal dentro y pulsa el icono **Guardar keyframe (Shift+K)**. Avanza a otro tiempo y cambia posición, escala, opacidad o volumen en el inspector: cada cambio de una propiedad animada crea un punto. La reproducción interpola los valores entre puntos. El panel Keyframes permite recorrerlos, quitar el punto actual y quitar la animación conservando el valor visible.
 
 Los puntos se guardan con el proyecto y se conservan al mover, recortar, cortar o duplicar clips. Imagen/texto admiten posición, escala y opacidad; video también volumen; audio admite volumen. Interpolación lineal, hasta 32 puntos por propiedad. La exportación WebM con movimiento y volumen animados se comprobó leyendo el archivo descargado con FFmpeg.
+
+
+## Respaldo nativo compartido — 18 octubre 2026
+
+En **Montaje y efectos → Archivo y respaldos**, el respaldo completo se descarga en `.studio066`, el mismo formato nativo de Generación IA. Incluye medios, referencias, historial y timeline, con los límites ya validados de 500 MB totales y 150 MB por original. La restauración detecta la cabecera del archivo; admite también los respaldos JSON antiguos con sus límites originales. No cambia archivos existentes, no sube medios a un servidor ni consume proveedores.
+
+El límite anterior de 40 medios / 48 MB del JSON no se aplica al formato nativo. Si falla el guardado local durante una restauración nativa, se restauran los dos registros anteriores y se descartan los originales recién importados. Los archivos previos se conservan. El respaldo descargado debe conservarse: sigue sin haber sincronización automática de medios entre dispositivos.
