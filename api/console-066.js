@@ -1,3 +1,4 @@
+import {studioProjectState066} from '../lib/studio-project-state066.js';
 import {facebookApi} from '../lib/facebook-groups066.js';
 import {operationsStatus,operationsTick} from '../lib/operations066.js';
 import {queueStatus066,probe066} from '../lib/queue066.js';
@@ -39,7 +40,7 @@ export function makeHandler(connect = neon, env = process.env) {
     if (req.method === 'POST' && !sameOrigin(req,config)) return res.status(403).json({error:'Origen no permitido.'});
     const op = req.query?.op || 'data';
     const body = req.body;
-    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > (op==='studio-encode-chunk'?750000:12000))) return res.status(400).json({error:'Solicitud inválida.'});
+    if (req.method === 'POST' && (!String(req.headers?.['content-type'] || '').startsWith('application/json') || !body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > (op==='studio-encode-chunk'?750000:op==='studio-cloud-project-save'?240000:12000))) return res.status(400).json({error:'Solicitud inválida.'});
     try {
       const sql = connect(config.databaseUrl);
       if (op === 'login' && req.method === 'POST') {
@@ -230,6 +231,7 @@ export function makeHandler(connect = neon, env = process.env) {
         const reply=await studioGenerationApi(sql,op,req);
         return res.status(reply.status).json(reply.data);
       }
+      if(['studio-cloud-project','studio-cloud-project-save'].includes(op)){const reply=await studioProjectState066(sql,op,req,env);return res.status(reply.status).json(reply.data);}
       if(['studio-cloud','studio-cloud-assets','studio-cloud-upload','studio-cloud-confirm','studio-cloud-download','studio-cloud-trash','studio-cloud-restore','studio-cloud-trash-assets'].includes(op)) {
         const reply=await studioCloudApi(sql,op,req,env);
         return res.status(reply.status).json(reply.data);

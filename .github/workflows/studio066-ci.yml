@@ -11,7 +11,7 @@ on:
       - fix/studio066-undo-selection
       - feature/studio066-wan-free-browser
   pull_request:
-    paths: ['public/centro-066/studio-archive.js', 'public/centro-066/studio-workbench.js', 'tests/studio066-archive.test.mjs', '.github/workflows/studio066-ci.yml']
+    paths: ['public/centro-066/studio-project*.js', 'lib/studio-project-state066.js', 'tests/studio066-project-sync.test.mjs', 'public/centro-066/studio-archive.js', 'public/centro-066/studio-workbench.js', 'tests/studio066-archive.test.mjs', '.github/workflows/studio066-ci.yml']
   workflow_dispatch:
 
 permissions:
@@ -41,7 +41,9 @@ jobs:
       - name: Dependencias efímeras de integración
         run: npm install --no-save --ignore-scripts --no-audit --no-fund @electric-sql/pglite jsdom fake-indexeddb
       - name: Probar Postgres y DOM aislados del estudio
-        run: node tests/studio066-integration.mjs
+        run: |
+          node tests/studio066-integration.mjs
+          node --test tests/studio066-project-sync.test.mjs
       - name: Validar editor multimedia e interfaz
         run: |
           node --check public/centro-066/studio-workbench.js
