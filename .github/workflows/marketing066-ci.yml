@@ -24,6 +24,7 @@ jobs:
           node tests/marketing-workspace-integration.mjs
           node tests/marketing-delivery-integration.mjs
           node tests/customer-mail-integration.mjs
+          node tests/customer-mail-reconciliation.mjs
           node tests/manager066-integration.mjs
           node tests/operations066-integration.mjs
           node tests/queue066-integration.mjs

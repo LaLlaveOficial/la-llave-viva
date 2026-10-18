@@ -11,6 +11,8 @@ export async function customerFixture(){
  INSERT INTO mailing_subscribers(email,name) VALUES ('noconsent@example.test','Sin permiso QA');
  INSERT INTO orders(external_reference,payment_status,buyer_name,buyer_email) VALUES ('LLAVE-QA-PAID','approved','Comprador QA','buyer@example.test'),('LLAVE-QA-PENDING','pending','Checkout QA','pending@example.test');
  UPDATE orders SET created_at=now()-interval '3 hours' WHERE payment_status='pending';`);
+ await db.exec("ALTER TABLE order_email_events ADD COLUMN resend_email_id text; CREATE TABLE mailing_sequence_emails(id bigserial PRIMARY KEY,resend_email_id text);");
+ await db.exec(await fs.readFile(new URL('../migrations/20261018_mail_receipts066.sql',import.meta.url),'utf8'));
  const migration=await fs.readFile(new URL('../migrations/20261016_customer_mail.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
  const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
  return {db,sql};

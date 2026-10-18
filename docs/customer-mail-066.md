@@ -25,3 +25,17 @@ Servidor usa `RESEND_API_KEY` existente, sin exponerla al navegador, remitente d
 No se instaló n8n. Houston y servicios propios mantienen la orquestación existente. Los adaptadores de publicación Metricool y bandeja Instagram son módulos distintos; requieren sus propias autorizaciones, configuración y comprobación de lectura/escritura. Este módulo no afirma que esos permisos estén concedidos ni los activa.
 
 Migración aditiva y repetible: `migrations/20261016_customer_mail.sql`. No modifica pagos, compradores ni consentimientos existentes. Verificación: integración PostgreSQL/API autenticada, UI sintética y compilación en CI.
+
+## Cierre comercial y recibos (18-oct-2026)
+
+Aplicar `migrations/20261018_mail_receipts066.sql` antes del despliegue.
+
+Clientes muestra un resumen por fecha de creación del pedido en Santiago y moneda, separando `real`, `test` y `unknown`; solo pagos aprobados aportan importes, con libro y despacho separados. Modo live no acredita venta real. La clasificación se guarda desde el detalle con evidencia, versión y auditoría, conservando los pagos originales. No se clasifica automáticamente por nombre o UTM.
+
+`mail-reconcile` es una operación POST privada de consulta a Resend: hasta cinco IDs únicos por lote, solo GET, plazo de seis segundos por consulta y enfriamiento de 24 horas por ID. Incluye pedidos, secuencia de suscriptores y campañas. Guarda únicamente ID, evento y fechas de observación; descarta destinatarios/cuerpos de la respuesta. Un fallo posterior conserva la última evidencia y muestra error de consulta. No envía, cancela ni reintenta correos. Estados originales y sus fechas no se sobrescriben. La fecha observada no se presenta como fecha real de entrega. Aperturas/clics son señales del proveedor, no lectura humana demostrada.
+
+La reconciliación se inicia desde Campañas de email. Todavía no hay webhook ni cron automático para ella. No activar campañas o reenviar por un estado local `scheduled` antiguo.
+
+Referencia del contrato: https://resend.com/docs/api-reference/emails/retrieve-email y especificación oficial https://github.com/resend/resend-openapi/blob/main/resend.yaml.
+
+Verificación: `node tests/customer-mail-reconciliation.mjs` y `node tests/customer-mail-integration.mjs`, con Postgres aislado y proveedor simulado.
