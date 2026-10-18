@@ -1,0 +1,73 @@
+{
+  "name": "Operación 066 · respaldo interno",
+  "active": false,
+  "nodes": [
+    {
+      "id": "timer066",
+      "name": "Revisar cola",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "7,22,37,52 * * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "backup066",
+      "name": "Ejecutar respaldo acotado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        250,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.lallaveoficial.com/api/agent-066?op=queue-backup",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_SCOPED_CREDENTIAL_ID",
+          "name": "Operación 066 · token de respaldo"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Revisar cola": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar respaldo acotado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "America/Santiago",
+    "executionOrder": "v1",
+    "executionTimeout": 150,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": false
+  },
+  "tags": []
+}
