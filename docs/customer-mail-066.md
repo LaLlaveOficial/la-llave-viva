@@ -14,27 +14,28 @@ Ruta privada: `/operaciones-066` → **Clientes y mailing**. Fuente: Neon, consu
 1. Crear o usar **Preparar Halloween · 10%**. Editar asunto, preheader, mensaje, botón, fechas y segmento. Variables del cuerpo: `{{nombre}}`, `{{codigo}}`, `{{vence}}`. Bases opcionales para comunicar concursos; no ejecuta sorteos.
 2. Guardar borrador y revisar vista previa. Congelar contenido y destinatarios; la audiencia incluye consentimiento vigente, excluye bajas y se deduplica por correo. Las campañas congeladas se duplican para cambios.
 3. Aprobar la versión exacta activa su cupón, si existe. No envía mensajes. El cupón es válido para la audiencia congelada que conserve una suscripción activa, usando el mismo correo; 10% del libro físico, envío aparte, fechas inclusive según Chile. AJRAZ10 anterior sigue con su vencimiento original.
-4. Confirmar **Enviar siguiente lote** (hasta 5 correos). Cada destinat…5978 tokens truncated…n_id=${s.c.id} AND email=${recipient.email}`;continue;}
-   const message=renderCampaign(s.c.data,sub,s.c.id);
-   await new Promise(resolve=>setTimeout(resolve,550));
-   try{
-    const response=await fetcher('https://api.resend.com/emails',{method:'POST',signal:AbortSignal.timeout(8000),headers:{Authorization:`Bearer ${env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':'crm066-'+hash({campaign:s.c.id,email:recipient.email})},body:JSON.stringify({from:'Archivo 066 · La Llave <contacto@lallaveoficial.com>',reply_to:'contacto@lallaveoficial.com',to:[recipient.email],subject:message.subject,html:message.html,text:message.text,headers:{'List-Unsubscribe':`<${message.unsubscribe}>`,'List-Unsubscribe-Post':'List-Unsubscribe=One-Click'},tags:[{name:'campaign',value:s.c.id}]})});
-    const data=await response.json();
-    if(response.ok&&typeof data.id==='string'){
-     await sql`UPDATE console066_mail_recipients SET status='sent',provider_id=${data.id},sent_at=now() WHERE campaign_id=${s.c.id} AND email=${recipient.email}`;
-     await sql`UPDATE mailing_subscribers SET last_email_sent_at=now() WHERE id=${recipient.subscriber_id}`;
-    }else await sql`UPDATE console066_mail_recipients SET status=${response.status>=400&&response.status<500?'failed':'unknown'},error=${'Proveedor HTTP '+response.status} WHERE campaign_id=${s.c.id} AND email=${recipient.email}`;
-   }catch{await sql`UPDATE console066_mail_recipients SET status='unknown',error='Resultado incierto: comprobar proveedor antes de cualquier reenvío' WHERE campaign_id=${s.c.id} AND email=${recipient.email}`;}
-  }
-  await sql`UPDATE console066_mail_campaigns SET status=CASE WHEN EXISTS(SELECT 1 FROM console066_mail_recipients WHERE campaign_id=${s.c.id} AND status IN ('prepared','sending')) THEN 'sending' ELSE 'completed' END,updated_at=now() WHERE id=${s.c.id}`;
-  await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES('mail-campaign',0,'send-batch',${JSON.stringify({id:s.c.id,attempted:claimed.length,version:s.c.version})}::jsonb)`;
-  return {status:200,attempted:claimed.length,note:'Aceptado por el proveedor no acredita entrega, apertura ni lectura.'};
- }
- return fail('Operación no reconocida.');
-}
-export async function validateSubscriberOffer(sql,emailValue,codeValue,now=new Date()){
- const code=String(codeValue||'').trim().toUpperCase(),address=email(emailValue);if(!/^[A-Z0-9_-]{3,24}$/.test(code)||!/^\S+@\S+\.\S+$/.test(address))return {ok:false,reason:'invalid_code',error:'Código o correo inválido.'};
- const day=chileDay(now);
- const rows=await sql`SELECT f.code,f.valid_until FROM console066_mail_offers f JOIN console066_mail_campaigns c ON c.id=f.campaign_id JOIN console066_mail_recipients r ON r.campaign_id=c.id AND r.email=${address} AND r.status<>'excluded' JOIN mailing_subscribers s ON s.id=r.subscriber_id AND lower(trim(s.email))=${address} WHERE f.code=${code} AND f.status='active' AND f.discount_percent=10 AND c.status IN ('approved','sending','completed') AND f.valid_from<=${day}::date AND f.valid_until>=${day}::date AND s.status='active' AND s.consent_at IS NOT NULL AND s.unsubscribed_at IS NULL LIMIT 1`;
- return rows.length?{ok:true,code,discountPercent:10,originalBookPrice:15990,discountAmount:1599,discountedBookPrice:14391,validUntil:rows[0].valid_until}:{ok:false,reason:'not_authorized',error:'Este código no está vigente para tu suscripción. Usa el mismo correo con que te registraste.'};
-}
+4. Confirmar **Enviar siguiente lote** (hasta 5 correos). Cada destinatario se reclama una sola vez y se revisa otra vez su consentimiento. Repetir para procesar los lotes restantes. No hay envío masivo automático en segundo plano ni programación de campañas en esta entrega.
+
+Estados: `prepared`, `sending`, `sent`, `excluded`, `failed`, `unknown`. `sent` significa aceptado por Resend; no acredita entrega ni lectura. `sending` que no termina y `unknown` requieren revisar el proveedor antes de cualquier reenvío. No se reintentan automáticamente. No se implementan tracking de aperturas/clics, rebotes, segmentación por navegación, editor gráfico de arrastrar bloques ni respuesta automática a motivos de abandono. Los enlaces de compra incluyen UTM.
+
+Servidor usa `RESEND_API_KEY` existente, sin exponerla al navegador, remitente de contacto del dominio y baja del Archivo 066. Preparar y aprobar por sí solos no envían correos. El borrador de Halloween debe revisarlo el propietario antes de su aprobación y envío.
+
+## Infraestructura y pendientes relacionados
+
+No se instaló n8n. Houston y servicios propios mantienen la orquestación existente. Los adaptadores de publicación Metricool y bandeja Instagram son módulos distintos; requieren sus propias autorizaciones, configuración y comprobación de lectura/escritura. Este módulo no afirma que esos permisos estén concedidos ni los activa.
+
+Migración aditiva y repetible: `migrations/20261016_customer_mail.sql`. No modifica pagos, compradores ni consentimientos existentes. Verificación: integración PostgreSQL/API autenticada, UI sintética y compilación en CI.
+
+## Cierre comercial y recibos (18-oct-2026)
+
+Aplicar `migrations/20261018_mail_receipts066.sql` antes del despliegue.
+
+Clientes muestra un resumen por fecha de creación del pedido en Santiago y moneda, separando `real`, `test` y `unknown`; solo pagos aprobados aportan importes, con libro y despacho separados. Modo live no acredita venta real. La clasificación se guarda desde el detalle con evidencia, versión y auditoría, conservando los pagos originales. No se clasifica automáticamente por nombre o UTM.
+
+`mail-reconcile` es una operación POST privada de consulta a Resend: hasta cinco IDs únicos por lote, solo GET, plazo de seis segundos por consulta y enfriamiento de 24 horas por ID. Incluye pedidos, secuencia de suscriptores y campañas. Guarda únicamente ID, evento y fechas de observación; descarta destinatarios/cuerpos de la respuesta. Un fallo posterior conserva la última evidencia y muestra error de consulta. No envía, cancela ni reintenta correos. Estados originales y sus fechas no se sobrescriben. La fecha observada no se presenta como fecha real de entrega. Aperturas/clics son señales del proveedor, no lectura humana demostrada.
+
+La reconciliación se inicia desde Campañas de email. Todavía no hay webhook ni cron automático para ella. No activar campañas o reenviar por un estado local `scheduled` antiguo.
+
+Referencia del contrato: https://resend.com/docs/api-reference/emails/retrieve-email y especificación oficial https://github.com/resend/resend-openapi/blob/main/resend.yaml.
+
+Verificación: `node tests/customer-mail-reconciliation.mjs` y `node tests/customer-mail-integration.mjs`, con Postgres aislado y proveedor simulado.
