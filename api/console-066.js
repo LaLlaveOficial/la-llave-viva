@@ -77,7 +77,7 @@ export function makeHandler(connect = neon, env = process.env) {
         if(req.method!==(op==='manager-read'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
         const {status,...result}=await managerApi(sql,op,body);return res.status(status).json(result);
       }
-      if(['customers-list','customer-order-save','mail-list','mail-save','mail-preview','mail-prepare','mail-approve','mail-send'].includes(op)){
+      if(['customers-list','customer-order-save','customer-order-classify','mail-reconcile','mail-list','mail-save','mail-preview','mail-prepare','mail-approve','mail-send'].includes(op)){
         if(req.method!==(op==='mail-list'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
         const {status,...result}=await customerMailApi(sql,op,body,env);return res.status(status).json(result);
       }
