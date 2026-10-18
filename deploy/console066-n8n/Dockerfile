@@ -1,0 +1,14 @@
+# Version verified against npm on 2026-10-18. Never track :latest in production.
+FROM docker.n8n.io/n8nio/n8n:2.43.7
+ENV GENERIC_TIMEZONE=America/Santiago \
+    TZ=America/Santiago \
+    N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
+    N8N_BLOCK_ENV_ACCESS_IN_NODE=true \
+    N8N_DIAGNOSTICS_ENABLED=false \
+    N8N_PERSONALIZATION_ENABLED=false \
+    N8N_CONCURRENCY_PRODUCTION_LIMIT=1 \
+    EXECUTIONS_DATA_SAVE_ON_SUCCESS=none \
+    EXECUTIONS_DATA_SAVE_ON_ERROR=all \
+    EXECUTIONS_DATA_PRUNE=true \
+    EXECUTIONS_DATA_MAX_AGE=168
+EXPOSE 5678
