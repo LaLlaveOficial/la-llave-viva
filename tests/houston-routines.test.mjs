@@ -43,3 +43,15 @@ test('targeted setup leaves other schedules and paused routines untouched',async
  await houstonRoutines({action:'setup',slug:'analitica'},env,e.fetcher);assert.equal(e.saved.prensa[0].enabled,false);assert.equal(e.saved.analitica[0].schedule,'0 9,15,21 * * *');assert.equal(e.writes.length,1);assert.match(e.writes[0].path,/analitica/);
  await assert.rejects(houstonRoutines({action:'setup',slug:'constructor'},env,e.fetcher),/inválida/);
 });
+
+
+test('instruction refresh preserves custom schedule and pause, and prioritizes linked deliveries',async()=>{
+ const e=engine();await houstonRoutines({action:'setup'},env,e.fetcher);
+ const target=e.saved.contenidos[0];target.schedule='15 4 * * *';target.enabled=false;target.prompt='old';e.writes.length=0;
+ await houstonRoutines({action:'instructions',slug:'contenidos'},env,e.fetcher);
+ assert.equal(target.schedule,'15 4 * * *');assert.equal(target.enabled,false);
+ assert.equal(e.writes.length,1);assert.deepEqual(Object.keys(e.writes[0].body),['prompt']);
+ assert.match(target.prompt,/managerJobId/);assert.match(target.prompt,/hasta cuatro/);
+ e.writes.length=0;await houstonRoutines({action:'instructions',slug:'contenidos'},env,e.fetcher);assert.equal(e.writes.length,0);
+ await assert.rejects(houstonRoutines({action:'instructions'},env,e.fetcher),/inválida/);
+});
