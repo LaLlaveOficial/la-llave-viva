@@ -26,7 +26,7 @@ test('context preserves real status and dates without personal buyer/contact det
 });
 test('a failed provider does not hide available metrics or pretend it refreshed',async()=>{
  const {sql,writes}=fakeSql();const r=await refreshAgentMetrics(sql,env,{googleAds:async()=>{throw Error('Autoriza Google Ads.');},metaAds:async()=>({checkedAt:'now'})});
- assert.equal(r.sources[0].status,'unavailable');assert.equal(r.sources[1].status,'updated');assert.match(r.sources[0].reason,/Autoriza/);assert.equal(writes.length,1);
+ assert.equal(r.sources[0].status,'unavailable');assert.equal(r.sources[1].status,'updated');assert.match(r.sources[0].reason,/Autoriza/);assert.equal(writes.filter(x=>x.q.includes('console066_harness_refresh')).length,1);assert.equal(writes.filter(x=>x.q.includes('console066_audit')).length,1);
 });
 test('saved content can only be a pending-review proposal, not a publish/send command',()=>{
  const r=validateAgentOutput({agent:'crecimiento',kind:'instagram',title:'Post',text:'Texto completo para revisión.',status:'published',token:secret});
