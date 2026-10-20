@@ -9,7 +9,8 @@ try{
  const concurrent=await Promise.all(Array.from({length:20},()=>admitHarnessTool(sql,'prensa','search')));
  assert.equal(concurrent.filter(x=>x.allowed).length,6);
  assert.equal((await sql`SELECT used FROM console066_harness_budget WHERE agent='prensa' AND operation='search'`)[0].used,6);
- // The team budget also counts reserved attempts; no concurrent caller exceeds it.
+ assert.equal((await sql`SELECT used FROM console066_harness_budget WHERE agent='team' AND operation='search'`)[0].used,6);
+ // Rejected role requests do not consume another agent's team allowance.
  for(const role of ['crecimiento','radar-lectores','facebook-comunidad'])await Promise.all(Array.from({length:10},()=>admitHarnessTool(sql,role,'search')));
  assert.equal((await sql`SELECT used FROM console066_harness_budget WHERE agent='team' AND operation='search'`)[0].used,24);
  assert.equal((await admitHarnessTool(sql,'contactos','search')).status,403);
