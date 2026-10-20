@@ -13,7 +13,11 @@ try{
  const failure=await operationsTick(sql,{}, {refresh:async()=>{throw Error('private payload');},prepare:async()=>{prepared=true;return {created:0};}});assert.ok(prepared);assert.equal(failure.status,'partial');assert.ok(!JSON.stringify(failure).includes('private payload'));
  await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"updated"}]}'::jsonb,now()-interval '40 minutes')`;
  await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"unavailable"}]}'::jsonb,now()-interval '20 minutes')`;
- let refreshed=0;const syncs={ga4:async()=>{refreshed++;return {};}};await refreshAgentMetrics(sql,{},syncs);assert.equal(refreshed,1);assert.equal((await refreshAgentMetrics(sql,{},syncs)).cached,true);assert.equal(refreshed,1);
+ await sql`DELETE FROM console066_audit WHERE entity='agent-refresh'`;
+ await sql`INSERT INTO console066_audit(entity,entity_id,action,detail,created_at) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"unavailable"}]}'::jsonb,now()-interval '23 hours')`;
+ let refreshed=0;const syncs={ga4:async()=>{refreshed++;return {};}};assert.equal((await refreshAgentMetrics(sql,{},syncs)).cached,true);assert.equal(refreshed,0);
+ await sql`UPDATE console066_audit SET created_at=now()-interval '25 hours' WHERE entity='agent-refresh'`;
+ await refreshAgentMetrics(sql,{},syncs);assert.equal(refreshed,1);assert.equal((await refreshAgentMetrics(sql,{},syncs)).cached,true);assert.equal(refreshed,1);
  await sql`INSERT INTO console066_audit(entity,entity_id,action,detail) VALUES('agent-refresh',0,'read','{"sources":[{"source":"ga4","status":"unavailable"}]}'::jsonb)`;
  assert.equal((await refreshAgentMetrics(sql,{},syncs)).cached,true);assert.equal(refreshed,1);
  console.log('Operations integration passed: atomic hourly gate, concurrent calls, independent queue, partial provider failure and safe persistent status.');

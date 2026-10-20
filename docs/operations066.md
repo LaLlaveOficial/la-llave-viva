@@ -4,7 +4,7 @@ Houston ejecuta `operations-loop.mjs` treinta segundos después de iniciar y, al
 
 La API `POST /api/agent-066?agent=analitica&op=maintenance` reserva atómicamente la hora UTC en `console066_operations_runs`. Dos procesos, reinicios o reintentos no duplican esa hora. Una reserva interrumpida queda visible como `running`; no se reintenta dentro de la misma hora. La siguiente hora puede continuar. No se recuperan ejecuciones omitidas durante una caída.
 
-Las etapas son independientes: primero renueva las métricas directas (respetando la caché horaria existente); después prepara la cola diaria con la política y deduplicación de Gerencia 066. Una fuente fallida conserva su última lectura y produce estado `partial`; no se presenta como actualizada. La política de Gerencia puede pausar la creación de borradores sin detener la observación de métricas.
+Las etapas son independientes: primero renueva las métricas directas (respetando la caché persistente de 24 horas); después prepara la cola diaria con la política y deduplicación de Gerencia 066. Una fuente fallida conserva su última lectura y produce estado `partial`; no se presenta como actualizada. La política de Gerencia puede pausar la creación de borradores sin detener la observación de métricas.
 
 El resultado almacena fecha de inicio, cierre y estados de cada fuente. Agentes y conexiones → Consultar cupo de IA muestra el cupo comunicado por el proveedor y la última supervisión en un diálogo accesible. Un proveedor conectado no acredita cupo disponible ni resultados de agentes. La última supervisión no acredita que un borrador esté terminado.
 
@@ -20,4 +20,6 @@ No requiere n8n ni credenciales nuevas. Consume lecturas y cómputo de la infrae
 
 La rutina de interpretación de analítica usa IA a las 09:00, 15:00 y 21:00 de Santiago (antes era cada hora). La sincronización operativa mantiene el ciclo horario sin modelo. La actualización del horario se aplica únicamente a `analitica` mediante setup dirigido; no reactiva ni modifica las otras rutinas. Esto evita 21 turnos programados de analítica al día, sin garantizar disponibilidad futura de la cuota compartida.
 
-Las lecturas completas conservan caché de una hora. Una lectura parcial se reutiliza por quince minutos; una petición posterior puede renovar las fuentes para que un fallo de autorización ya corregido no quede retenido una hora adicional después de reiniciar Houston. No se crean reintentos en bucle.
+Las lecturas completas y parciales se reutilizan durante 24 horas. Un fallo no adelanta el siguiente intento. Los agentes siguen trabajando con la última evidencia fechada, sin renovar proveedores en cada turno. El ciclo interno horario conserva la preparación de tareas, pero solo una revisión de métricas diarias consulta los proveedores.
+
+Metricool queda desactivado por defecto tanto para sincronización como para solicitar credenciales; conserva sus datos históricos. Solo una configuración expresa `METRICOOL_ENABLED=true` permite reutilizar su integración. No se modifica el comercio, checkout ni campañas.
