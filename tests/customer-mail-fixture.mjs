@@ -14,6 +14,7 @@ export async function customerFixture(){
  await db.exec("ALTER TABLE order_email_events ADD COLUMN resend_email_id text; CREATE TABLE mailing_sequence_emails(id bigserial PRIMARY KEY,resend_email_id text);");
  await db.exec(await fs.readFile(new URL('../migrations/20261018_mail_receipts066.sql',import.meta.url),'utf8'));
  const migration=await fs.readFile(new URL('../migrations/20261016_customer_mail.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
+ await db.exec(await fs.readFile(new URL('../migrations/20261020_harness066.sql',import.meta.url),'utf8'));
  const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
  return {db,sql};
 }

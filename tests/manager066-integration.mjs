@@ -27,7 +27,7 @@ if(process.argv[1]===new URL(import.meta.url).pathname){
   const {managerJobId:ignored,...generic}=body;
   assert.equal((await save(generic)).code,409);
   assert.equal((await save({...body,kind:body.kind==='instagram'?'facebook':'instagram'})).code,409);
-  assert.equal((await save({...body,agent:'analitica'})).code,409);assert.equal((await save(body)).code,201);assert.equal((await save(body)).code,409);assert.equal((await call('manager-read')).data.jobs.find(j=>j.id===image.id).output_text,body.text);
+  assert.equal((await save({...body,agent:'analitica'})).code,422);assert.equal((await save(body)).code,201);assert.equal((await save(body)).code,409);assert.equal((await call('manager-read')).data.jobs.find(j=>j.id===image.id).output_text,body.text);
   assert.equal((await save({...body,managerJobId:research.id})).code,409);
   await db.exec("UPDATE console066_marketing_records SET version=2,status='draft',approved_hash=NULL,approved_at=NULL WHERE id='brand'");
   assert.equal((await call('manager-creative',{id:image.id})).code,409);assert.ok((await managerTick(sql,new Date('2026-10-17T15:00:00Z'))).blocked);
