@@ -33,8 +33,9 @@ try{
  await page.getByRole('button',{name:'Marca y catálogo',exact:true}).click();await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:root+'../marketing-suite-mobile.png'});
  await page.getByRole('button',{name:'Historial',exact:true}).first().click();await page.getByRole('heading',{name:'Historial de versiones'}).waitFor();await page.getByRole('dialog').getByText('approve · versión 2',{exact:true}).waitFor();
  await page.getByRole('dialog').getByRole('button',{name:'Cerrar',exact:true}).click();
- await page.getByRole('button',{name:'Programación',exact:true}).click();await page.getByRole('heading',{name:'Programación con Metricool'}).waitFor();await page.getByText('Programación desactivada en el servidor. No se crean publicaciones.',{exact:true}).waitFor();
- await page.getByRole('button',{name:'Bandeja Instagram',exact:true}).click();await page.getByRole('heading',{name:'Bandeja de Instagram'}).waitFor();await page.getByText('Conexión pendiente',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Publicaciones y entregas',exact:true}).click();await page.getByRole('heading',{name:'Publicaciones y entregas'}).waitFor();
+ await page.getByRole('button',{name:'Correo y CRM',exact:true}).click();await page.getByRole('heading',{name:'Correo y CRM'}).waitFor();await page.getByRole('button',{name:'Autorizar Gmail',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Bandeja Instagram',exact:true}).click();await page.getByRole('heading',{name:'Bandeja de Instagram y CRM'}).waitFor();await page.getByText('Conexión pendiente',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);const records=(await api('marketing-workspace')).data.records;assert.equal(records.filter(r=>r.kind==='content').length,2);assert.equal(records.find(r=>r.kind==='brand').status,'approved');
  // Regression: Postgres bigint audit IDs arrive as strings; exact approvals must send numbers.
  await page.evaluate(async()=>{
