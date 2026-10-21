@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
-import {address,gmailMessage,gmailCredential,gmailApi,gmailSync,MAIL_FROM,replyMime} from '../lib/gmail-crm066.js';
+import {address,gmailMessage,gmailCredential,gmailApi,gmailSync,gmailFailure,MAIL_FROM,replyMime} from '../lib/gmail-crm066.js';
 import {recordStudioReceipt,deliveryApi} from '../lib/deliveries066.js';
 import {linkConversation} from '../lib/conversation-crm066.js';
 const db=new PGlite();
@@ -22,6 +22,8 @@ const external=async(url,opts={})=>{
  return {ok:true,json:async()=>data};
 };
 try{
+ assert.match(gmailFailure(403,{error:{details:[{reason:'SERVICE_DISABLED'}],message:'sensitive-provider-detail'}}),/Gmail API está deshabilitada/);
+ assert.doesNotMatch(gmailFailure(500,{error:{message:'secret-value'}}),/secret-value/);
  assert.equal(address('A <reader@example.com>'),'reader@example.com');assert.equal(address('a@example.com\r\nBcc: bad@example.com'),null);
  assert.equal(gmailMessage(msg('private','private@example.com','other@example.com'),'owner@example.com',providerThread),null);
  assert.equal(gmailMessage(msg('bad','a@example.com\r\nBcc: b@example.com'),'owner@example.com',providerThread),null);
@@ -68,5 +70,11 @@ try{
  await recordStudioReceipt(sql,'status',input,{job:{id:input.id,status:'ready',outputBytes:512}});
  assert.equal((await deliveryApi(sql,'delivery-list')).receipts[0].state,'download_verified_by_browser');
  assert.equal((await deliveryApi(sql,'delivery-download',{id:input.id,bytes:512,sha256:'c'.repeat(64)})).status,409);
+ await sql`UPDATE console066_gmail_sync SET cycle_at=now()-interval '25 hours',completed=true`;
+ const disabled=async(url,opts)=>url.includes('api.vercel.com')?external(url,opts):({ok:false,status:403,json:async()=>({error:{details:[{reason:'SERVICE_DISABLED'}]}})});
+ assert.match((await gmailSync(sql,env,disabled)).error,/Gmail API está deshabilitada/);
+ assert.equal((await gmailSync(sql,env,disabled)).status,429);
+ assert.match((await gmailApi(sql,'gmail-sync',{},env,disabled)).error,/Gmail API está deshabilitada/);
+ assert.equal((await sql`SELECT fetched FROM console066_gmail_sync`)[0].fetched,10);
  console.log('Attention and delivery integration passed: repeatable SQL, alias isolation, CRM dedupe/linking, thread headers, exact review, sender verification, no retry after uncertain send, stale-reply protection, concurrent 24h budget, MP4 receipt size/hash and source distinctions. Providers mocked; no real mail sent.');
 }finally{await db.close();}
