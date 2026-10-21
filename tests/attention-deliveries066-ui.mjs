@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import {JSDOM} from 'jsdom';
+import {gmailInboxView} from '../public/centro-066/gmail-inbox.js';
+import {deliveriesPanel} from '../public/centro-066/deliveries-panel.js';
+import {instagramInboxView} from '../public/centro-066/instagram-inbox.js';
+const dom=new JSDOM('<main></main>',{url:'https://local.example'});
+global.document=dom.window.document;global.FormData=dom.window.FormData;
+dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+dom.window.HTMLDialogElement.prototype.close=function(){this.open=false;this.onclose?.();};
+const c=document.querySelector('main'),escape=v=>String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+const id='a'.repeat(64),unsafe='<img src=x onerror=alert(1)>',calls=[],replies=[];
+const request=async(op,body)=>{calls.push({op,body});
+ if(op==='gmail-inbox')return {from:'contacto@lallaveoficial.com',configured:true,sync:null,threads:[{id,subject:unsafe,preview:'Consulta',case_id:'case066'}]};
+ if(op==='gmail-thread')return {messages:[{sender:'reader@example.com',text:unsafe,received_at:new Date().toISOString()}],replies,link:{case_id:'case066',lead_id:null},leads:[{id:1,name:'Editorial de prueba',country:'Chile'}]};
+ if(op==='gmail-prepare'){assert.equal(body.text,'Respuesta revisable');replies.push({id:'reply066',text:body.text,status:'pending_review',version:1});return {sent:false};}
+ if(op==='gmail-send'){assert.equal(body.confirm,true);assert.equal(body.version,1);replies[0].status='accepted';return {accepted:true,delivered:false};}
+ if(op==='delivery-list')return {scope:'Prueba',receipts:[{id:'mp4',source:'studio',state:'generated',recorded_at:new Date().toISOString(),evidence:{scope:unsafe}}],facebook:[{id:'fb',status:'submitted',updated_at:new Date().toISOString(),receipt:{evidence:'Moderación pendiente'}}],instagram:[],email:[]};
+ if(op==='instagram-inbox')return {scope:'Webhook firmado',config:{enabled:false,missing:['INSTAGRAM_ACCESS_TOKEN']},webhookUrl:'https://www.lallaveoficial.com/api/instagram-066',lastReceivedAt:null,threads:[]};
+ throw Error('Unexpected operation '+op);
+};
+await gmailInboxView(c,request,()=>{},escape);assert.equal(c.querySelector('img'),null);assert.match(c.textContent,/contacto@lallaveoficial.com/);
+await c.querySelector('[data-thread]').onclick();let d=document.querySelector('dialog');assert.equal(d.querySelector('img'),null);
+d.querySelector('textarea').value='Respuesta revisable';await d.querySelector('form').onsubmit({preventDefault(){},target:d.querySelector('form')});
+assert.equal(calls.filter(x=>x.op==='gmail-send').length,0);assert.ok(d.querySelector('[data-send]'));
+await d.querySelector('[data-send]').onclick();assert.equal(calls.filter(x=>x.op==='gmail-send').length,1);assert.match(d.textContent,/entrega no confirmada/);d.querySelector('#gmail-close').onclick();
+await deliveriesPanel(c,request,()=>{},escape);assert.match(c.textContent,/aún no publicado/);assert.match(c.textContent,/MP4 generado/);assert.equal(c.querySelector('img'),null);
+await instagramInboxView(c,request,()=>{},escape);assert.match(c.textContent,/Conexión pendiente/);assert.match(c.textContent,/INSTAGRAM_ACCESS_TOKEN/);assert.match(c.textContent,/ninguna/);
+assert.equal(calls.some(x=>/metricool|publication-execute/.test(x.op)),false);
+console.log('Attention UI passed: escaped email/evidence content, exact review before send, fixed sender, moderation distinct from publication, explicit missing Instagram configuration, no Metricool request. DOM simulation only.');
+dom.window.close();

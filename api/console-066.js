@@ -1,3 +1,5 @@
+import {gmailApi} from '../lib/gmail-crm066.js';
+import {deliveryApi,recordStudioReceipt} from '../lib/deliveries066.js';
 import {facebookApi} from '../lib/facebook-groups066.js';
 import {operationsStatus,operationsTick} from '../lib/operations066.js';
 import {queueStatus066,probe066} from '../lib/queue066.js';
@@ -84,7 +86,7 @@ export function makeHandler(connect = neon, env = process.env) {
       if(op.startsWith('studio-encode-')){
         const action=op.slice('studio-encode-'.length),get=['status','file'].includes(action);
         if(!['init','chunk','start','status','file','cancel'].includes(action)||req.method!==(get?'GET':'POST'))return res.status(405).json({error:'Operación de exportación no permitida.'});
-        try{return res.status(200).json(await studioEncodeRequest(action,get?{id:req.query.id,index:req.query.index}:body,env));}
+        try{const input=get?{id:req.query.id,index:req.query.index}:body,result=await studioEncodeRequest(action,input,env);await recordStudioReceipt(sql,action,input,result);return res.status(200).json(result);}
         catch(e){return res.status(502).json({error:e.message});}
       }
       if(op==='google-ads'&&req.method==='GET')return res.status(200).json(await googleAdsStatus(sql,env));
@@ -152,6 +154,15 @@ export function makeHandler(connect = neon, env = process.env) {
       if(['ga4-sync','ga4-authorize'].includes(op)&&req.method==='POST'){
         try{const gaEnv={...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN};return res.status(200).json(op==='ga4-authorize'?await ga4Credential('authorize',gaEnv):await ga4Sync(sql,body,gaEnv));}
         catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(['gmail-inbox','gmail-thread','gmail-authorize','gmail-sync','gmail-prepare','gmail-send','gmail-discard','gmail-lead-link'].includes(op)){
+        if(req.method!==(op==='gmail-inbox'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        try{const {status,...result}=await gmailApi(sql,op,body,{...env,VERCEL_OIDC_TOKEN:req.headers?.['x-vercel-oidc-token']||env.VERCEL_OIDC_TOKEN});return res.status(status).json(result);}
+        catch(e){return res.status(502).json({error:e.message});}
+      }
+      if(['delivery-list','delivery-download'].includes(op)){
+        if(req.method!==(op==='delivery-list'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
+        const {status,...result}=await deliveryApi(sql,op,body);return res.status(status).json(result);
       }
       if(['publication-list','publication-prepare','publication-execute'].includes(op)){
         if(req.method!==(op==='publication-list'?'GET':'POST'))return res.status(405).json({error:'Método no permitido.'});
@@ -382,3 +393,4 @@ export function makeHandler(connect = neon, env = process.env) {
   };
 }
 export default makeHandler();
+

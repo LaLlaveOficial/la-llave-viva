@@ -4,7 +4,7 @@ import {PGlite} from '@electric-sql/pglite';import {makeHandler} from '../api/co
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=fileURLToPath(new URL('../',import.meta.url)),db=new PGlite();
 await db.exec(await fs.readFile(root+'migrations/20261007_console066.sql','utf8'));await db.exec(await fs.readFile(root+'migrations/20261016_marketing_workspace.sql','utf8'));
-for(const migration of ['20261016_instagram_inbox.sql','20261016_publication_outbox.sql'])await db.exec(await fs.readFile(root+'migrations/'+migration,'utf8'));
+for(const migration of ['20261016_instagram_inbox.sql','20261021_attention_deliveries066.sql','20261016_publication_outbox.sql','20261017_facebook_groups066.sql'])await db.exec(await fs.readFile(root+'migrations/'+migration,'utf8'));
 await db.exec("CREATE TABLE orders(external_reference text PRIMARY KEY,payment_status text)");
 const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
 const salt='ac'.repeat(16),password='local-browser-only-066';
@@ -33,8 +33,9 @@ try{
  await page.getByRole('button',{name:'Marca y catálogo',exact:true}).click();await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:root+'../marketing-suite-mobile.png'});
  await page.getByRole('button',{name:'Historial',exact:true}).first().click();await page.getByRole('heading',{name:'Historial de versiones'}).waitFor();await page.getByRole('dialog').getByText('approve · versión 2',{exact:true}).waitFor();
  await page.getByRole('dialog').getByRole('button',{name:'Cerrar',exact:true}).click();
- await page.getByRole('button',{name:'Programación',exact:true}).click();await page.getByRole('heading',{name:'Programación con Metricool'}).waitFor();await page.getByText('Programación desactivada en el servidor. No se crean publicaciones.',{exact:true}).waitFor();
- await page.getByRole('button',{name:'Bandeja Instagram',exact:true}).click();await page.getByRole('heading',{name:'Bandeja de Instagram'}).waitFor();await page.getByText('Conexión pendiente',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Publicaciones y entregas',exact:true}).click();await page.getByRole('heading',{name:'Publicaciones y entregas'}).waitFor();
+ await page.getByRole('button',{name:'Correo y CRM',exact:true}).click();await page.getByRole('heading',{name:'Correo y CRM'}).waitFor();await page.getByRole('button',{name:'Autorizar Gmail',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Bandeja Instagram',exact:true}).click();await page.getByRole('heading',{name:'Bandeja de Instagram y CRM'}).waitFor();await page.getByText('Conexión pendiente',{exact:true}).waitFor();
  assert.deepEqual(errors,[]);const records=(await api('marketing-workspace')).data.records;assert.equal(records.filter(r=>r.kind==='content').length,2);assert.equal(records.find(r=>r.kind==='brand').status,'approved');
  // Regression: Postgres bigint audit IDs arrive as strings; exact approvals must send numbers.
  await page.evaluate(async()=>{
@@ -46,3 +47,4 @@ try{
  assert.deepEqual(await page.evaluate(()=>window.exactApprovalQA),{id:123,confirm:true});assert.deepEqual(errors,[]);
  console.log('Browser + Postgres + authenticated handler passed: brand approval, catalog, UTM, content/adaptation, experiments, SEO, version history, mobile layout and no JavaScript errors. No providers called.');
 }finally{if(browser)await browser.close();server.close();await db.close();}
+

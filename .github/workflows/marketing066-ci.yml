@@ -1,7 +1,7 @@
 name: Operación 066 · marketing
 on:
   pull_request:
-    paths: ['deploy/console066-n8n/**', 'tests/n8n066*', 'lib/**', 'api/console-066.js', 'api/agent-066.js', 'vercel.json', 'public/centro-066/**', 'migrations/202610*.sql', 'deploy/console066-houston/**', 'tests/queue066*', 'tests/operations066*', 'tests/facebook-groups066*', 'agents/**', 'tests/marketing-workspace*', 'tests/marketing-delivery*', 'tests/customer-mail*', 'tests/manager066*', 'src/ajraz10.js', 'api/create-promo-preference.js', '.github/workflows/marketing066-ci.yml']
+    paths: ['deploy/console066-n8n/**', 'tests/n8n066*', 'lib/**', 'api/console-066.js', 'api/agent-066.js', 'vercel.json', 'public/centro-066/**', 'migrations/202610*.sql', 'deploy/console066-houston/**', 'tests/queue066*', 'tests/operations066*', 'tests/facebook-groups066*', 'agents/**', 'tests/marketing-workspace*', 'tests/marketing-delivery*', 'tests/attention-deliveries066*', 'tests/customer-mail*', 'tests/manager066*', 'src/ajraz10.js', 'api/create-promo-preference.js', '.github/workflows/marketing066-ci.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,13 +16,15 @@ jobs:
       - name: Dependencias sin credenciales de producción
         run: |
           npm install --ignore-scripts --no-package-lock --no-audit --no-fund
-          npm install --no-save --ignore-scripts --no-package-lock --no-audit --no-fund @electric-sql/pglite@0.5.10 playwright@1.62.1
+          npm install --no-save --ignore-scripts --no-package-lock --no-audit --no-fund @electric-sql/pglite@0.5.10 playwright@1.62.1 jsdom@27.0.1
       - name: Pruebas de contratos y seguridad
         run: node --test tests/harness066.test.mjs tests/marketing-workspace.test.mjs tests/console066.test.mjs tests/console-marketing.test.mjs tests/console-metrics.test.mjs tests/agent-data.test.mjs tests/manager-report.test.mjs tests/source-evidence.test.mjs tests/google-ads-reports.test.mjs tests/google-ads-watch.test.mjs tests/houston-routines.test.mjs tests/operations066.test.mjs tests/houston-gateway.test.mjs tests/houston-status.test.mjs
       - name: Postgres y handler autenticado
         run: |
           node tests/marketing-workspace-integration.mjs
           node tests/marketing-delivery-integration.mjs
+          node tests/attention-deliveries066-integration.mjs
+          node tests/attention-deliveries066-ui.mjs
           node tests/customer-mail-integration.mjs
           node tests/customer-mail-reconciliation.mjs
           node tests/harness066-integration.mjs
@@ -41,3 +43,4 @@ jobs:
           node tests/facebook-groups066-browser.mjs
       - name: Compilar
         run: npm run build
+
