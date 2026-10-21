@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {cloudConfiguration,signCloudUrl,validateAssetIntent,studioCloudApi,CLOUD_MAX_FILE} from '../lib/studio-cloud066.js';
 
@@ -63,4 +64,17 @@ test('configured cloud validates data and never signs malformed upload',async()=
  const denied=()=>{throw Error('Invalid payload should be rejected before querying SQL');};
  const invalid=await studioCloudApi(denied,'studio-cloud-upload',{method:'POST',body:{...good,sha256:'invalid'}},env);
  assert.equal(invalid.status,400);
+});
+
+test('Studio CSP allows only the dedicated production and preview Neon storage hosts',async()=>{
+ const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url),'utf8'));
+ const policies=config.headers.flatMap(rule=>(rule.headers||[]).filter(header=>header.key==='Content-Security-Policy').map(header=>header.value));
+ assert.ok(policies.length>=2);
+ for(const policy of policies){
+  const connect=policy.split(';').map(part=>part.trim()).find(part=>part.startsWith('connect-src '));
+  assert.ok(connect);
+  assert.ok(connect.includes('https://br-rapid-heart-avrhr488.storage.c-11.us-east-1.aws.neon.tech'));
+  assert.ok(connect.includes('https://br-little-sound-av8vyecq.storage.c-11.us-east-1.aws.neon.tech'));
+  assert.doesNotMatch(connect,/https:\/\/\*\.storage/);
+ }
 });
