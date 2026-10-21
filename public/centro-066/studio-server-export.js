@@ -38,8 +38,13 @@ export async function encodeStudioMP4(blob,{seconds,fps=24,quality='high',resolu
    if(part.total!==size||part.bytes!==bytes.length||bytes.length!==Math.min(CHUNK,size-downloaded))throw Error('La descarga del MP4 llegó incompleta.');
    parts.push(bytes);downloaded+=bytes.length;onProgress?.('Descargando MP4',Math.round(downloaded/size*100));
   }
-  const output=new Blob(parts,{type:'video/mp4'});if(!await isMP4Data(output))throw Error('El servidor no entregó un MP4 válido.');return output;
+  const output=new Blob(parts,{type:'video/mp4'});if(!await isMP4Data(output))throw Error('El servidor no entregó un MP4 válido.');
+  const outputHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await output.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
+  try{const receipt=await fetcher('/api/console-066?op=delivery-download',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,bytes:output.size,sha256:outputHash}),signal:AbortSignal.timeout(15000)});if(!receipt.ok)throw Error();}
+  catch{onProgress?.('MP4 listo; comprobante de descarga pendiente. Conserva el archivo.',100);}
+  return output;
  }finally{
   if(created){for(let attempt=0;attempt<3;attempt++){try{await call('cancel',{},false,false);break;}catch{if(attempt<2)await pause(200);}}}
  }
 }
+

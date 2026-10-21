@@ -8,7 +8,7 @@ import {makeAgentHandler} from '../api/agent-066.js';
 import {payloadHash} from '../lib/marketing-workspace.js';
 import {publicationPayload,matchingPost,publicationStatus,preparePublication,executePublication} from '../lib/metricool-publication.js';
 const db=new PGlite();
-for(const name of ['20261007_console066.sql','20261016_marketing_workspace.sql','20261016_manager066.sql','20261016_instagram_inbox.sql','20261016_publication_outbox.sql','20261020_harness066.sql']){const migration=await fs.readFile(new URL('../migrations/'+name,import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);}
+for(const name of ['20261007_console066.sql','20261016_marketing_workspace.sql','20261016_manager066.sql','20261016_instagram_inbox.sql','20261021_attention_deliveries066.sql','20261016_publication_outbox.sql','20261020_harness066.sql']){const migration=await fs.readFile(new URL('../migrations/'+name,import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);}
 const sql=async(parts,...values)=>(await db.query(parts.map((p,i)=>p+(i<values.length?'$'+(i+1):'')).join(''),values)).rows;
 const env={DATABASE_URL:'test-only',INSTAGRAM_ACCOUNT_ID:'12345678',INSTAGRAM_ACCESS_TOKEN:'TEST_ONLY_TOKEN',INSTAGRAM_APP_SECRET:'test-secret-'.repeat(4),INSTAGRAM_VERIFY_TOKEN:'verify-test-'.repeat(4),INSTAGRAM_INBOX_ENABLED:'1'};
 assert.equal(inboxConfiguration({}).enabled,false);
@@ -62,3 +62,4 @@ result=await executePublication(sql,{id:jobId,confirm:true},{MARKETING_PUBLISH_E
 assert.equal((await executePublication(sql,{id:jobId,confirm:true},{MARKETING_PUBLISH_ENABLED:'1'},mockOpen)).status,409);assert.equal(externalCalls,1);
 console.log('Delivery integration passed: repeatable migrations, signature/account isolation, webhook, deduplication, exact approval, one-shot send, uncertain blocking, immutable payload, date/media validation, default-off, provider read-back and no duplicate scheduling. All providers mocked.');
 await db.close();
+
