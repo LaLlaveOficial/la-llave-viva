@@ -83,7 +83,7 @@ export default async function handler(req, res) {
 
     const rows =
       await sql`
-        SELECT 1
+        SELECT book_price, currency, live_mode
         FROM orders
         WHERE
           external_reference = ${externalReference}
@@ -97,6 +97,11 @@ export default async function handler(req, res) {
       .json({
         approved:
           rows.length === 1,
+        ...(rows.length === 1 ? {
+          book_amount: Number(rows[0].book_price),
+          currency: rows[0].currency,
+          live_mode: rows[0].live_mode === true,
+        } : {}),
       });
   } catch (error) {
     console.error(

@@ -1,6 +1,15 @@
 <!doctype html>
 <html lang="es">
   <head>
+    <!-- OpenAI measurement is limited to the public storefront. -->
+    <script>
+      if (["/", "/comprar", "/compra-confirmada", "/pago-pendiente", "/pago-rechazado"].includes(location.pathname.replace(/\/+$/, "") || "/")) {
+        (function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)})(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");
+        try { if(localStorage.getItem("llave066_openai_measurement_consent_v1")==="denied")oaiq("consent",false); } catch(_) {}
+        oaiq("init",{pixelId:"D8XfPrzAf2yk3pC4NT3pRR"});
+      }
+    </script>
+    <script defer src="/openai-measurement.js"></script>
     <!-- Google tag (gtag.js) -->
     <script
       async
