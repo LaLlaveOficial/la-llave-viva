@@ -35,9 +35,9 @@ const purchase = source
   .replace('<html lang="es">', '<html lang="es" class="llave-dedicated-purchase">')
   .replace(canonical, '<link rel="canonical" href="https://www.lallaveoficial.com/comprar" />')
   .replace(/<title>[\s\S]*?<\/title>/, `<title>${title}</title>`)
-  .replace(/(<meta\b[^>]*name="description"[^>]*content=")[^"]*(")/, `$1${description}$2`)
-  .replace(/(<meta\b[^>]*(?:property="og:description"|name="twitter:description")[^>]*content=")[^"]*(")/g, `$1${description}$2`)
-  .replace(/(<meta\b[^>]*(?:property="og:title"|name="twitter:title")[^>]*content=")[^"]*(")/g, `$1${title}$2`)
+  .replace(/(<meta\b[^>]*name="description"[^>]*content=")[^"]*(")/, (_, prefix, suffix) => prefix + description + suffix)
+  .replace(/(<meta\b[^>]*(?:property="og:description"|name="twitter:description")[^>]*content=")[^"]*(")/g, (_, prefix, suffix) => prefix + description + suffix)
+  .replace(/(<meta\b[^>]*(?:property="og:title"|name="twitter:title")[^>]*content=")[^"]*(")/g, (_, prefix, suffix) => prefix + title + suffix)
   .replace(/(<meta\b[^>]*property="og:url"[^>]*content=")[^"]*(")/, '$1https://www.lallaveoficial.com/comprar$2')
   .replace('</head>', `<link rel="preload" as="image" href="/assets/la-llave-edicion-fisica.png" fetchpriority="high" /><style id="purchase-initial-style">body{margin:0;background:#020303}${css}</style></head>`)
   .replace('<div id="root"></div>', `<div id="root">${initialContent}</div>`);
