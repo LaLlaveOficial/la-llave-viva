@@ -99,7 +99,7 @@
         margin: 0;
         max-width: 760px;
         color: #f5f0e4;
-        font: 800 clamp(34px, 5.3vw, 66px)/0.98 Georgia, "Times New Roman", serif;
+        font: 800 clamp(30px, 4.2vw, 48px)/1.06 Georgia, "Times New Roman", serif;
         letter-spacing: 0.005em;
         text-transform: uppercase;
         text-wrap: balance;
@@ -107,8 +107,11 @@
 
       #${SALES_ID} .ps-hook span {
         display: block;
-        margin-top: 7px;
+        margin-top: 14px;
         color: #f1c15a;
+        font-size: clamp(17px, 2vw, 23px);
+        line-height: 1.35;
+        letter-spacing: 0.04em;
       }
 
       #${SALES_ID} .ps-title {
@@ -978,10 +981,10 @@
         <div class="ps-copy">
           <p class="ps-eyebrow">EDICIÓN FÍSICA OFICIAL · DESPACHO EN CHILE</p>
           <h1 class="ps-hook">
-            UNA LLAVE MARCADA 066.
-            <span>UNA MEMORIA QUE NO DEBERÍA EXISTIR.</span>
+            LA LLAVE I: CIUDAD CENTRAL
+            <span>UNA NOVELA DE SUSPENSO CHILENA.</span>
           </h1>
-          <p class="ps-title">LA LLAVE I: CIUDAD CENTRAL</p>
+          <p class="ps-title">Una llave marcada 066. Una memoria que no debería existir.</p>
           <p class="ps-subtitle">Thriller distópico chileno · Enrique G. Santibáñez</p>
           <p class="ps-lead">
             Paula Garrido filtró un video prohibido. Después desapareció.
@@ -1020,6 +1023,9 @@
           <img
             src="/assets/la-llave-edicion-fisica.png"
             alt=""
+            width="1152"
+            height="1536"
+            fetchpriority="high"
             loading="eager"
             decoding="async"
           />
