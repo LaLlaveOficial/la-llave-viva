@@ -43,3 +43,15 @@ const purchase = source
   .replace('<div id="root"></div>', `<div id="root">${initialContent}</div>`);
 if (!purchase.includes(initialContent)) throw new Error('Initial purchase content was not inserted');
 await writeFile(new URL('../dist/comprar.html', import.meta.url), purchase);
+
+const homepage = `<main style="max-width:48rem;margin:3rem auto;padding:0 1rem">
+  <h1>La Llave I: Ciudad Central</h1>
+  <p>Una novela chilena de suspenso y distopía de Enrique G. Santibañez.</p>
+  <p>Cuando Paula Garrido desaparece tras filtrar un video prohibido, su hermano Issei y la detective Karen Ajraz investigan en una ciudad que vigila, castiga y borra.</p>
+  <p>La primera edición impresa se vende directamente en Chile. La novela también está disponible en Kindle.</p>
+  <p><a href="/comprar">Comprar La Llave I: Ciudad Central</a></p>
+</main>`;
+await writeFile(new URL('../dist/index.html', import.meta.url), source.replace(
+  '<div id="root"></div>',
+  `<div id="root">${homepage}</div>`,
+));
