@@ -43,3 +43,17 @@ const purchase = source
   .replace('<div id="root"></div>', `<div id="root">${initialContent}</div>`);
 if (!purchase.includes(initialContent)) throw new Error('Initial purchase content was not inserted');
 await writeFile(new URL('../dist/comprar.html', import.meta.url), purchase);
+
+const homepage = `<main id="homepage-initial-content" style="max-width:48rem;margin:3rem auto;padding:0 1rem;color:#f3efe4">
+  <h1>La Llave I: Ciudad Central</h1>
+  <p>Una novela chilena de suspenso y distopía de Enrique G. Santibañez.</p>
+  <p>Cuando Paula Garrido desaparece tras filtrar un video prohibido, su hermano Issei y la detective Karen Ajraz investigan en una ciudad que vigila, castiga y borra.</p>
+  <p>La primera edición impresa se vende directamente en Chile. La novela también está disponible en Kindle.</p>
+  <p><a style="color:#f1c15a" href="/comprar">Comprar La Llave I: Ciudad Central</a></p>
+</main>`;
+const initialHomepage = source.replace('<div id="root"></div>', `<div id="root">${homepage}</div>`);
+if (!initialHomepage.includes(homepage)) throw new Error('Initial homepage content was not inserted');
+
+// Client-routed pages share the app shell and render their own content.
+await writeFile(new URL('../dist/app-shell.html', import.meta.url), source);
+await writeFile(new URL('../dist/index.html', import.meta.url), initialHomepage);

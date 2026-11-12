@@ -24,23 +24,23 @@
     },
     {
       "source": "/press-kit",
-      "destination": "/index.html"
+      "destination": "/app-shell.html"
     },
     {
       "source": "/presskit",
-      "destination": "/index.html"
+      "destination": "/app-shell.html"
     },
     {
       "source": "/compra-confirmada",
-      "destination": "/index.html"
+      "destination": "/app-shell.html"
     },
     {
       "source": "/pago-pendiente",
-      "destination": "/index.html"
+      "destination": "/app-shell.html"
     },
     {
       "source": "/pago-rechazado",
-      "destination": "/index.html"
+      "destination": "/app-shell.html"
     }
   ],
   "headers": [
