@@ -1911,9 +1911,9 @@ export default function App() {
               {t.system} · 066
             </p>
 
-            <h1>
+            <div className="intro-title">
               {t.gateTitle}
-            </h1>
+            </div>
 
             <p>
               {t.gateCopy}
@@ -2114,7 +2114,11 @@ export default function App() {
             {t.welcome}
           </p>
 
-          <h2>{t.city}</h2>
+          {currentPath === "/comprar" ? (
+            <h2>{t.city}</h2>
+          ) : (
+            <h1><span className="sr-only">La Llave I: </span>{t.city}</h1>
+          )}
 
           <div className="gold-line" />
 
@@ -2782,6 +2786,9 @@ export default function App() {
         <p>
           {t.footer}
         </p>
+
+        <a href="/comprar">{saleCopy.heroBuy}</a>
+        <a href="/press-kit">Press Kit</a>
 
         <div className="footer-socials">
           <Social

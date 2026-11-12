@@ -9,6 +9,9 @@
       "maxDuration": 120
     }
   },
+  "redirects": [
+    {"source": "/presskit", "destination": "/press-kit", "permanent": true}
+  ],
   "rewrites": [
     {
       "source": "/api/instagram-066",
@@ -24,11 +27,7 @@
     },
     {
       "source": "/press-kit",
-      "destination": "/app-shell.html"
-    },
-    {
-      "source": "/presskit",
-      "destination": "/app-shell.html"
+      "destination": "/press-kit.html"
     },
     {
       "source": "/compra-confirmada",
