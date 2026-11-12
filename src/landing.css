@@ -435,7 +435,7 @@ svg {
   letter-spacing: .54em;
 }
 
-.intro-card h1 {
+.intro-card .intro-title {
   margin: 18px 0 0;
   font: clamp(44px, 8vw, 86px)/.9 Georgia, "Times New Roman", serif;
   text-transform: uppercase;
@@ -484,7 +484,7 @@ svg {
   max-width: 720px;
 }
 
-.hero-copy h2 {
+.hero-copy :is(h1, h2) {
   margin: 18px 0 0;
   font: clamp(58px, 9vw, 132px)/.86 Georgia, "Times New Roman", serif;
   text-transform: uppercase;
@@ -1458,7 +1458,7 @@ svg {
     padding: 148px 42px 44px;
   }
 
-  .hero-copy h2 {
+  .hero-copy :is(h1, h2) {
     font-size: clamp(46px, 17vw, 76px);
   }
 
