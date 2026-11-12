@@ -1899,7 +1899,7 @@ export default function App() {
 
       <HazardBorders />
 
-      {introOpen && (
+      {introOpen && currentPath !== "/comprar" && (
         <section
           className="intro"
           aria-label={

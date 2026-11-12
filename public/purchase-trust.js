@@ -416,9 +416,9 @@
         background: rgba(4, 5, 5, 0.86);
       }
 
-      #${SALES_ID} .ps-story h3,
-      #${SALES_ID} .ps-fit h3,
-      #${SALES_ID} .ps-sample h3 {
+      #${SALES_ID} .ps-story h2,
+      #${SALES_ID} .ps-fit h2,
+      #${SALES_ID} .ps-sample h2 {
         margin: 0;
         color: #f3efe4;
         font: 800 clamp(25px, 3.2vw, 40px)/1.08 Georgia, "Times New Roman", serif;
@@ -426,7 +426,7 @@
         text-wrap: balance;
       }
 
-      #${SALES_ID} .ps-story h3 span {
+      #${SALES_ID} .ps-story h2 span {
         color: #f1c15a;
       }
 
@@ -1035,7 +1035,7 @@
       <section class="ps-story" aria-label="Qué encontrarás en Ciudad Central">
         <div>
           <p class="ps-eyebrow">ENTRA A CIUDAD CENTRAL</p>
-          <h3>CIUDAD CENTRAL NO SOLO VIGILA. <span>RECUERDA. CASTIGA. BORRA.</span></h3>
+          <h2>CIUDAD CENTRAL NO SOLO VIGILA. <span>RECUERDA. CASTIGA. BORRA.</span></h2>
           <p>
             Issei tiene pocas certezas: su hermana desapareció, existe una
             llave marcada con el número <strong>066</strong> y alguien necesita
@@ -1051,7 +1051,7 @@
 
         <div class="ps-fit">
           <p class="ps-eyebrow">ESTE LIBRO PUEDE SER PARA TI SI…</p>
-          <h3>BUSCAS UNA HISTORIA QUE TE OBLIGUE A SEGUIR ABRIENDO PUERTAS.</h3>
+          <h2>BUSCAS UNA HISTORIA QUE TE OBLIGUE A SEGUIR ABRIENDO PUERTAS.</h2>
           <div class="ps-fit-grid">
             <div class="ps-fit-card">
               <b>Conspiración</b>
@@ -1076,7 +1076,7 @@
       <section class="ps-sample" aria-label="Muestra de lectura">
         <div>
           <p class="ps-eyebrow">NO COMPRES A CIEGAS</p>
-          <h3>ABRE EL LIBRO. LEE LAS PRIMERAS PÁGINAS.</h3>
+          <h2>ABRE EL LIBRO. LEE LAS PRIMERAS PÁGINAS.</h2>
           <p>
             Revisa una muestra real de la edición impresa antes de decidir.
           </p>
