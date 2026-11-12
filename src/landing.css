@@ -615,7 +615,7 @@ svg {
   overflow: hidden;
 }
 
-.system-panel h3 {
+.system-panel h2 {
   font: 24px Georgia, serif;
   text-transform: uppercase;
   letter-spacing: .13em;
