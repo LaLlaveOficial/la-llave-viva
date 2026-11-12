@@ -56,7 +56,9 @@ const homepage = `<main id="homepage-initial-content" style="max-width:48rem;mar
   <p><a style="color:#f1c15a" href="/comprar">Comprar el libro La Llave I: Ciudad Central</a></p>
   <p><a style="color:#f1c15a" href="/press-kit">Kit de prensa de La Llave</a></p>
 </main>`;
-const initialHomepage = source.replace('<div id="root"></div>', `<div id="root">${homepage}</div>`);
+const initialHomepage = source
+  .replace('</head>', '<link rel="preload" as="image" href="/assets/ciudad-central-hero.webp" fetchpriority="high" /></head>')
+  .replace('<div id="root"></div>', `<div id="root">${homepage}</div>`);
 if (!initialHomepage.includes(homepage)) throw new Error('Initial homepage content was not inserted');
 
 const pressContent = `<main id="press-kit-initial-content" style="max-width:48rem;margin:3rem auto;padding:0 1rem;color:#f3efe4">

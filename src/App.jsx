@@ -2179,7 +2179,7 @@ export default function App() {
           className="system-panel"
           aria-label={t.system}
         >
-          <h3>{t.system}</h3>
+          <h2>{t.system}</h2>
 
           <p>{t.control}</p>
 
