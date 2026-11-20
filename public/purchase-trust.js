@@ -8,6 +8,32 @@
   const STYLE_ID = "purchase-trust-066-styles";
   const PURCHASE_PATH = "/comprar";
   let internationalReturnFocus = null;
+  let purchaseRevealScheduled = false;
+
+  // The static /comprar HTML is visible to crawlers, but differs from the
+  // fully interactive React layout. Reveal only once React and this landing
+  // have both mounted, to avoid the left-to-center first-paint jump.
+  function revealPurchaseWhenReady() {
+    if (!isDedicatedPurchase() ||
+        purchaseRevealScheduled ||
+        !document.documentElement.classList.contains("llave-purchase-booting") ||
+        !document.querySelector(".site > #compra-directa #purchase-sales-066") ||
+        !document.querySelector(".site > #compra-directa .sale-form")) {
+      return;
+    }
+
+    purchaseRevealScheduled = true;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        purchaseRevealScheduled = false;
+        if (document.querySelector(".site > #compra-directa #purchase-sales-066") &&
+            document.querySelector(".site > #compra-directa .sale-form")) {
+          document.documentElement.classList.remove("llave-purchase-booting");
+        }
+      });
+    });
+  }
+
 
   if (window[SCRIPT_FLAG]) {
     return;
@@ -1710,6 +1736,7 @@
     ensureTrustBlock();
     compactPromoUI();
     syncCheckoutCta();
+    revealPurchaseWhenReady();
   }
 
   function start() {
