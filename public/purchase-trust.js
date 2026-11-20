@@ -74,6 +74,42 @@
         box-sizing: border-box;
       }
 
+      #${SALES_ID} .ps-editorial-proof {
+        margin: 28px 0 38px;
+        padding: clamp(24px, 4vw, 42px);
+        border: 1px solid rgba(241,193,90,.24);
+        background: rgba(5,8,9,.82);
+      }
+      #${SALES_ID} .ps-editorial-proof h2 {
+        margin: 0 0 12px;
+        font: 800 clamp(22px,3vw,34px)/1.2 Georgia,serif;
+      }
+      #${SALES_ID} .ps-proof-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit,minmax(240px,1fr));
+        gap: 16px;
+        margin-top: 22px;
+      }
+      #${SALES_ID} .ps-proof-card {
+        display: grid;
+        gap: 10px;
+        padding: 24px;
+        border: 1px solid rgba(241,193,90,.26);
+        background: rgba(255,255,255,.035);
+        color: #f3efe4;
+        text-decoration: none;
+        transition: background .2s,border-color .2s;
+      }
+      #${SALES_ID} .ps-proof-card:hover,
+      #${SALES_ID} .ps-proof-card:focus-visible {
+        border-color: #f1c15a;
+        background: rgba(241,193,90,.08);
+      }
+      #${SALES_ID} .ps-proof-type,
+      #${SALES_ID} .ps-proof-cta { color: #f1c15a; font-size: 11px; letter-spacing: .1em; font-weight: 800; }
+      #${SALES_ID} .ps-proof-card strong { font: 700 23px/1.2 Georgia,serif; }
+      #${SALES_ID} .ps-proof-card span:not(.ps-proof-type):not(.ps-proof-cta) { line-height: 1.6; color: #c8c2b7; }
+
       #${SALES_ID} .ps-hero {
         position: relative;
         display: grid;
@@ -1069,6 +1105,26 @@
         </div>
       </section>
 
+      <section class="ps-editorial-proof" aria-label="Prensa, reseñas y entrevistas">
+        <p class="ps-eyebrow">VOCES QUE HAN ENTRADO A CIUDAD CENTRAL</p>
+        <h2>LA LLAVE EN LOS MEDIOS Y ENTRE LECTORES</h2>
+        <p>Conoce las publicaciones y reseñas externas sobre la novela.</p>
+        <div class="ps-proof-grid">
+          <a class="ps-proof-card" href="https://loslibrosyeva.blogspot.com/2026/09/la-llave-i-ciudad-central-enrique-g.html" target="_blank" rel="noopener noreferrer">
+            <span class="ps-proof-type">RESEÑA LITERARIA · BLOG</span>
+            <strong>Los libros y Eva</strong>
+            <span>Reseña completa de La Llave I: Ciudad Central · 10 de septiembre de 2026</span>
+            <span class="ps-proof-cta">LEER RESEÑA ↗</span>
+          </a>
+          <a class="ps-proof-card" href="https://www.instagram.com/reel/Degsa_iOFRu/" target="_blank" rel="noopener noreferrer">
+            <span class="ps-proof-type">VIDEO · BOOKTRAILER OFICIAL</span>
+            <strong>Entra al universo 066</strong>
+            <span>Descubre la atmósfera cinematográfica de Ciudad Central</span>
+            <span class="ps-proof-cta">VER VIDEO ↗</span>
+          </a>
+        </div>
+      </section>
+
       <section class="ps-story" aria-label="Qué encontrarás en Ciudad Central">
         <div>
           <p class="ps-eyebrow">ENTRA A CIUDAD CENTRAL</p>
@@ -1149,6 +1205,8 @@
             ])}
             ${createInternationalCountry("Estados Unidos", [
               ["Libro físico · Bookshop.org", "https://bookshop.org/p/books/la-llave-i-ciudad-central-enrique-g-santibanez/bd358ad71eed0bb7", "bookshop", "physical"],
+              ["Libro físico · Kinokuniya USA (librería japonesa)", "https://usa.kinokuniya.com/ja/products/9789564237244", "kinokuniya", "physical"],
+              ["Libro físico · Walmart USA", "https://www.walmart.com/ip/20236806723?classType=REGULAR", "walmart", "physical"],
               ["Kindle · Amazon.com", "https://www.amazon.com/Llave-Ciudad-Central-Spanish-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
             ])}
             ${createInternationalCountry("Brasil", [
