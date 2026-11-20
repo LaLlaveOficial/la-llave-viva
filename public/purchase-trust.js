@@ -6,6 +6,7 @@
   const INTERNATIONAL_DIALOG_ID = "purchase-international-066";
   const HOMEPAGE_INTERNATIONAL_ID = "homepage-international-066";
   const STYLE_ID = "purchase-trust-066-styles";
+  const BACKDROP_ID = "purchase-backdrop-066";
   const PURCHASE_PATH = "/comprar";
   let internationalReturnFocus = null;
 
@@ -30,25 +31,78 @@
     style.id = STYLE_ID;
 
     style.textContent = `
-      /* Background only on the dedicated purchase page.
-       * Use the existing approved Ciudad Central art; no external image requests. */
+      /* Genuine CASO 066 frames: theater, pedestrian crossing and plaza.
+       * Three individually optimized, self-contained SVG/WebP stills.
+       * Only enabled on /comprar. The dark veil protects checkout readability. */
       html.llave-dedicated-purchase body::before {
         content: "";
         position: fixed;
         inset: 0;
         z-index: 0;
+        background: #020303;
         pointer-events: none;
-        background:
-          linear-gradient(180deg, rgba(2,3,3,.88), rgba(2,3,3,.82) 48%, rgba(2,3,3,.94)),
-          url("/assets/ciudad-central-hero.webp") center center / cover no-repeat;
-        opacity: .95;
+      }
+      html.llave-dedicated-purchase #${BACKDROP_ID} {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        pointer-events: none;
+        isolation: isolate;
+      }
+      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame {
+        position: absolute;
+        inset: -2%;
+        opacity: 0;
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
+        transform: scale(1.025);
+        animation: ps-bg-sequence 30s ease-in-out infinite;
+        will-change: opacity;
+      }
+      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(1) {
+        background-image: url("/assets/compra-bg-teatro.svg");
+        animation-delay: -1.5s;
+      }
+      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(2) {
+        background-image: url("/assets/compra-bg-paseo.svg");
+        animation-delay: 8.5s;
+      }
+      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(3) {
+        background-image: url("/assets/compra-bg-plaza.svg");
+        animation-delay: 18.5s;
+      }
+      html.llave-dedicated-purchase #${BACKDROP_ID}::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg,
+          rgba(1, 3, 4, .65) 0%, rgba(1, 3, 4, .73) 45%,
+          rgba(1, 3, 4, .82) 100%);
+        pointer-events: none;
+      }
+      @keyframes ps-bg-sequence {
+        0% { opacity: 0; }
+        5%, 26% { opacity: .92; }
+        34%, 100% { opacity: 0; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame {
+          animation: none;
+          opacity: 0;
+          transform: none;
+        }
+        html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:first-child {
+          opacity: .8;
+        }
       }
       html.llave-dedicated-purchase .site {
         position: relative;
         z-index: 1;
       }
       html.llave-dedicated-purchase .background {
-        opacity: .10;
+        opacity: .04;
       }
 
       /* =========================================================
@@ -123,7 +177,7 @@
         background:
           radial-gradient(circle at 78% 24%, rgba(217, 155, 36, 0.15), transparent 31%),
           radial-gradient(circle at 14% 88%, rgba(85, 109, 110, 0.10), transparent 34%),
-          linear-gradient(135deg, rgba(10, 11, 11, 0.97), rgba(2, 3, 3, 0.94));
+          linear-gradient(135deg, rgba(10, 11, 11, 0.86), rgba(2, 3, 3, 0.79));
         box-shadow: 0 34px 90px rgba(0, 0, 0, 0.40);
       }
 
@@ -1486,6 +1540,21 @@
     return Boolean(dialog);
   }
 
+  function ensurePurchaseBackdrop() {
+    if (!isDedicatedPurchase()) {
+      document.getElementById(BACKDROP_ID)?.remove();
+      return;
+    }
+    if (document.getElementById(BACKDROP_ID)) {
+      return;
+    }
+    const slideshow = document.createElement("div");
+    slideshow.id = BACKDROP_ID;
+    slideshow.setAttribute("aria-hidden", "true");
+    slideshow.innerHTML = '<div class="ps-bg-frame"></div>'.repeat(3);
+    document.body.appendChild(slideshow);
+  }
+
   function ensureSalesLanding() {
     if (!isDedicatedPurchase()) {
       return false;
@@ -1713,6 +1782,7 @@
 
   function ensureAll() {
     ensureInternationalDialog();
+    ensurePurchaseBackdrop();
     ensureSalesLanding();
     ensureHomepageInternationalCta();
     ensureTrustBlock();
