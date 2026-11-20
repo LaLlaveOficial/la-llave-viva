@@ -30,6 +30,27 @@
     style.id = STYLE_ID;
 
     style.textContent = `
+      /* Background only on the dedicated purchase page.
+       * Use the existing approved Ciudad Central art; no external image requests. */
+      html.llave-dedicated-purchase body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(2,3,3,.88), rgba(2,3,3,.82) 48%, rgba(2,3,3,.94)),
+          url("/assets/ciudad-central-hero.webp") center center / cover no-repeat;
+        opacity: .95;
+      }
+      html.llave-dedicated-purchase .site {
+        position: relative;
+        z-index: 1;
+      }
+      html.llave-dedicated-purchase .background {
+        opacity: .10;
+      }
+
       /* =========================================================
        * LANDING COMERCIAL /COMPRAR
        * Se inyecta dentro de #compra-directa para conservar
@@ -345,12 +366,28 @@
         background: rgba(255, 255, 255, 0.018);
       }
 
-      #${INTERNATIONAL_DIALOG_ID} .ps-intl-country h3 {
-        margin: 0 0 11px;
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-country-toggle {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        list-style: none;
+        min-height: 48px;
         color: #f1c15a;
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+        font-size: 13px;
+        font-weight: 850;
+      }
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-country-toggle::-webkit-details-marker { display: none; }
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-country-toggle:focus-visible {
+        outline: 2px solid #f1c15a;
+        outline-offset: 4px;
+      }
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-flag { font-size: 29px; line-height: 1; }
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-chevron { margin-left: auto; font-size: 22px; transition: transform .2s ease; }
+      #${INTERNATIONAL_DIALOG_ID} details[open] .ps-intl-chevron { transform: rotate(180deg); }
+      #${INTERNATIONAL_DIALOG_ID} details[open] .ps-intl-links { padding-top: 12px; }
+      @media (max-width: 560px) {
+        #${INTERNATIONAL_DIALOG_ID} .ps-intl-grid { grid-template-columns: 1fr; }
       }
 
       #${INTERNATIONAL_DIALOG_ID} .ps-intl-links {
@@ -1104,6 +1141,9 @@
               ["Libro físico · Buscalibre", "https://www.buscalibre.com.mx/libro-la-llave-i/9789564237244/p/67709800", "buscalibre", "physical"],
               ["Kindle · Amazon México", "https://www.amazon.com.mx/Llave-I-Ciudad-Central-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
             ])}
+            ${createInternationalCountry("Perú", [
+              ["Libro físico · Buscalibre Perú", "https://www.buscalibre.pe/libro-la-llave-i/9789564237244/p/67709800", "buscalibre", "physical"],
+            ])}
             ${createInternationalCountry("Argentina", [
               ["Libro físico · Mercado Libre", "https://www.mercadolibre.com.ar/la-llave-i-ciudad-central/up/MLAU4150165812", "mercado_libre", "physical"],
             ])}
@@ -1151,11 +1191,21 @@
       `)
       .join("");
 
+    const flag = ({
+      "México": "🇲🇽", "Argentina": "🇦🇷", "Estados Unidos": "🇺🇸",
+      "Brasil": "🇧🇷", "España": "🇪🇸", "Suecia": "🇸🇪",
+      "Irlanda": "🇮🇪", "Perú": "🇵🇪", "Otros países": "🌎",
+    })[country] || "🌍";
+
     return `
-      <section class="ps-intl-country" aria-label="Opciones para ${country}">
-        <h3>${country}</h3>
+      <details class="ps-intl-country" aria-label="Opciones para ${country}">
+        <summary class="ps-intl-country-toggle">
+          <span class="ps-intl-flag" aria-hidden="true">${flag}</span>
+          <span class="ps-intl-country-name">${country}</span>
+          <span class="ps-intl-chevron" aria-hidden="true">⌄</span>
+        </summary>
         <div class="ps-intl-links">${linkMarkup}</div>
-      </section>
+      </details>
     `;
   }
 
