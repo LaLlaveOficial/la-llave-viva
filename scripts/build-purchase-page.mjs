@@ -42,8 +42,20 @@ function withPageMetadata({ path, title, description }) {
 }
 
 const purchase = withPageMetadata({ path: '/comprar', title, description })
-  .replace('<html lang="es">', '<html lang="es" class="llave-dedicated-purchase">')
-  .replace('</head>', `<link rel="preload" as="image" href="/assets/la-llave-edicion-fisica.png" fetchpriority="high" /><style id="purchase-initial-style">body{margin:0;background:#020303}${css}</style></head>`)
+  .replace('<html lang="es">', '<html lang="es" class="llave-dedicated-purchase llave-purchase-booting">')
+  .replace('</head>', `<link rel="preload" as="image" href="/assets/la-llave-edicion-fisica.png" fetchpriority="high" /><style id="purchase-initial-style">body{margin:0;background:#020303}${css}</style>
+    <!-- Keep the static SEO content in the DOM, but do not paint its different
+         pre-React geometry before the fully styled purchase view is ready. -->
+    <style id="purchase-first-paint-guard">
+      html.llave-purchase-booting #root { visibility: hidden !important; }
+    </style>
+    <noscript><style>html.llave-purchase-booting #root { visibility: visible !important; }</style></noscript>
+    <script>
+      /* Fail open if a script breaks; never leave the store invisible. */
+      window.setTimeout(function () {
+        document.documentElement.classList.remove('llave-purchase-booting');
+      }, 5500);
+    </script></head>`)
   .replace('<div id="root"></div>', `<div id="root">${initialContent}</div>`);
 if (!purchase.includes(initialContent)) throw new Error('Initial purchase content was not inserted');
 await writeFile(new URL('../dist/comprar.html', import.meta.url), purchase);
