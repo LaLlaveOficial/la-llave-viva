@@ -328,6 +328,21 @@
         line-height: 1.6;
       }
 
+      #${INTERNATIONAL_DIALOG_ID} .ps-intl-language-label {
+        display: block;
+        margin: 0 0 5px;
+        color: #f3efe4;
+        font-size: 12px;
+      }
+      #${INTERNATIONAL_DIALOG_ID} [data-ps-intl-language] {
+        margin: 0 0 16px;
+        padding: 8px 12px;
+        background: #171a20;
+        color: #f3efe4;
+        border: 1px solid rgba(241, 193, 90, 0.4);
+        border-radius: 4px;
+      }
+
       #${INTERNATIONAL_DIALOG_ID} .ps-intl-lead {
         margin: 10px 0 22px;
         font-size: 14px;
@@ -1096,9 +1111,14 @@
       <div id="${INTERNATIONAL_DIALOG_ID}" role="dialog" aria-modal="true" aria-labelledby="ps-intl-title" hidden>
         <div class="ps-intl-panel">
           <button class="ps-intl-close" type="button" aria-label="Cerrar compra internacional" data-ps-intl-close>×</button>
-          <p class="ps-eyebrow">COMPRA INTERNACIONAL</p>
-          <h2 id="ps-intl-title">¿DESDE QUÉ PAÍS COMPRAS?</h2>
-          <p class="ps-intl-lead">Elige tu país y el formato disponible. La compra se completa en la tienda indicada.</p>
+          <label for="ps-intl-language" class="ps-intl-language-label">Idioma / Language</label>
+          <select id="ps-intl-language" data-ps-intl-language aria-label="Idioma de las opciones de compra internacional">
+            <option value="es">Español</option>
+            <option value="en">English</option>
+          </select>
+          <p class="ps-eyebrow" data-ps-intl-copy="eyebrow">COMPRA INTERNACIONAL</p>
+          <h2 id="ps-intl-title" data-ps-intl-copy="title">¿DESDE QUÉ PAÍS COMPRAS?</h2>
+          <p class="ps-intl-lead" data-ps-intl-copy="lead">Elige tu país y el formato disponible. La compra se completa en la tienda indicada.</p>
           <div class="ps-intl-grid">
             ${createInternationalCountry("México", [
               ["Libro físico · Buscalibre", "https://www.buscalibre.com.mx/libro-la-llave-i/9789564237244/p/67709800", "buscalibre", "physical"],
@@ -1130,7 +1150,7 @@
               ["Kindle · Amazon.com", "https://www.amazon.com/Llave-Ciudad-Central-Spanish-ebook/dp/B0GX31SRTT", "amazon", "kindle"],
             ])}
           </div>
-          <p class="ps-intl-legal">Precios, impuestos, disponibilidad y plazos dependen de cada tienda y país.</p>
+          <p class="ps-intl-legal" data-ps-intl-copy="legal">Precios, impuestos, disponibilidad y plazos dependen de cada tienda y país.</p>
         </div>
       </div>
     `;
@@ -1244,6 +1264,40 @@
     });
   }
 
+  // Localize the international purchase dialog without modifying the checkout or payment flow.
+  const internationalCopy = {
+    es: {
+      eyebrow: "COMPRA INTERNACIONAL",
+      title: "¿DESDE QUÉ PAÍS COMPRAS?",
+      lead: "Elige tu país y el formato disponible. La compra se completa en la tienda indicada.",
+      legal: "Precios, impuestos, disponibilidad y plazos dependen de cada tienda y país.",
+      close: "Cerrar compra internacional",
+    },
+    en: {
+      eyebrow: "INTERNATIONAL PURCHASE",
+      title: "WHICH COUNTRY ARE YOU BUYING FROM?",
+      lead: "Choose your country and available format. Checkout takes place at the listed retailer.",
+      legal: "Prices, taxes, availability and delivery times depend on each retailer and country.",
+      close: "Close international purchase options",
+    },
+  };
+
+  function setInternationalLanguage(value) {
+    const dialog = document.getElementById(INTERNATIONAL_DIALOG_ID);
+    if (!dialog) return;
+    const locale = value === "en" ? "en" : "es";
+    const copy = internationalCopy[locale];
+    dialog.lang = locale;
+    dialog.querySelectorAll("[data-ps-intl-copy]").forEach((node) => {
+      const key = node.getAttribute("data-ps-intl-copy");
+      if (copy[key]) node.textContent = copy[key];
+    });
+    const close = dialog.querySelector("[data-ps-intl-close]");
+    if (close) close.setAttribute("aria-label", copy.close);
+    const selector = dialog.querySelector("[data-ps-intl-language]");
+    if (selector && selector.value !== locale) selector.value = locale;
+  }
+
   function openInternationalDialog(block) {
     const dialog = document.getElementById(INTERNATIONAL_DIALOG_ID);
 
@@ -1254,6 +1308,8 @@
     internationalReturnFocus = document.activeElement;
     dialog.dataset.placement = internationalPlacement(block);
     dialog.hidden = false;
+    const pageLanguage = document.querySelector('nav select[aria-label="Idioma"]')?.value;
+    setInternationalLanguage(pageLanguage === "en" ? "en" : "es");
     document.body.style.overflow = "hidden";
     dialog.querySelector("[data-ps-intl-close]")?.focus();
     trackInternationalEvent(
@@ -1613,6 +1669,11 @@
   }
 
   function start() {
+    document.addEventListener("change", (event) => {
+      if (event.target?.matches?.("[data-ps-intl-language]")) {
+        setInternationalLanguage(event.target.value);
+      }
+    });
     injectStyles();
     ensureAll();
 
