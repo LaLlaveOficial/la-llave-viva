@@ -14,6 +14,7 @@ const ids = {
   CHECKOUT_HEADING_ID: 'purchase-checkout-heading-066',
   INTERNATIONAL_DIALOG_ID: 'purchase-international-066',
   HOMEPAGE_INTERNATIONAL_ID: 'homepage-international-066',
+  BACKDROP_ID: 'purchase-backdrop-066',
 };
 const css = styleTemplate.replace(/\$\{(\w+)\}/g, (_, key) => {
   if (!(key in ids)) throw new Error(`Unknown style token: ${key}`);
