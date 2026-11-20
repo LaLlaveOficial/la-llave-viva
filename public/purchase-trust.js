@@ -32,7 +32,7 @@
 
     style.textContent = `
       /* Genuine CASO 066 frames: theater, pedestrian crossing and plaza.
-       * Three individually optimized, self-contained SVG/WebP stills.
+       * Three native optimized WebP stills (direct Chrome/Android support).
        * Only enabled on /comprar. The dark veil protects checkout readability. */
       html.llave-dedicated-purchase body::before {
         content: "";
@@ -54,6 +54,7 @@
         position: absolute;
         inset: -2%;
         opacity: 0;
+        filter: brightness(1.28) saturate(1.08);
         background-position: center;
         background-size: cover;
         background-repeat: no-repeat;
@@ -62,15 +63,15 @@
         will-change: opacity;
       }
       html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(1) {
-        background-image: url("/assets/compra-bg-teatro.svg");
+        background-image: url("/assets/compra-bg-teatro.webp");
         animation-delay: -1.5s;
       }
       html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(2) {
-        background-image: url("/assets/compra-bg-paseo.svg");
+        background-image: url("/assets/compra-bg-paseo.webp");
         animation-delay: 8.5s;
       }
       html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(3) {
-        background-image: url("/assets/compra-bg-plaza.svg");
+        background-image: url("/assets/compra-bg-plaza.webp");
         animation-delay: 18.5s;
       }
       html.llave-dedicated-purchase #${BACKDROP_ID}::after {
@@ -78,8 +79,8 @@
         position: absolute;
         inset: 0;
         background: linear-gradient(180deg,
-          rgba(1, 3, 4, .65) 0%, rgba(1, 3, 4, .73) 45%,
-          rgba(1, 3, 4, .82) 100%);
+          rgba(1, 3, 4, .28) 0%, rgba(1, 3, 4, .38) 45%,
+          rgba(1, 3, 4, .50) 100%);
         pointer-events: none;
       }
       @keyframes ps-bg-sequence {
@@ -102,7 +103,7 @@
         z-index: 1;
       }
       html.llave-dedicated-purchase .background {
-        opacity: .04;
+        opacity: 0;
       }
 
       /* =========================================================
@@ -132,7 +133,7 @@
         margin: 28px 0 38px;
         padding: clamp(24px, 4vw, 42px);
         border: 1px solid rgba(241,193,90,.24);
-        background: rgba(5,8,9,.82);
+        background: rgba(5,8,9,.65);
       }
       #${SALES_ID} .ps-editorial-proof h2 {
         margin: 0 0 12px;
@@ -177,7 +178,7 @@
         background:
           radial-gradient(circle at 78% 24%, rgba(217, 155, 36, 0.15), transparent 31%),
           radial-gradient(circle at 14% 88%, rgba(85, 109, 110, 0.10), transparent 34%),
-          linear-gradient(135deg, rgba(10, 11, 11, 0.86), rgba(2, 3, 3, 0.79));
+          linear-gradient(105deg, rgba(7, 10, 11, 0.74), rgba(7, 9, 9, 0.49) 55%, rgba(3, 5, 5, 0.39));
         box-shadow: 0 34px 90px rgba(0, 0, 0, 0.40);
       }
 
@@ -540,7 +541,7 @@
         margin-top: clamp(28px, 4vw, 50px);
         padding: clamp(30px, 4.4vw, 54px);
         border: 1px solid rgba(241, 193, 90, 0.16);
-        background: rgba(4, 5, 5, 0.86);
+        background: rgba(4, 5, 5, 0.67);
       }
 
       #${SALES_ID} .ps-story h2,
@@ -609,7 +610,7 @@
         border: 1px solid rgba(241, 193, 90, 0.18);
         background:
           linear-gradient(110deg, rgba(217, 155, 36, 0.07), transparent 44%),
-          rgba(3, 4, 4, 0.92);
+          rgba(3, 4, 4, 0.72);
       }
 
       #${SALES_ID} .ps-sample p {
