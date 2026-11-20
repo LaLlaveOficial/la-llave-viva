@@ -14,7 +14,7 @@
       }
     </style>
     <script>
-      if (location.pathname.replace(/\\/+$/, "") === "") {
+      if (location.pathname === "/") {
         document.documentElement.classList.add("llave-preintro");
         window.setTimeout(function () {
           document.documentElement.classList.remove("llave-preintro");
