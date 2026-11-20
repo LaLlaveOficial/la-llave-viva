@@ -6,7 +6,6 @@
   const INTERNATIONAL_DIALOG_ID = "purchase-international-066";
   const HOMEPAGE_INTERNATIONAL_ID = "homepage-international-066";
   const STYLE_ID = "purchase-trust-066-styles";
-  const BACKDROP_ID = "purchase-backdrop-066";
   const PURCHASE_PATH = "/comprar";
   let internationalReturnFocus = null;
 
@@ -31,79 +30,17 @@
     style.id = STYLE_ID;
 
     style.textContent = `
-      /* Genuine CASO 066 frames: theater, pedestrian crossing and plaza.
-       * Three native optimized WebP stills (direct Chrome/Android support).
-       * Only enabled on /comprar. The dark veil protects checkout readability. */
-      html.llave-dedicated-purchase body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        background: #020303;
-        pointer-events: none;
+      /* Compra: negro uniforme desde la primera carga, sin fotografías. */
+      html.llave-dedicated-purchase,
+      html.llave-dedicated-purchase body {
+        background: #020303 !important;
       }
-      html.llave-dedicated-purchase #${BACKDROP_ID} {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        overflow: hidden;
-        pointer-events: none;
-        isolation: isolate;
-      }
-      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame {
-        position: absolute;
-        inset: -2%;
-        opacity: 0;
-        filter: brightness(1.28) saturate(1.08);
-        background-position: center;
-        background-size: cover;
-        background-repeat: no-repeat;
-        transform: scale(1.025);
-        animation: ps-bg-sequence 30s ease-in-out infinite;
-        will-change: opacity;
-      }
-      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(1) {
-        background-image: url("/assets/compra-bg-teatro.webp");
-        animation-delay: -1.5s;
-      }
-      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(2) {
-        background-image: url("/assets/compra-bg-paseo.webp");
-        animation-delay: 8.5s;
-      }
-      html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:nth-child(3) {
-        background-image: url("/assets/compra-bg-plaza.webp");
-        animation-delay: 18.5s;
-      }
-      html.llave-dedicated-purchase #${BACKDROP_ID}::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg,
-          rgba(1, 3, 4, .28) 0%, rgba(1, 3, 4, .38) 45%,
-          rgba(1, 3, 4, .50) 100%);
-        pointer-events: none;
-      }
-      @keyframes ps-bg-sequence {
-        0% { opacity: 0; }
-        5%, 26% { opacity: .92; }
-        34%, 100% { opacity: 0; }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame {
-          animation: none;
-          opacity: 0;
-          transform: none;
-        }
-        html.llave-dedicated-purchase #${BACKDROP_ID} .ps-bg-frame:first-child {
-          opacity: .8;
-        }
+      html.llave-dedicated-purchase .background {
+        display: none !important;
       }
       html.llave-dedicated-purchase .site {
         position: relative;
         z-index: 1;
-      }
-      html.llave-dedicated-purchase .background {
-        opacity: 0;
       }
 
       /* =========================================================
@@ -1541,21 +1478,6 @@
     return Boolean(dialog);
   }
 
-  function ensurePurchaseBackdrop() {
-    if (!isDedicatedPurchase()) {
-      document.getElementById(BACKDROP_ID)?.remove();
-      return;
-    }
-    if (document.getElementById(BACKDROP_ID)) {
-      return;
-    }
-    const slideshow = document.createElement("div");
-    slideshow.id = BACKDROP_ID;
-    slideshow.setAttribute("aria-hidden", "true");
-    slideshow.innerHTML = '<div class="ps-bg-frame"></div>'.repeat(3);
-    document.body.appendChild(slideshow);
-  }
-
   function ensureSalesLanding() {
     if (!isDedicatedPurchase()) {
       return false;
@@ -1783,7 +1705,6 @@
 
   function ensureAll() {
     ensureInternationalDialog();
-    ensurePurchaseBackdrop();
     ensureSalesLanding();
     ensureHomepageInternationalCta();
     ensureTrustBlock();
