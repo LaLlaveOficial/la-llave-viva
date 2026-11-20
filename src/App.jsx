@@ -1886,6 +1886,7 @@ export default function App() {
         preload="none"
       />
 
+      {currentPath !== "/comprar" && (
       <Background
         rainDrops={rainDrops}
         bgSrc={
@@ -1902,6 +1903,7 @@ export default function App() {
           BG_SOURCES.length
         }
       />
+      )}
 
       <HazardBorders />
 
