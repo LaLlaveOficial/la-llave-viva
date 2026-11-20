@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./landing.css";
 
 const BG_SOURCES = [
@@ -1383,6 +1383,12 @@ export default function App() {
   const [lang, setLang] = useState("es");
   const t = LANGS[lang] || LANGS.es;
   const dir = ["ar", "he"].includes(lang) ? "rtl" : "ltr";
+
+  // Release the first-paint curtain in the same layout phase as the intro mount.
+  // The curtain is only enabled for the homepage, never for /comprar or checkout.
+  useLayoutEffect(() => {
+    document.documentElement.classList.remove("llave-preintro");
+  }, []);
 
   const [introOpen, setIntroOpen] = useState(true);
   const [audioOn, setAudioOn] = useState(false);
